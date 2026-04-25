@@ -185,13 +185,13 @@ function ContrastScanResults({ results, onRescan }) {
                           {item.ratio}:1
                         </span>
                         <span className="cscan-hex">{item.fg} / {item.bg}</span>
-                        {(item.selector || item.text) && (
+                        {item.selector && (
                           <button
                             className="cscan-jump-btn"
                             title="Jump to this element on the page"
                             onClick={() => chrome.runtime.sendMessage({
                               type: "SCROLL_TO_ELEMENT",
-                              selector: item.selector || null,
+                              selector: item.selector,
                               text: item.text || null,
                             })}
                           ><Icon name="open_in_new" size={12} /> Jump</button>
