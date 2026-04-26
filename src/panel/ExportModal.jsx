@@ -68,30 +68,30 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
   const sectionOptions = [
     {
       key: "violations",
-      label: "WCAG violations",
+      label: "Problems found",
       desc: `${violations.length} rules · ${violations.reduce((s, v) => s + v.nodes.length, 0)} instances`,
     },
     {
       key: "tabOrder",
-      label: "Tab order issues",
+      label: "Keyboard tab order",
       desc:
         tabOrderStops?.length > 0
           ? `${tabOrderStops.filter((s) => s.hasPositiveTabindex || s.isAriaHiddenFocusable || !s.hasFocusRing).length} issues found`
-          : "Run tab order map first",
+          : "Run keyboard map first",
       disabled: !tabOrderStops || tabOrderStops.length === 0,
     },
     {
       key: "dynamicErrors",
-      label: "Dynamic ARIA errors",
+      label: "Live page errors",
       desc:
         dynamicIssues.length > 0
           ? `${dynamicIssues.length} issues detected`
-          : "No dynamic issues detected",
+          : "No live issues found",
       disabled: dynamicIssues.length === 0,
     },
     {
       key: "checklist",
-      label: "Manual testing checklist",
+      label: "Manual checklist",
       desc: (() => {
         // Show checklist progress in the modal.
         const cl = loadChecklist();
@@ -101,7 +101,7 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
     },
     {
       key: "passed",
-      label: "Passed checks",
+      label: "Checks that passed",
       desc: `${passes.length} rules passed`,
     },
   ];
@@ -111,8 +111,8 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <div className="modal-title">Export report</div>
-            <div className="modal-sub">Choose what to include</div>
+            <div className="modal-title">Make report</div>
+            <div className="modal-sub">Pick what to include</div>
           </div>
           <button className="modal-close" onClick={onClose}>
             ✕
@@ -142,19 +142,19 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
 
         <div className="modal-footer">
           <p className="export-note">
-            Opens a preview in a new tab. Use <strong>Save PDF</strong> or{" "}
-            <strong>Download CSV</strong> from the top of that page.
+            This opens your report in a new tab. Then press{" "}
+            <strong>Save PDF</strong> or <strong>Download CSV</strong>.
           </p>
           <div className="modal-actions">
             <button className="btn-cancel-modal" onClick={onClose}>
-              Cancel
+              Close
             </button>
             <button
               className="btn-scan"
               style={{ flex: 1 }}
               onClick={openPreview}
             >
-              Open preview
+              Open report
             </button>
           </div>
         </div>

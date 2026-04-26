@@ -1,151 +1,148 @@
-import { Icon } from "./icons";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-// Manual checklist tab (human checks that automation cannot fully verify).
+const C = {
+  border: "var(--border)",
+  text: "var(--text)",
+  textMid: "var(--text-mid)",
+  textMuted: "var(--text-muted)",
+  blue: "var(--blue)",
+  blueBtn: "var(--blue-btn)",
+  blueBg: "var(--blue-bg)",
+  blueBorder: "var(--blue-border)",
+  amber: "var(--amber)",
+  green: "var(--green)",
+  greenBg: "var(--green-bg)",
+  greenBtn: "var(--green-btn)",
+  purple: "var(--purple)",
+  surface2: "var(--bg3)",
+};
 
-const CHECKLIST = [
+const CHECKLIST_DATA = [
   {
-    id: "keyboard",
-    category: "Keyboard Navigation",
-    icon: "keyboard",
+    id: "kb",
+    title: "Keyboard Navigation",
+    accent: C.blue,
     items: [
       {
-        id: "kb-1",
-        text: "Unplug your mouse. Try to use the whole page with only Tab, Enter, Space, and arrow keys.",
+        id: "k1",
+        text: "Every link, button, and input reachable by Tab",
         wcag: "2.1.1",
+        guide: [
+          "Unplug or disable your mouse",
+          "Press Tab to move forward, Shift+Tab to go back",
+          "Every interactive element should receive focus - nothing skipped",
+        ],
       },
       {
-        id: "kb-2",
-        text: "Every link, button, input, and modal works with keyboard only.",
-        wcag: "2.1.1",
-      },
-      {
-        id: "kb-3",
-        text: "You can always Tab away from any part of the page. No dead ends.",
+        id: "k2",
+        text: "No keyboard traps anywhere on the page",
         wcag: "2.1.2",
+        guide: [
+          "Tab through the entire page - you should always be able to keep moving",
+          "If a component seems to trap focus, try Escape, then Tab",
+        ],
       },
       {
-        id: "kb-4",
-        text: "After closing a modal, focus goes back to where you were.",
+        id: "k3",
+        text: "Focus returns to trigger element after closing dialogs",
         wcag: "2.4.3",
+        guide: [
+          "Open a modal or menu using the keyboard",
+          "Close it with Escape",
+          "Focus should land back on the button that opened it",
+        ],
       },
       {
-        id: "kb-5",
-        text: "Tab order follows the reading order of the page. No unexpected jumps.",
-        wcag: "2.4.3",
+        id: "k4",
+        text: "Focus indicator always clearly visible",
+        wcag: "2.4.7",
+        guide: [
+          "Tab through the page and look for a visible ring or outline on each element",
+          "It must be visible - never rely on color alone",
+        ],
       },
     ],
   },
   {
-    id: "screen-reader",
-    category: "Screen Reader",
-    icon: "hearing",
+    id: "sr",
+    title: "Screen Reader",
+    accent: C.amber,
     items: [
       {
-        id: "sr-1",
-        text: "Test with VoiceOver (Mac: Cmd+F5) or NVDA (Windows, free). Try navigating by headings and links.",
-        wcag: "4.1.2",
-      },
-      {
-        id: "sr-2",
-        text: "Page title is announced correctly when the page loads.",
+        id: "s1",
+        text: "Page <title> is descriptive and unique",
         wcag: "2.4.2",
+        guide: [
+          "Open VoiceOver (Mac: Cmd+F5) or NVDA (Windows, free)",
+          "Load the page - the title should be announced",
+          "It must describe the page content, not just your site name",
+        ],
       },
       {
-        id: "sr-3",
-        text: "All images have alt text that describes what they mean, not just what they look like.",
+        id: "s2",
+        text: "All images have meaningful alt text",
         wcag: "1.1.1",
+        guide: [
+          "Navigate to each image with the screen reader",
+          "Listen to what is announced - it should describe the image's purpose",
+          "Decorative images should be silent (alt='')",
+        ],
       },
       {
-        id: "sr-4",
-        text: "Form fields say their name and type out loud when focused.",
+        id: "s3",
+        text: "Form fields announce their label when focused",
         wcag: "1.3.1",
+        guide: [
+          "Tab to each form input",
+          "The screen reader should say the label, type, and any instructions",
+          "Never rely only on placeholder text",
+        ],
       },
       {
-        id: "sr-5",
-        text: "New content like errors and success messages is read out loud automatically.",
+        id: "s4",
+        text: "Error messages are automatically announced",
         wcag: "4.1.3",
-      },
-      {
-        id: "sr-6",
-        text: "Modals are announced correctly. Focus stays inside while the modal is open.",
-        wcag: "4.1.2",
+        guide: [
+          "Submit a form with missing or invalid data",
+          "Without moving focus, the screen reader should announce the error",
+          "Use role='alert' or aria-live='polite' for dynamic messages",
+        ],
       },
     ],
   },
   {
-    id: "visual",
-    category: "Visual & Cognitive",
-    icon: "visibility",
+    id: "vis",
+    title: "Visual & Cognitive",
+    accent: C.purple,
     items: [
       {
-        id: "vi-1",
-        text: "Zoom to 200% (Cmd/Ctrl +). All content is still readable with no overlap.",
-        wcag: "1.4.4",
-      },
-      {
-        id: "vi-2",
-        text: "Zoom to 400%. Content reflows to a single column with no horizontal scrolling needd.",
+        id: "v1",
+        text: "Page reflows at 400% zoom without horizontal scroll",
         wcag: "1.4.10",
+        guide: [
+          "Set browser zoom to 400%",
+          "Content should stack into a single column",
+          "Nothing should overflow or require horizontal scrolling",
+        ],
       },
       {
-        id: "vi-3",
-        text: "All error messages explain the problem in words. Not just a red border.",
-        wcag: "3.3.1",
+        id: "v2",
+        text: "No content flashes more than 3 times per second",
+        wcag: "2.3.1",
+        guide: [
+          "Look for any animated or flashing content",
+          "If anything flashes faster than 3 times per second, remove it or add a pause control",
+        ],
       },
       {
-        id: "vi-4",
-        text: "Instructions don't rely on colour or position alone. Avoid saying 'click the green button.'",
-        wcag: "1.3.3",
-      },
-      {
-        id: "vi-5",
-        text: "Animation can be paused or stopped. Test with the Reduce Motion setting on your OS.",
-        wcag: "2.3.3",
-      },
-    ],
-  },
-  {
-    id: "user-testing",
-    category: "User Testing",
-    icon: "people",
-    items: [
-      {
-        id: "ut-1",
-        text: "Someone who uses assistive technology has tested the main user flow.",
-        wcag: "—",
-      },
-      {
-        id: "ut-2",
-        text: "Someone with low vision has tested the page at their preferred zoom level.",
-        wcag: "—",
-      },
-      {
-        id: "ut-3",
-        text: "A disabled user has completed the main flows like checkout and sign-up.",
-        wcag: "—",
-      },
-    ],
-  },
-  {
-    id: "documentation",
-    category: "Documentation",
-    icon: "description",
-    items: [
-      {
-        id: "doc-1",
-        text: "An Accessibility Statement is in the footer with a contact email for users who need help.",
-        wcag: "—",
-      },
-      {
-        id: "doc-2",
-        text: "An ACR or VPAT has been made for enterprise or government clients.",
-        wcag: "—",
-      },
-      {
-        id: "doc-3",
-        text: "Known issues are written down with fix dates. Nothing is silently ignored.",
-        wcag: "—",
+        id: "v3",
+        text: "Headings form a logical hierarchy (h1 - h2 - h3)",
+        wcag: "1.3.1",
+        guide: [
+          "Install the HeadingsMap browser extension",
+          "Check that headings nest logically - no skipped levels",
+          "There should be exactly one h1 per page",
+        ],
       },
     ],
   },
@@ -154,7 +151,6 @@ const CHECKLIST = [
 const STORAGE_KEY = "accesslens_checklist_v1";
 
 function loadChecked() {
-  // Read checklist progress from localStorage.
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -164,135 +160,337 @@ function loadChecked() {
 }
 
 function saveChecked(checked) {
-  // Save checklist progress locally in the browser.
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
-  } catch {}
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function Chevron({ open }) {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 13 13"
+      fill="none"
+      aria-hidden="true"
+      style={{
+        color: "var(--text-faint)",
+        transition: "transform .2s",
+        transform: open ? "rotate(180deg)" : "none",
+        flexShrink: 0,
+      }}
+    >
+      <path
+        d="M2.5 4.5l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function ChecklistPanel() {
+  const total = CHECKLIST_DATA.reduce((s, sec) => s + sec.items.length, 0);
   const [checked, setChecked] = useState(loadChecked);
-  const [collapsed, setCollapsed] = useState({});
+  const [openSecs, setOpenSecs] = useState({ kb: true, sr: false, vis: false });
+  const [openGuide, setOpenGuide] = useState({});
 
-  const totalItems = CHECKLIST.reduce((s, c) => s + c.items.length, 0);
-  const totalChecked = Object.values(checked).filter(Boolean).length;
-  const pct = Math.round((totalChecked / totalItems) * 100);
+  const done = Object.values(checked).filter(Boolean).length;
+  const pct = Math.round((done / total) * 100);
 
-  function toggle(id) {
+  function toggleItem(itemId) {
     setChecked((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
+      const next = { ...prev, [itemId]: !prev[itemId] };
       saveChecked(next);
       return next;
     });
   }
 
-  function toggleCategory(id) {
-    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-
-  function resetAll() {
-    setChecked({});
-    saveChecked({});
-  }
-
   return (
-    <div className="checklist-panel">
-      {/* Progress header */}
-      <div className="checklist-header">
-        <div className="checklist-progress-row">
-          <span className="checklist-progress-text">
-            {totalChecked} of {totalItems} completed
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div
+        style={{ padding: "13px 22px", borderBottom: `1px solid ${C.border}` }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            marginBottom: 9,
+          }}
+        >
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: C.text }}>
+            {done} of {total} complete
           </span>
           <span
-            className="checklist-pct"
             style={{
-              color: pct === 100 ? "#1D9E75" : pct > 50 ? "#EF9F27" : "#E24B4A",
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              color: pct === 100 ? C.green : pct > 0 ? C.amber : C.textMuted,
             }}
           >
             {pct}%
           </span>
         </div>
-        <div className="checklist-bar-track">
+        <div
+          style={{
+            height: 7,
+            background: C.surface2,
+            borderRadius: 7,
+            overflow: "hidden",
+          }}
+        >
           <div
-            className="checklist-bar-fill"
             style={{
-              width: pct + "%",
-              background:
-                pct === 100 ? "#1D9E75" : pct > 50 ? "#EF9F27" : "#4f8ef7",
+              height: "100%",
+              width: `${pct}%`,
+              background: pct === 100 ? C.greenBtn : C.blueBtn,
+              borderRadius: 7,
+              transition: "width .4s cubic-bezier(0.34,1.56,0.64,1)",
             }}
           />
         </div>
-        <p className="checklist-note">
-          These checks need human judgment — they cannot be automated. Check off
-          each item as you complete it. Progress is saved locally.
-        </p>
       </div>
 
-      {/* Categories */}
-      <div className="checklist-categories">
-        {CHECKLIST.map((cat) => {
-          const catChecked = cat.items.filter((i) => checked[i.id]).length;
-          const catDone = catChecked === cat.items.length;
-          const isCollapsed = collapsed[cat.id];
-
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "10px 22px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        {CHECKLIST_DATA.map(({ id, title, accent, items }) => {
+          const secDone = items.filter((i) => checked[i.id]).length;
+          const isOpen = openSecs[id];
           return (
             <div
-              key={cat.id}
-              className={`checklist-category ${catDone ? "checklist-category--done" : ""}`}
+              key={id}
+              style={{
+                borderRadius: 11,
+                border: `1.5px solid ${C.border}`,
+                overflow: "hidden",
+                background: "#fff",
+              }}
             >
               <button
-                className="checklist-cat-header"
-                onClick={() => toggleCategory(cat.id)}
+                onClick={() => setOpenSecs((s) => ({ ...s, [id]: !s[id] }))}
+                style={{
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  padding: "13px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  fontFamily: "var(--font)",
+                }}
               >
-                <span className="checklist-cat-icon">
-                  <Icon name={cat.icon} size={16} />
-                </span>
-                <span className="checklist-cat-name">{cat.category}</span>
                 <span
-                  className="checklist-cat-count"
-                  style={{ color: catDone ? "#1D9E75" : "var(--text3)" }}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    background: accent,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden="true"
+                />
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: C.text,
+                    textAlign: "left",
+                  }}
                 >
-                  {catChecked}/{cat.items.length}
+                  {title}
                 </span>
-                {catDone && <Icon name="check_circle" size={16} />}
-                <span className="principle-chevron">
-                  {isCollapsed ? "▶" : "▼"}
+                <span
+                  style={{ fontSize: 12, color: C.textMuted, fontWeight: 700 }}
+                >
+                  {secDone}/{items.length}
                 </span>
+                <Chevron open={isOpen} />
               </button>
 
-              {!isCollapsed && (
-                <div className="checklist-items">
-                  {cat.items.map((item) => (
-                    <label
+              {isOpen &&
+                items.map((item) => {
+                  const isChecked = !!checked[item.id];
+                  const guideOpen = !!openGuide[item.id];
+                  return (
+                    <div
                       key={item.id}
-                      className={`checklist-item ${checked[item.id] ? "checklist-item--checked" : ""}`}
+                      style={{
+                        borderTop: `1px solid ${C.border}`,
+                        background: isChecked ? C.greenBg : "#fff",
+                        transition: "background .15s",
+                      }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={!!checked[item.id]}
-                        onChange={() => toggle(item.id)}
-                        className="checklist-checkbox"
-                      />
-                      <div className="checklist-item-body">
-                        <span className="checklist-item-text">{item.text}</span>
-                        {item.wcag !== "—" && (
-                          <span className="checklist-item-wcag">
-                            WCAG {item.wcag}
-                          </span>
-                        )}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 11,
+                          padding: "12px 14px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => toggleItem(item.id)}
+                      >
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: 5,
+                            flexShrink: 0,
+                            marginTop: 1,
+                            border: `2px solid ${isChecked ? C.green : "var(--border-mid)"}`,
+                            background: isChecked ? C.greenBtn : "#fff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all .15s",
+                          }}
+                          role="checkbox"
+                          aria-checked={isChecked}
+                        >
+                          {isChecked && (
+                            <svg
+                              width="10"
+                              height="10"
+                              viewBox="0 0 10 10"
+                              fill="none"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M1.5 5L4 7.5L8.5 2.5"
+                                stroke="white"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              fontSize: 14.5,
+                              fontWeight: 500,
+                              color: isChecked ? C.textMuted : C.text,
+                              lineHeight: 1.5,
+                              textDecoration: isChecked
+                                ? "line-through"
+                                : "none",
+                              transition: "all .15s",
+                            }}
+                          >
+                            {item.text}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              marginTop: 4,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 11.5,
+                                color: C.textMuted,
+                                fontFamily: "var(--mono)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              WCAG {item.wcag}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenGuide((s) => ({
+                                  ...s,
+                                  [item.id]: !s[item.id],
+                                }));
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                fontSize: 13.5,
+                                color: C.blue,
+                                fontWeight: 800,
+                                padding: 0,
+                                textDecoration: "underline",
+                                textUnderlineOffset: 2,
+                                fontFamily: "var(--font)",
+                                cursor: "pointer",
+                              }}
+                              aria-expanded={guideOpen}
+                            >
+                              {guideOpen ? "Hide guide ▲" : "How to test ▼"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </label>
-                  ))}
-                </div>
-              )}
+
+                      {guideOpen && (
+                        <div
+                          style={{
+                            margin: "0 14px 12px",
+                            background: C.blueBg,
+                            border: `1px solid ${C.blueBorder}`,
+                            borderRadius: 8,
+                            padding: "10px 12px",
+                          }}
+                        >
+                          {item.guide.map((step, si) => (
+                            <div
+                              key={si}
+                              style={{
+                                display: "flex",
+                                gap: 9,
+                                marginTop: si > 0 ? 7 : 0,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 800,
+                                  color: C.blue,
+                                  minWidth: 18,
+                                  marginTop: 1,
+                                }}
+                              >
+                                {si + 1}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 12.5,
+                                  color: C.textMid,
+                                  lineHeight: 1.55,
+                                }}
+                              >
+                                {step}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           );
         })}
       </div>
-
-      <button className="checklist-reset" onClick={resetAll}>
-        Reset all
-      </button>
     </div>
   );
 }

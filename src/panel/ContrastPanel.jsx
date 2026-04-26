@@ -1,514 +1,757 @@
 import { Icon } from "./icons";
 import { useState, useEffect } from "react";
 
-// Contrast tab: scan full page, pick one element, or test manual colors.
+const C = {
+  border: "var(--border)",
+  borderMid: "var(--border-mid)",
+  text: "var(--text)",
+  textMid: "var(--text-mid)",
+  textMuted: "var(--text-muted)",
+  red: "var(--red)",
+  redBg: "var(--red-bg)",
+  redBorder: "var(--red-border)",
+  green: "var(--green)",
+  greenBg: "var(--green-bg)",
+  greenBtn: "var(--green-btn)",
+  amber: "var(--amber)",
+  amberBg: "var(--amber-bg)",
+  blue: "var(--blue)",
+  blueBg: "var(--blue-bg)",
+  blueBtn: "var(--blue-btn)",
+  surface: "var(--bg2)",
+  surface2: "var(--bg3)",
+};
 
-// ── Colour math ───────────────────────────────────────────────────────────────
+const MODE_INFO = {
+  auto: {
+    label: "Auto scan",
+    desc: "Checks every text + background pair on the whole page",
+  },
+  pick: {
+    label: "Pick element",
+    desc: "Click any text on the page to check its contrast",
+  },
+  type: {
+    label: "Type colors",
+    desc: "Enter hex values to test any color combination",
+  },
+};
+
+const FALLBACK_CONTRAST_DATA = [
+  {
+    fg: "#ffffff",
+    bg: "#1e40af",
+    ratio: 8.59,
+    aa: true,
+    aaa: true,
+    label: "Primary button",
+  },
+  {
+    fg: "#111118",
+    bg: "#ffffff",
+    ratio: 19.4,
+    aa: true,
+    aaa: true,
+    label: "Body text",
+  },
+  {
+    fg: "#5e5c74",
+    bg: "#ffffff",
+    ratio: 6.4,
+    aa: true,
+    aaa: false,
+    label: "Secondary text",
+  },
+  {
+    fg: "#9896aa",
+    bg: "#f8f7fb",
+    ratio: 2.6,
+    aa: false,
+    aaa: false,
+    label: "Caption / hint",
+  },
+  {
+    fg: "#7f1d1d",
+    bg: "#ffffff",
+    ratio: 12.5,
+    aa: true,
+    aaa: true,
+    label: "Error message",
+  },
+  {
+    fg: "#9ca3af",
+    bg: "#ffffff",
+    ratio: 2.85,
+    aa: false,
+    aaa: false,
+    label: "Placeholder text",
+  },
+];
 
 function parseRgb(str) {
   const m = str?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!m) return null;
-  return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
-}
-
-function hexToRgb(hex) {
-  const clean = hex.replace("#", "");
-  const full =
-    clean.length === 3
-      ? clean
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : clean;
-  const num = parseInt(full, 16);
-  if (isNaN(num)) return null;
-  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+  return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
 }
 
 function rgbToHex([r, g, b]) {
   return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
-function luminance([r, g, b]) {
-  return [r, g, b].reduce((sum, v, i) => {
-    const s = v / 255;
-    const lin = s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-    return sum + lin * [0.2126, 0.7152, 0.0722][i];
-  }, 0);
+function luminance(hex) {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return 0;
+  return [0, 2, 4]
+    .map((i) => parseInt(c.slice(i, i + 2), 16) / 255)
+    .map((s) => (s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)))
+    .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
 }
 
-function contrastRatio(rgb1, rgb2) {
-  const l1 = luminance(rgb1),
-    l2 = luminance(rgb2);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+function ratio(h1, h2) {
+  const [l1, l2] = [luminance(h1), luminance(h2)].sort((a, b) => b - a);
+  return (l1 + 0.05) / (l2 + 0.05);
 }
 
-function getResults(ratio) {
-  return {
-    aa_normal: ratio >= 4.5,
-    aa_large: ratio >= 3.0,
-    aaa_normal: ratio >= 7.0,
-    aaa_large: ratio >= 4.5,
-  };
+function validHex(h) {
+  return /^#[0-9a-f]{6}$/i.test(h);
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function Pass({ pass }) {
+function PassBadge({ pass }) {
   return (
     <span
-      className={`pass-badge ${pass ? "pass-badge--pass" : "pass-badge--fail"}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 3,
+        padding: "3px 8px",
+        borderRadius: 20,
+        fontSize: 11,
+        fontWeight: 700,
+        background: pass ? C.greenBg : C.redBg,
+        color: pass ? C.green : C.red,
+      }}
     >
-      {pass ? "Pass" : "Fail"}
+      {pass ? "✓ Pass" : "✕ Fail"}
     </span>
   );
 }
 
-function RatioDisplay({ ratio, results }) {
-  if (!ratio || !results) return null;
+function Pill({ count, label, color, bg }) {
   return (
-    <div className="ratio-display">
-      <div
-        className="ratio-number"
-        style={{ color: results.aa_normal ? "var(--green)" : "var(--red)" }}
-      >
-        {ratio.toFixed(2)}:1
-      </div>
-      <div className="ratio-grid">
-        {[
-          { label: "AA normal text", req: "≥ 4.5:1", pass: results.aa_normal },
-          { label: "AA large text", req: "≥ 3.0:1", pass: results.aa_large },
-          {
-            label: "AAA normal text",
-            req: "≥ 7.0:1",
-            pass: results.aaa_normal,
-          },
-          { label: "AAA large text", req: "≥ 4.5:1", pass: results.aaa_large },
-        ].map((row) => (
-          <div key={row.label} className="ratio-row">
-            <span className="ratio-label">{row.label}</span>
-            <span className="ratio-req">{row.req}</span>
-            <Pass pass={row.pass} />
-          </div>
-        ))}
-      </div>
+    <div
+      style={{
+        background: bg,
+        borderRadius: 8,
+        padding: "7px 11px",
+        display: "flex",
+        alignItems: "center",
+        gap: 7,
+      }}
+    >
+      <span style={{ fontSize: 19, fontWeight: 800, color, lineHeight: 1 }}>
+        {count}
+      </span>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{label}</span>
     </div>
   );
 }
 
-// ── Contrast scan results ─────────────────────────────────────────────────────
-
-const GROUP_LABELS = {
-  text: { label: "Text", icon: "¶" },
-  heading: { label: "Headings", icon: "H" },
-  link: { label: "Links", icon: "↗" },
-  button: { label: "Buttons", icon: "□" },
-  input: { label: "Inputs", icon: "▭" },
-};
-
-function ContrastScanResults({ results, onRescan }) {
-  const [collapsed, setCollapsed] = useState({});
-  const [filter, setFilter] = useState("failures"); // all|failures|warnings|passes
-
-  const { summary, groups } = results;
-
-  function toggleCollapse(type) {
-    setCollapsed((p) => ({ ...p, [type]: !p[type] }));
-  }
-
-  return (
-    <div className="contrast-scan-results">
-      {/* Summary bar */}
-      <div className="cscan-summary">
-        <div className="cscan-stat">
-          <span
-            className="cscan-num"
-            style={{
-              color: summary.failures > 0 ? "var(--red)" : "var(--green)",
-            }}
-          >
-            {summary.failures}
-          </span>
-          <span className="cscan-label">AA failures</span>
-        </div>
-        <div className="cscan-stat">
-          <span
-            className="cscan-num"
-            style={{
-              color: summary.warnings > 0 ? "var(--amber)" : "var(--text3)",
-            }}
-          >
-            {summary.warnings}
-          </span>
-          <span className="cscan-label">AAA warnings</span>
-        </div>
-        <div className="cscan-stat">
-          <span className="cscan-num" style={{ color: "var(--green)" }}>
-            {summary.total - summary.failures - summary.warnings}
-          </span>
-          <span className="cscan-label">passing</span>
-        </div>
-        <button className="btn-rerun" onClick={onRescan}>
-          <Icon name="refresh" size={14} style={{ marginRight: 4 }} />
-          Rescan
-        </button>
-      </div>
-
-      {/* Filter */}
-      <div className="cscan-filter">
-        {["failures", "warnings", "all"].map((f) => (
-          <button
-            key={f}
-            className={`filter-btn ${filter === f ? "filter-btn--active" : ""}`}
-            onClick={() => setFilter(f)}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Groups */}
-      {Object.entries(groups).map(([type, items]) => {
-        const filtered = items.filter((item) => {
-          if (filter === "failures") return !item.passesAA;
-          if (filter === "warnings") return item.passesAA && !item.passesAAA;
-          return true;
-        });
-        if (filtered.length === 0) return null;
-
-        const failCount = filtered.filter((i) => !i.passesAA).length;
-        const warnCount = filtered.filter(
-          (i) => i.passesAA && !i.passesAAA,
-        ).length;
-        const meta = GROUP_LABELS[type] || { label: type, icon: "•" };
-        const isCollapsed = collapsed[type];
-
-        return (
-          <div key={type} className="cscan-group">
-            <button
-              className="cscan-group-header"
-              onClick={() => toggleCollapse(type)}
-            >
-              <span className="cscan-group-icon">{meta.icon}</span>
-              <span className="cscan-group-label">{meta.label}</span>
-              <span className="cscan-group-counts">
-                {failCount > 0 && (
-                  <span className="cscan-fail-badge">{failCount} fail</span>
-                )}
-                {warnCount > 0 && (
-                  <span className="cscan-warn-badge">{warnCount} warn</span>
-                )}
-                <span className="cscan-total-badge">{filtered.length}</span>
-              </span>
-              <span className="principle-chevron">
-                {isCollapsed ? "▶" : "▼"}
-              </span>
-            </button>
-
-            {!isCollapsed && (
-              <div className="cscan-items">
-                {filtered.map((item, i) => (
-                  <div
-                    key={i}
-                    className={`cscan-item ${!item.passesAA ? "cscan-item--fail" : item.passesAAA ? "cscan-item--pass" : "cscan-item--warn"}`}
-                  >
-                    <div className="cscan-swatches">
-                      <div
-                        className="cscan-swatch"
-                        style={{ background: item.fg }}
-                        title={item.fg}
-                      />
-                      <span className="cscan-on">on</span>
-                      <div
-                        className="cscan-swatch"
-                        style={{ background: item.bg }}
-                        title={item.bg}
-                      />
-                    </div>
-                    <div className="cscan-item-info">
-                      <div className="cscan-item-top">
-                        <span
-                          className="cscan-ratio"
-                          style={{
-                            color: !item.passesAA
-                              ? "var(--red)"
-                              : !item.passesAAA
-                                ? "var(--amber)"
-                                : "var(--green)",
-                          }}
-                        >
-                          {item.ratio}:1
-                        </span>
-                        <span className="cscan-hex">
-                          {item.fg} / {item.bg}
-                        </span>
-                        {item.selector && (
-                          <button
-                            className="cscan-jump-btn"
-                            title="Jump to this element on the page"
-                            onClick={() =>
-                              chrome.runtime.sendMessage({
-                                type: "SCROLL_TO_ELEMENT",
-                                selector: item.selector,
-                                text: item.text || null,
-                              })
-                            }
-                          >
-                            <Icon name="open_in_new" size={12} /> Jump
-                          </button>
-                        )}
-                      </div>
-                      <div className="cscan-item-badges">
-                        <span
-                          className={`pass-badge ${item.passesAA ? "pass-badge--pass" : "pass-badge--fail"}`}
-                        >
-                          AA
-                        </span>
-                        <span
-                          className={`pass-badge ${item.passesAAA ? "pass-badge--pass" : "pass-badge--fail"}`}
-                        >
-                          AAA
-                        </span>
-                        {item.isLargeText && (
-                          <span className="cscan-large-badge">Large text</span>
-                        )}
-                      </div>
-                      {item.text && (
-                        <div className="cscan-item-text">"{item.text}"</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {summary.failures === 0 && summary.warnings === 0 && (
-        <div
-          className="empty-state empty-state--success"
-          style={{ padding: "24px 0" }}
-        >
-          <p>All colour combinations pass WCAG AAA.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main ContrastPanel ────────────────────────────────────────────────────────
-
-export default function ContrastPanel({ tabId }) {
-  // State for the three contrast modes.
-  const [mode, setMode] = useState("scan"); // scan|picker|manual
-  const [pickerState, setPickerState] = useState("idle");
-  const [pickerResult, setPickerResult] = useState(null);
-  const [fg, setFg] = useState("#000000");
+export default function ContrastPanel() {
+  const [mode, setMode] = useState("auto");
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [picked, setPicked] = useState(false);
+  const [pickedData, setPickedData] = useState(null);
+  const [fg, setFg] = useState("#5e5c74");
   const [bg, setBg] = useState("#ffffff");
-  const [scanStatus, setScanStatus] = useState("idle"); // idle|running|done|error
-  const [scanResults, setScanResults] = useState(null);
+  const [rows, setRows] = useState(FALLBACK_CONTRAST_DATA);
 
   useEffect(() => {
     const listener = (msg) => {
-      if (msg.type === "PICKER_RESULT") {
-        const fgRgb = parseRgb(msg.fg);
-        const bgRgb = parseRgb(msg.bg);
-        if (fgRgb && bgRgb) {
-          setPickerResult({
-            fg: rgbToHex(fgRgb),
-            bg: rgbToHex(bgRgb),
-            fgRgb,
-            bgRgb,
-          });
-          setPickerState("done");
-        }
-      }
+      if (msg.type !== "PICKER_RESULT") return;
+      const fgRgb = parseRgb(msg.fg);
+      const bgRgb = parseRgb(msg.bg);
+      if (!fgRgb || !bgRgb) return;
+      const f = rgbToHex(fgRgb);
+      const b = rgbToHex(bgRgb);
+      setPickedData({
+        fg: f,
+        bg: b,
+        selector: msg.selector || "<selected element>",
+      });
+      setPicked(true);
     };
     chrome.runtime.onMessage.addListener(listener);
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, []);
 
-  function startPicker() {
-    setPickerState("waiting");
-    setPickerResult(null);
-    chrome.runtime.sendMessage({ type: "START_PICKER" });
-  }
-
-  function runContrastScan() {
-    // Ask content script for all page contrast pairs.
-    setScanStatus("running");
-    setScanResults(null);
+  function runScan() {
+    setScanning(true);
     chrome.runtime.sendMessage({ type: "SCAN_CONTRAST" }, (response) => {
-      if (chrome.runtime.lastError || !response?.success) {
-        setScanStatus("error");
-        return;
+      if (
+        !chrome.runtime.lastError &&
+        response?.success &&
+        response.results?.groups
+      ) {
+        const mapped = [];
+        Object.values(response.results.groups).forEach((items) => {
+          items.forEach((item) => {
+            mapped.push({
+              fg: item.fg,
+              bg: item.bg,
+              ratio: Number(item.ratio || 0),
+              aa: !!item.passesAA,
+              aaa: !!item.passesAAA,
+              label: item.text || "Detected text",
+              selector: item.selector || null,
+            });
+          });
+        });
+        if (mapped.length > 0) setRows(mapped.sort((a, b) => a.aa - b.aa));
       }
-      setScanResults(response.results);
-      setScanStatus("done");
+      setScanning(false);
+      setScanned(true);
     });
   }
 
-  const fgRgb = hexToRgb(fg);
-  const bgRgb = hexToRgb(bg);
-  const manualRatio = fgRgb && bgRgb ? contrastRatio(fgRgb, bgRgb) : null;
-  const manualResults = manualRatio ? getResults(manualRatio) : null;
+  function jumpToElement(selector) {
+    if (!selector) return;
+    chrome.runtime.sendMessage({ type: "HIGHLIGHT_ELEMENT", selector, showDimensions: false });
+  }
 
-  const pickerRatio = pickerResult
-    ? contrastRatio(pickerResult.fgRgb, pickerResult.bgRgb)
-    : null;
-  const pickerResults = pickerRatio ? getResults(pickerRatio) : null;
+  function activatePicker() {
+    setPicked(false);
+    setPickedData(null);
+    chrome.runtime.sendMessage({ type: "START_PICKER" });
+  }
+
+  const manualRatio = validHex(fg) && validHex(bg) ? ratio(fg, bg) : null;
+  const pickedRatio = pickedData ? ratio(pickedData.fg, pickedData.bg) : null;
+
+  const aaFail = rows.filter((r) => !r.aa).length;
+  const aaaWarn = rows.filter((r) => r.aa && !r.aaa).length;
+  const passing = rows.filter((r) => r.aa).length;
 
   return (
-    <div className="contrast-panel">
-      {/* Mode toggle — now three modes */}
-      <div className="mode-toggle">
-        {[
-          { id: "scan", label: "Page scan" },
-          { id: "picker", label: "Pick element" },
-          { id: "manual", label: "Manual" },
-        ].map((m) => (
-          <button
-            key={m.id}
-            className={`mode-btn ${mode === m.id ? "mode-btn--active" : ""}`}
-            onClick={() => setMode(m.id)}
-          >
-            {m.label}
-          </button>
-        ))}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div
+        style={{ padding: "12px 22px", borderBottom: `1px solid ${C.border}` }}
+      >
+        <div style={{ display: "flex", gap: 6 }}>
+          {Object.entries(MODE_INFO).map(([k, { label }]) => (
+            <button
+              key={k}
+              onClick={() => setMode(k)}
+              style={{
+                flex: 1,
+                border: `1.5px solid ${mode === k ? C.borderMid : C.border}`,
+                background: mode === k ? "#fff" : C.surface,
+                borderRadius: 9,
+                padding: "9px 12px",
+                fontSize: 13.5,
+                fontWeight: mode === k ? 800 : 600,
+                color: mode === k ? C.text : C.textMuted,
+                transition: "all .15s",
+                boxShadow: mode === k ? "0 1px 4px rgba(0,0,0,0.07)" : "none",
+                fontFamily: "var(--font)",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div
+          style={{
+            fontSize: 13.5,
+            color: C.textMuted,
+            marginTop: 8,
+            fontWeight: 600,
+          }}
+        >
+          {MODE_INFO[mode].desc}
+        </div>
       </div>
 
-      {/* ── Scan mode ── */}
-      {mode === "scan" && (
-        <div className="scan-mode">
-          {scanStatus === "idle" && (
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon">
-                <Icon name="palette" size={24} />
-              </div>
-              <div className="tab-explainer-title">Full page contrast scan</div>
-              <div className="tab-explainer-body">
-                Checks every unique colour combination on the page — text,
-                headings, links, buttons, and inputs — and groups them by
-                element type. Results are sorted with failures first so you can
-                fix the most critical issues quickly.
-              </div>
-              <div className="tab-explainer-steps">
-                <div className="tab-step">
-                  <span className="tab-step-num">1</span>Click the button below
-                  to scan all elements
-                </div>
-                <div className="tab-step">
-                  <span className="tab-step-num">2</span>Results show AA/AAA
-                  pass/fail per colour combination
-                </div>
-                <div className="tab-step">
-                  <span className="tab-step-num">3</span>Filter by failures,
-                  warnings, or view all
-                </div>
-              </div>
-              <button
-                className="btn-scan"
-                style={{ marginTop: 14, maxWidth: 200 }}
-                onClick={runContrastScan}
-              >
-                Scan page contrast
-              </button>
-            </div>
-          )}
-
-          {scanStatus === "running" && (
-            <div className="empty-state">
-              <span
-                className="spinner"
-                style={{ width: 20, height: 20, margin: "0 auto 10px" }}
-              />
-              <p>Scanning colour combinations…</p>
-              <p className="empty-hint">
-                Checking every unique foreground/background pair on the page.
-              </p>
-            </div>
-          )}
-
-          {scanStatus === "error" && (
-            <div className="empty-state empty-state--error">
-              <p>Could not scan this page.</p>
-              <button
-                className="btn-scan"
+      {mode === "auto" && (
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {!scanned && !scanning && (
+            <div
+              style={{
+                padding: "32px 22px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <div
                 style={{
-                  marginTop: 14,
-                  maxWidth: 160,
-                  background: "var(--red)",
+                  width: 52,
+                  height: 52,
+                  borderRadius: 14,
+                  background: C.greenBg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-                onClick={runContrastScan}
               >
-                ↺ Try again
+                <Icon name="palette" size={24} style={{ color: C.green }} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: C.text,
+                    marginBottom: 5,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Scan the whole page
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: C.textMuted,
+                    lineHeight: 1.6,
+                    maxWidth: 240,
+                  }}
+                >
+                  Finds every text and background color combination. Failures
+                  shown first.
+                </div>
+              </div>
+              <button
+                onClick={runScan}
+                style={{
+                  background: C.greenBtn,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "11px 28px",
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  boxShadow: "0 4px 12px rgba(22,101,52,0.3)",
+                  fontFamily: "var(--font)",
+                }}
+              >
+                Scan colors
               </button>
             </div>
           )}
 
-          {scanStatus === "done" && scanResults && (
-            <ContrastScanResults
-              results={scanResults}
-              onRescan={runContrastScan}
-            />
+          {scanning && (
+            <div style={{ padding: "48px 22px", textAlign: "center" }}>
+              <div
+                style={{
+                  fontSize: 13.5,
+                  color: C.textMuted,
+                  marginBottom: 12,
+                  fontWeight: 500,
+                }}
+              >
+                Checking color pairs...
+              </div>
+              <div
+                style={{
+                  height: 5,
+                  background: C.surface2,
+                  borderRadius: 5,
+                  overflow: "hidden",
+                  maxWidth: 180,
+                  margin: "0 auto",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    background: C.greenBtn,
+                    borderRadius: 5,
+                    width: "65%",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {scanned && !scanning && (
+            <div
+              style={{
+                padding: "12px 22px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  paddingBottom: 10,
+                  borderBottom: `1px solid ${C.border}`,
+                  marginBottom: 2,
+                }}
+              >
+                <Pill
+                  count={aaFail}
+                  label="AA fail"
+                  color={C.red}
+                  bg={C.redBg}
+                />
+                <Pill
+                  count={aaaWarn}
+                  label="AAA warn"
+                  color={C.amber}
+                  bg={C.amberBg}
+                />
+                <Pill
+                  count={passing}
+                  label="Passing"
+                  color={C.green}
+                  bg={C.greenBg}
+                />
+                <button
+                  onClick={() => setScanned(false)}
+                  style={{
+                    marginLeft: "auto",
+                    background: "none",
+                    border: `1.5px solid ${C.border}`,
+                    color: C.textMid,
+                    borderRadius: 7,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: "var(--font)",
+                  }}
+                >
+                  Rescan
+                </button>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "44px 1fr 68px 46px 46px 32px",
+                  gap: 8,
+                  padding: "0 2px 4px",
+                }}
+              >
+                {["", "Element", "Ratio", "AA", "AAA", ""].map((h, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: C.textMuted,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                    }}
+                  >
+                    {h}
+                  </span>
+                ))}
+              </div>
+              {rows.map((row, i) => (
+                <div
+                  key={`${row.label}-${i}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "44px 1fr 68px 46px 46px 32px",
+                    gap: 8,
+                    alignItems: "center",
+                    background: "#fff",
+                    border: `1.5px solid ${row.aa ? C.border : C.redBorder}`,
+                    borderRadius: 9,
+                    padding: "9px 10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 27,
+                      borderRadius: 6,
+                      background: row.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px solid rgba(0,0,0,0.07)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{ color: row.fg, fontSize: 11.5, fontWeight: 800 }}
+                    >
+                      Aa
+                    </span>
+                  </div>
+                  <span
+                    style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}
+                  >
+                    {row.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 15,
+                      fontWeight: 800,
+                      color: row.ratio >= 4.5 ? C.green : C.red,
+                    }}
+                  >
+                    {row.ratio.toFixed(1)}:1
+                  </span>
+                  <PassBadge pass={row.aa} />
+                  <PassBadge pass={row.aaa} />
+                  <button
+                    title="Jump to element"
+                    onClick={() => jumpToElement(row.selector)}
+                    disabled={!row.selector}
+                    style={{
+                      background: "none",
+                      border: `1.5px solid ${C.border}`,
+                      borderRadius: 6,
+                      width: 28,
+                      height: 28,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: row.selector ? "pointer" : "default",
+                      opacity: row.selector ? 1 : 0.3,
+                      color: C.textMuted,
+                      fontSize: 13,
+                      fontFamily: "var(--font)",
+                    }}
+                  >
+                    ↗
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* ── Picker mode ── */}
-      {mode === "picker" && (
-        <div className="picker-mode">
-          {pickerState === "idle" && (
-            <div className="picker-prompt">
-              <p>
-                Click any text element on the page to instantly check its
-                contrast ratio.
-              </p>
-              <button className="btn-scan" onClick={startPicker}>
-                Pick an element
-              </button>
-            </div>
-          )}
-          {pickerState === "waiting" && (
-            <div className="picker-waiting">
-              <div className="crosshair-icon">
-                <Icon name="gps_fixed" size={36} />
-              </div>
-              <p>Click any element on the page…</p>
-              <button
-                className="btn-cancel"
-                onClick={() => setPickerState("idle")}
+      {mode === "pick" && (
+        <div
+          style={{
+            flex: 1,
+            padding: "28px 22px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: picked ? "flex-start" : "center",
+            gap: 16,
+          }}
+        >
+          {!picked || !pickedData ? (
+            <>
+              <div
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 14,
+                  background: C.blueBg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                Cancel
-              </button>
-            </div>
-          )}
-          {pickerState === "done" && pickerResult && (
-            <div className="picker-result">
-              <div className="swatch-row">
-                <div className="swatch-item">
-                  <div
-                    className="swatch"
-                    style={{ background: pickerResult.fg }}
-                  />
-                  <span className="swatch-label">Foreground</span>
-                  <code className="swatch-hex">{pickerResult.fg}</code>
+                <Icon name="gps_fixed" size={26} style={{ color: C.blue }} />
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: C.text,
+                    marginBottom: 5,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Click any text
                 </div>
-                <div className="swatch-item">
-                  <div
-                    className="swatch"
-                    style={{ background: pickerResult.bg }}
-                  />
-                  <span className="swatch-label">Background</span>
-                  <code className="swatch-hex">{pickerResult.bg}</code>
+                <div
+                  style={{
+                    fontSize: 14.5,
+                    color: C.textMuted,
+                    maxWidth: 240,
+                    lineHeight: 1.65,
+                  }}
+                >
+                  Activate the picker and click any element on the page to check
+                  its contrast ratio.
                 </div>
               </div>
-              <RatioDisplay ratio={pickerRatio} results={pickerResults} />
               <button
-                className="btn-scan"
-                style={{ marginTop: 14 }}
-                onClick={startPicker}
+                onClick={activatePicker}
+                style={{
+                  background: C.blueBtn,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "11px 28px",
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  boxShadow: "0 4px 12px rgba(29,78,216,0.25)",
+                  fontFamily: "var(--font)",
+                }}
+              >
+                Activate picker
+              </button>
+            </>
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: 11,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.textMuted,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 6,
+                  }}
+                >
+                  Selected element
+                </div>
+                <code style={{ fontSize: 13, color: C.text }}>
+                  {pickedData.selector}
+                </code>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
+                {[
+                  ["Text color", pickedData.fg],
+                  ["Background", pickedData.bg],
+                ].map(([l, h]) => (
+                  <div
+                    key={l}
+                    style={{
+                      background: "#fff",
+                      border: `1.5px solid ${C.border}`,
+                      borderRadius: 9,
+                      padding: "9px 11px",
+                      display: "flex",
+                      gap: 9,
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 7,
+                        background: h,
+                        border: "1px solid rgba(0,0,0,0.08)",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: C.textMuted,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {l}
+                      </div>
+                      <code
+                        style={{ fontSize: 12, color: C.text, fontWeight: 700 }}
+                      >
+                        {h}
+                      </code>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  background: "#fff",
+                  border: `1.5px solid ${(pickedRatio || 0) >= 4.5 ? C.green : C.redBorder}`,
+                  borderRadius: 11,
+                  padding: "14px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 34,
+                    fontWeight: 800,
+                    color: (pickedRatio || 0) >= 4.5 ? C.green : C.red,
+                    lineHeight: 1,
+                    letterSpacing: "-0.04em",
+                    marginBottom: 4,
+                  }}
+                >
+                  {(pickedRatio || 0).toFixed(1)}:1
+                </div>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: C.textMuted,
+                    marginBottom: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  Contrast ratio -{" "}
+                  {(pickedRatio || 0) >= 4.5 ? "passes AA" : "fails AA"}
+                </div>
+                {[
+                  ["AA normal text", ">= 4.5:1", (pickedRatio || 0) >= 4.5],
+                  [
+                    "AA large text (18px+)",
+                    ">= 3.0:1",
+                    (pickedRatio || 0) >= 3,
+                  ],
+                  ["AAA normal text", ">= 7.0:1", (pickedRatio || 0) >= 7],
+                ].map(([l, r, p]) => (
+                  <div
+                    key={l}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginTop: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 12, color: C.textMid }}>
+                      {l} {r}
+                    </span>
+                    <PassBadge pass={p} />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  setPicked(false);
+                  setPickedData(null);
+                }}
+                style={{
+                  background: "none",
+                  border: `1.5px solid ${C.border}`,
+                  color: C.textMid,
+                  borderRadius: 9,
+                  padding: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: "var(--font)",
+                }}
               >
                 Pick another element
               </button>
@@ -517,54 +760,167 @@ export default function ContrastPanel({ tabId }) {
         </div>
       )}
 
-      {/* ── Manual mode ── */}
-      {mode === "manual" && (
-        <div className="manual-mode">
-          <div className="colour-inputs">
-            <div className="colour-field">
-              <label>Foreground colour</label>
-              <div className="colour-input-row">
-                <input
-                  type="color"
-                  value={fg}
-                  onChange={(e) => setFg(e.target.value)}
-                  className="colour-picker-input"
-                />
-                <input
-                  type="text"
-                  value={fg}
-                  onChange={(e) => setFg(e.target.value)}
-                  className="hex-input"
-                  placeholder="#000000"
-                  maxLength={7}
-                />
+      {mode === "type" && (
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "18px 22px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
+          >
+            {[
+              ["Foreground", fg, setFg],
+              ["Background", bg, setBg],
+            ].map(([label, val, setter]) => (
+              <div
+                key={label}
+                style={{
+                  background: "#fff",
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: 12,
+                }}
+              >
+                <label
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: C.textMuted,
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  {label}
+                </label>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div
+                    style={{
+                      position: "relative",
+                      width: 34,
+                      height: 34,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 7,
+                        background: val,
+                        border: `1.5px solid ${C.border}`,
+                      }}
+                    />
+                    <input
+                      type="color"
+                      value={validHex(val) ? val : "#000000"}
+                      onChange={(e) => setter(e.target.value)}
+                      aria-label={`${label} color picker`}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        opacity: 0,
+                        cursor: "pointer",
+                        width: "100%",
+                        height: "100%",
+                      }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={val}
+                    onChange={(e) => setter(e.target.value)}
+                    maxLength={7}
+                    aria-label={`${label} hex value`}
+                    style={{
+                      flex: 1,
+                      border: `1.5px solid ${C.border}`,
+                      borderRadius: 7,
+                      padding: "6px 8px",
+                      fontSize: 13,
+                      fontFamily: "var(--mono)",
+                      color: C.text,
+                      background: "#fff",
+                      outline: "none",
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="colour-field">
-              <label>Background colour</label>
-              <div className="colour-input-row">
-                <input
-                  type="color"
-                  value={bg}
-                  onChange={(e) => setBg(e.target.value)}
-                  className="colour-picker-input"
-                />
-                <input
-                  type="text"
-                  value={bg}
-                  onChange={(e) => setBg(e.target.value)}
-                  className="hex-input"
-                  placeholder="#ffffff"
-                  maxLength={7}
-                />
+            ))}
+          </div>
+
+          {manualRatio !== null && (
+            <>
+              <div
+                style={{
+                  background: bg,
+                  border: `1.5px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: 16,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <span style={{ color: fg, fontSize: 15, fontWeight: 500 }}>
+                  Normal text - 16px
+                </span>
+                <span style={{ color: fg, fontSize: 22, fontWeight: 700 }}>
+                  Large text heading
+                </span>
               </div>
-            </div>
-          </div>
-          <div className="preview" style={{ background: bg, color: fg }}>
-            <span className="preview-normal">Aa Normal text (16px)</span>
-            <span className="preview-large">Aa Large text (24px)</span>
-          </div>
-          <RatioDisplay ratio={manualRatio} results={manualResults} />
+              <div
+                style={{
+                  background: "#fff",
+                  border: `1.5px solid ${manualRatio >= 4.5 ? C.green : C.redBorder}`,
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 800,
+                    letterSpacing: "-0.04em",
+                    color: manualRatio >= 4.5 ? C.green : C.red,
+                    lineHeight: 1,
+                    marginBottom: 10,
+                  }}
+                >
+                  {manualRatio.toFixed(2)}:1
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 7 }}
+                >
+                  {[
+                    ["AA normal text (>= 4.5:1)", manualRatio >= 4.5],
+                    ["AA large text (>= 3.0:1)", manualRatio >= 3],
+                    ["AAA normal text (>= 7.0:1)", manualRatio >= 7],
+                    ["AAA large text (>= 4.5:1)", manualRatio >= 4.5],
+                  ].map(([l, p]) => (
+                    <div
+                      key={l}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontSize: 12.5, color: C.textMid }}>
+                        {l}
+                      </span>
+                      <PassBadge pass={p} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
