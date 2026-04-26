@@ -104,24 +104,14 @@ function FilterBar({ wcagFilter, setWcagFilter, impactFilter, setImpactFilter })
   return (
     <div className="filter-bar">
       <div className="filter-group">
-        <span className="filter-label">Standard</span>
-        {["All","2.0","2.1","2.2"].map(v => (
-          <button
-            key={v}
-            className={`filter-btn ${wcagFilter===v ? "filter-btn--active" : ""}`}
-            onClick={() => setWcagFilter(v)}
-          >{v}</button>
-        ))}
-      </div>
-      <div className="filter-group">
-        <span className="filter-label">Impact</span>
+        <span className="filter-label">Severity</span>
         {["All","critical","serious","moderate","minor"].map(v => (
           <button
             key={v}
             className={`filter-btn ${impactFilter===v ? "filter-btn--active" : ""}`}
             onClick={() => setImpactFilter(v)}
             style={v!=="All" ? { color: IMPACT_COLOURS[v] } : {}}
-          >{v==="All"?"All":v.charAt(0).toUpperCase()+v.slice(1)}</button>
+          >{v==="All" ? "All" : v.charAt(0).toUpperCase()+v.slice(1)}</button>
         ))}
       </div>
     </div>
@@ -133,35 +123,9 @@ function FilterBar({ wcagFilter, setWcagFilter, impactFilter, setImpactFilter })
 // ── Tab order issue guidance ───────────────────────────────────────────────────
 
 const TAB_ISSUE_GUIDANCE = {
-  noFocusRing: {
-    title: "No visible focus ring",
-    why: "Keyboard users rely on the focus ring to know which element is currently active. Without it, keyboard users have no way to tell which element is active. This affects anyone who can't use a mouse.",
-    fix: `/* Never do this - this removes the focus indicator */
-:focus { outline: none; }
-
-/* Option 1: Use a custom styled focus ring */
-:focus-visible {
-  outline: 3px solid #4f8ef7;
-  outline-offset: 3px;
-  border-radius: 2px;
-}
-
-/* Option 2: Use box-shadow instead of outline (works with border-radius) */
-:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px #4f8ef7;
-}
-
-/* Note: Use :focus-visible not :focus so the ring only
-   shows for keyboard users, not mouse clicks */`,
-    links: [
-      { label: "WCAG 2.4.11", url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance" },
-      { label: "MDN: :focus-visible", url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible" },
-    ]
-  },
   positiveTabindex: {
     title: "Positive tabindex breaks tab order",
-    why: "Positive tabindex values (tabindex=\"1\", tabindex=\"2\", etc.) create a custom tab sequence that overrides the natural DOM order. This almost always creates a confusing, unpredictable experience — elements jump around instead of flowing in order.",
+    why: "Positive tabindex values (tabindex=\"1\", tabindex=\"2\", etc.) create a custom tab sequence that overrides the natural DOM order. This creates a confusing experience where elements jump around instead of flowing in order.",
     fix: `<!-- Never use positive tabindex values -->
 <button tabindex="2">This causes problems</button>
 <button tabindex="1">Tab order is now unpredictable</button>
@@ -171,12 +135,12 @@ const TAB_ISSUE_GUIDANCE = {
 <button>Second in DOM = second in tab order</button>
 
 <!-- Only two valid tabindex values:
-  tabindex="0" 
-  tabindex="-1" -->
+  tabindex="0"  — adds element to natural tab order
+  tabindex="-1" — removes from tab order, focusable by JS only -->
 <div role="button" tabindex="0">Custom interactive element</div>`,
     links: [
       { label: "WCAG 2.4.3", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
-      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
+      { label: "MDN: tabindex", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
     ]
   },
   ariaHiddenFocusable: {
@@ -184,7 +148,7 @@ const TAB_ISSUE_GUIDANCE = {
     why: "aria-hidden=\"true\" hides an element from screen readers, but keyboard focus can still land on it. This creates invisible \"ghost\" focus stops — a keyboard user presses Tab but the screen reader says nothing. Very confusing.",
     fix: `<!-- Problem: hidden from AT but still keyboard focusable -->
 <div aria-hidden="true">
-  <button>Ghost button. Keyboard can reach it but screen reader ignores it</button>
+  <button>Ghost button — keyboard reaches it, screen reader ignores it</button>
 </div>
 
 <!-- Fix 1: Add inert attribute to block all interaction -->
@@ -192,18 +156,13 @@ const TAB_ISSUE_GUIDANCE = {
   <button>Now fully hidden from both keyboard and AT</button>
 </div>
 
-<!-- Fix 2: Also add tabindex="-1" to all focusable children -->
+<!-- Fix 2: Add tabindex="-1" to all focusable children -->
 <div aria-hidden="true">
   <button tabindex="-1">No longer keyboard reachable</button>
-</div>
-
-<!-- Fix 3: If content should be accessible, remove aria-hidden -->
-<div>
-  <button>Fully visible and accessible</button>
 </div>`,
     links: [
       { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert" },
+      { label: "MDN: inert", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert" },
     ]
   }
 };
@@ -211,7 +170,6 @@ const TAB_ISSUE_GUIDANCE = {
 function getIssueType(stop) {
   if (stop.isAriaHiddenFocusable) return "ariaHiddenFocusable";
   if (stop.hasPositiveTabindex)   return "positiveTabindex";
-  if (!stop.hasFocusRing)         return "noFocusRing";
   return null;
 }
 
@@ -250,91 +208,228 @@ function TabStopDetail({ stop }) {
 
 function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
   const [expandedStop, setExpandedStop] = useState(null);
-  const issues = stops.filter(s => s.hasPositiveTabindex || s.isAriaHiddenFocusable || !s.hasFocusRing);
+  const [showInfo, setShowInfo] = useState(false);
+  const [showIssues, setShowIssues] = useState(true);
+  const [showNonIssues, setShowNonIssues] = useState(false);
+
+  const issues    = stops.filter(s => s.hasPositiveTabindex || s.isAriaHiddenFocusable);
+  const nonIssues = stops.filter(s => !s.hasPositiveTabindex && !s.isAriaHiddenFocusable);
 
   function getStopColour(stop) {
     if (stop.isAriaHiddenFocusable) return "#E24B4A";
     if (stop.hasPositiveTabindex)   return "#EF9F27";
-    if (!stop.hasFocusRing)         return "#C2410C";
     return "#4f8ef7";
   }
 
-  function getStopFlag(stop) {
-    if (stop.isAriaHiddenFocusable) return "⚠ aria-hidden but focusable";
-    if (stop.hasPositiveTabindex)   return `⚠ tabindex="${stop.tabindex}": breaks tab order`;
-    if (!stop.hasFocusRing)         return "⚠ no visible focus ring";
-    return null;
+  function getIssueLabel(stop) {
+    if (stop.isAriaHiddenFocusable) return "Hidden but keyboard reaches it";
+    if (stop.hasPositiveTabindex)   return "Skips ahead in tab order";
+    return "Normal stop";
   }
 
-  function handleRowClick(stop) {
-    const issueType = getIssueType(stop);
-    if (issueType) {
-      // Toggle detail panel; also scroll to element
-      setExpandedStop(prev => prev === stop.index ? null : stop.index);
-    }
+  function handleRowToggle(stop) {
+    setExpandedStop(prev => prev === stop.index ? null : stop.index);
+    onStopClick(stop);
+  }
+
+  function handleJump(e, stop) {
+    e.stopPropagation();
     onStopClick(stop);
   }
 
   return (
     <div className="tab-order-panel">
+      {/* Header */}
       <div className="tab-order-header">
         <div className="tab-order-header-left">
-          <span className="tab-order-title"><Icon name="account_tree" size={14} style={{marginRight:4}} />Tab order map</span>
-          <span className="tab-order-count">{stops.length} focusable elements</span>
+          <span className="tab-order-title">
+            <Icon name="account_tree" size={16} style={{marginRight:6}} />
+            Tab order map
+          </span>
+          <span className="tab-order-count">{stops.length} stops</span>
         </div>
-        <button className="btn-stop" onClick={onClose}>Clear</button>
+        <button className="btn-stop" onClick={onClose} aria-label="Clear tab order map">Clear</button>
       </div>
 
-      <div className="tab-order-howto">
-        <span className="howto-icon"><Icon name="lightbulb" size={16} /></span>
-        <span>Numbered badges are on the page. <strong>Click a flagged row</strong> to scroll to the element and see how to fix it.</span>
-      </div>
+      {/* Collapsible info */}
+      <button
+        className="tab-order-info-toggle"
+        onClick={() => setShowInfo(p => !p)}
+        aria-expanded={showInfo}
+      >
+        <Icon name="info_outline" size={16} />
+        <span>Tab order map details</span>
+        <Icon name={showInfo ? "expand_less" : "expand_more"} size={16} style={{marginLeft:'auto'}} />
+      </button>
 
-      {issues.length > 0 ? (
-        <div className="tab-order-issues-bar">
-          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""}. Click any flagged row for help
+      {showInfo && (
+        <div className="tab-order-info-panel">
+          <p>
+            When someone uses the keyboard, they press <kbd>Tab</kbd> to jump from one thing to the next. The order should match what they see on the page — top to bottom, left to right. If it skips around or lands on hidden things, it gets confusing.
+          </p>
+          <p>
+            Numbered badges show on the page. Click any row to scroll to it, or click <strong>Details</strong> to see what's wrong and how to fix it.
+          </p>
+          <p>
+            <strong>Important:</strong> Always double-check these results manually. Automated scans can miss issues that only show up when a real person tries to use the page. Tools like this are a starting point, not a complete check.
+          </p>
+          <p style={{margin:0}}>
+            We also can't tell if focus rings are missing automatically. Use <strong>Test with keyboard</strong> from the Focus tab to check that yourself.
+          </p>
         </div>
-      ) : (
-        <div className="tab-order-ok-bar">✓ No tab order issues detected</div>
       )}
 
-      <div className="tab-order-legend">
-        <span className="legend-item"><span className="legend-dot" style={{background:"#4f8ef7"}}/>Normal</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#EF9F27"}}/>Positive tabindex</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#E24B4A"}}/>aria-hidden bug</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#C2410C"}}/>No focus ring</span>
-      </div>
+      {/* Status bar */}
+      {issues.length > 0 ? (
+        <div className="tab-order-issues-bar">
+          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""} found · {nonIssues.length} look fine
+        </div>
+      ) : (
+        <div className="tab-order-ok-bar">✓ No tab order issues found in {stops.length} stops</div>
+      )}
 
-      <div className="tab-order-list">
-        {stops.map(stop => {
-          const flag = getStopFlag(stop);
-          const color = getStopColour(stop);
-          const isSelected = selectedStop === stop.index;
-          const isExpanded = expandedStop === stop.index;
-          const hasIssue = !!getIssueType(stop);
-
-          return (
-            <div key={stop.index} className="tab-stop-item">
-              <button
-                className={`tab-stop-row ${isSelected ? "tab-stop-row--active" : ""} ${flag ? "tab-stop-row--issue" : ""}`}
-                onClick={() => handleRowClick(stop)}
-                title={hasIssue ? "Click to see how to fix this issue" : "Click to scroll to this element"}
-              >
-                <span className="tab-stop-num" style={{background: color}}>{stop.index}</span>
-                <div className="tab-stop-info">
-                  <span className="tab-stop-label">{stop.label}</span>
-                  {flag && <span className="tab-stop-flag" style={{color}}>{flag}</span>}
-                </div>
-                {hasIssue
-                  ? <span className="tab-stop-arrow" style={{color}}>{isExpanded ? "▲" : "▼"}</span>
-                  : <span className="tab-stop-arrow">↗</span>
-                }
-              </button>
-              {isExpanded && <TabStopDetail stop={stop} />}
+      {/* Issues group */}
+      {issues.length > 0 && (
+        <div className="tab-order-group">
+          <button
+            className="tab-order-group-header tab-order-group-header--issues"
+            onClick={() => setShowIssues(p => !p)}
+            aria-expanded={showIssues}
+          >
+            <Icon name="warning_amber" size={18} />
+            <span className="tab-order-group-title">Issues to fix</span>
+            <span className="tab-order-group-count tab-order-group-count--bad">{issues.length}</span>
+            <Icon name={showIssues ? "expand_less" : "expand_more"} size={18} style={{marginLeft:'auto'}} />
+          </button>
+          {showIssues && (
+            <div className="tab-order-rows">
+              {issues.map(stop => (
+                <TabStopRow
+                  key={stop.index}
+                  stop={stop}
+                  selectedStop={selectedStop}
+                  expandedStop={expandedStop}
+                  isSelected={selectedStop === stop.index}
+                  isExpanded={expandedStop === stop.index}
+                  color={getStopColour(stop)}
+                  issueLabel={getIssueLabel(stop)}
+                  hasIssue={true}
+                  onJump={(e) => handleJump(e, stop)}
+                  onToggle={() => handleRowToggle(stop)}
+                />
+              ))}
             </div>
-          );
-        })}
+          )}
+        </div>
+      )}
+
+      {/* Non-issues group */}
+      {nonIssues.length > 0 && (
+        <div className="tab-order-group">
+          <button
+            className="tab-order-group-header tab-order-group-header--ok"
+            onClick={() => setShowNonIssues(p => !p)}
+            aria-expanded={showNonIssues}
+          >
+            <Icon name="check_circle" size={18} />
+            <span className="tab-order-group-title">Looks fine</span>
+            <span className="tab-order-group-count tab-order-group-count--ok">{nonIssues.length}</span>
+            <Icon name={showNonIssues ? "expand_less" : "expand_more"} size={18} style={{marginLeft:'auto'}} />
+          </button>
+          {showNonIssues && (
+            <div className="tab-order-rows">
+              {nonIssues.map(stop => (
+                <TabStopRow
+                  key={stop.index}
+                  stop={stop}
+                  selectedStop={selectedStop}
+                  expandedStop={expandedStop}
+                  isSelected={selectedStop === stop.index}
+                  isExpanded={expandedStop === stop.index}
+                  color={getStopColour(stop)}
+                  issueLabel={getIssueLabel(stop)}
+                  hasIssue={false}
+                  onJump={(e) => handleJump(e, stop)}
+                  onToggle={() => handleRowToggle(stop)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Single row for the tab order map
+function TabStopRow({ stop, isSelected, isExpanded, color, issueLabel, hasIssue, onJump, onToggle }) {
+  return (
+    <div className={`tab-stop-card ${isSelected ? "tab-stop-card--selected" : ""}`}>
+      <div className="tab-stop-card-header">
+        <span className="tab-stop-num" style={{background: color}}>{stop.index}</span>
+        <div className="tab-stop-card-info">
+          <div className="tab-stop-card-label">{stop.label}</div>
+          <div
+            className="tab-stop-card-type"
+            style={{color: hasIssue ? color : 'var(--text2)'}}
+          >
+            {hasIssue ? '⚠ ' : ''}{issueLabel}
+          </div>
+        </div>
+        <div className="tab-stop-card-actions">
+          <button
+            className="element-row-btn element-row-btn--jump"
+            onClick={onJump}
+            aria-label={`Jump to stop ${stop.index} on the page`}
+            title="Scroll to this element on the page"
+          >
+            <Icon name="open_in_new" size={14} />
+            Jump to
+          </button>
+          <button
+            className="element-row-btn"
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-label={`Toggle details for stop ${stop.index}`}
+          >
+            {isExpanded ? 'Hide' : 'Details'}
+            <Icon name={isExpanded ? "expand_less" : "expand_more"} size={14} />
+          </button>
+        </div>
       </div>
+      {isExpanded && (
+        hasIssue
+          ? <TabStopDetail stop={stop} />
+          : <TabStopOkDetail stop={stop} />
+      )}
+    </div>
+  );
+}
+
+// Details for a passing (non-issue) stop — explains why it's fine
+function TabStopOkDetail({ stop }) {
+  return (
+    <div className="tab-stop-ok-detail">
+      <div className="tab-stop-ok-section">
+        <div className="tab-stop-ok-label">Why this looks fine</div>
+        <p className="tab-stop-ok-text">
+          This element follows the natural tab order of the page. It does not use a positive <code>tabindex</code> value (which would skip ahead unexpectedly) and is not inside an <code>aria-hidden</code> container (which would hide it from screen readers).
+        </p>
+      </div>
+      <div className="tab-stop-ok-section">
+        <div className="tab-stop-ok-label">Still verify manually</div>
+        <p className="tab-stop-ok-text">
+          The scan only checks for the most common tab order problems. Manually press <kbd>Tab</kbd> on the page and confirm this element activates as expected — that the right thing happens when you press Enter or Space, that it is visible on screen, and that the focus ring is clear.
+        </p>
+      </div>
+      {stop.tabindex && stop.tabindex !== "0" && (
+        <div className="tab-stop-ok-section">
+          <div className="tab-stop-ok-label">Technical detail</div>
+          <p className="tab-stop-ok-text">
+            <code>tabindex="{stop.tabindex}"</code> — this is fine. Only positive values like <code>tabindex="2"</code> cause problems.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -356,35 +451,83 @@ function FocusModePanel({ onStop }) {
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, [stops]);
 
+  function statusIcon(hasRing) {
+    if (hasRing === true)  return { icon: "check_circle", color: "#16a34a", label: "Visible focus ring" };
+    if (hasRing === false) return { icon: "warning_amber", color: "#d97706", label: "Focus ring may be missing" };
+    return { icon: "remove", color: "var(--text3)", label: "Detecting…" };
+  }
+
   return (
     <div className="focus-mode-panel">
       <div className="focus-mode-header">
-        <span className="focus-mode-title"><Icon name="keyboard" size={14} style={{marginRight:4}} />Focus mode active</span>
+        <span className="focus-mode-title">
+          <Icon name="keyboard" size={14} style={{marginRight:6}} />
+          Test with keyboard
+        </span>
         <button className="btn-stop" onClick={() => {
           chrome.runtime.sendMessage({ type: "STOP_FOCUS_MODE" });
         }}>Stop</button>
       </div>
-      <p className="focus-mode-hint">Press <kbd>Tab</kbd> on the page to step through focus stops. Green = focus ring visible. Red = missing.</p>
-      {currentStop && (
-        <div className="focus-current">
-          <span className="focus-stop-num">Stop #{currentStop.stopCount}</span>
-          <span className="focus-stop-tag">{currentStop.tagName.toLowerCase()}{currentStop.id ? "#"+currentStop.id : ""}</span>
-          <span className={`focus-ring-status ${currentStop.hasFocusRing ? "focus-ring--ok" : "focus-ring--bad"}`}>
-            {currentStop.hasFocusRing ? "✓ Focus ring" : "✗ No focus ring"}
-          </span>
+
+      <div className="focus-mode-instructions">
+        <div className="focus-mode-step">
+          <span className="focus-step-num">1</span>
+          <span>Click somewhere on the page so it has keyboard focus</span>
+        </div>
+        <div className="focus-mode-step">
+          <span className="focus-step-num">2</span>
+          <span>Press <kbd>Tab</kbd> to move forward, <kbd>Shift</kbd>+<kbd>Tab</kbd> to go back</span>
+        </div>
+        <div className="focus-mode-step">
+          <span className="focus-step-num">3</span>
+          <span>Watch the box below for each stop. Green = good, amber = look closer</span>
+        </div>
+      </div>
+
+      {currentStop ? (
+        (() => {
+          const s = statusIcon(currentStop.hasFocusRing);
+          return (
+            <div className="focus-current-card" style={{borderColor: s.color}}>
+              <div className="focus-current-top">
+                <span className="focus-stop-num" style={{background: s.color}}>#{currentStop.stopCount}</span>
+                <span className="focus-stop-tag">
+                  &lt;{currentStop.tagName?.toLowerCase()}&gt;
+                  {currentStop.id ? ` #${currentStop.id}` : ""}
+                </span>
+              </div>
+              <div className="focus-status-row" style={{color: s.color}}>
+                <Icon name={s.icon} size={16}/>
+                <strong>{s.label}</strong>
+              </div>
+              {currentStop.hasFocusRing === false && (
+                <p className="focus-status-note">
+                  We didn't detect an outline or shadow change. Check the page visually — some sites use border or background colour for focus, which we can miss.
+                </p>
+              )}
+            </div>
+          );
+        })()
+      ) : (
+        <div className="focus-current-empty">
+          <Icon name="keyboard" size={32} style={{opacity:0.4}}/>
+          <p>Press <kbd>Tab</kbd> on the page to start.</p>
         </div>
       )}
-      {stops.length > 0 && (
+
+      {stops.length > 1 && (
         <div className="focus-stops-list">
-          {stops.slice(-8).map((s, i) => (
-            <div key={i} className="focus-stop-row">
-              <span className="focus-stop-n">#{s.stopCount}</span>
-              <span className="focus-stop-el">{s.tagName.toLowerCase()}{s.id ? "#"+s.id : ""}</span>
-              <span className={s.hasFocusRing ? "focus-ok" : "focus-bad"}>
-                {s.hasFocusRing ? "✓" : "✗"}
-              </span>
-            </div>
-          ))}
+          <div className="focus-stops-list-title">Recent stops</div>
+          {stops.slice(-6).reverse().map((s, i) => {
+            const status = statusIcon(s.hasFocusRing);
+            return (
+              <div key={i} className="focus-stop-row">
+                <Icon name={status.icon} size={13} style={{color: status.color, flexShrink:0}}/>
+                <span className="focus-stop-n">#{s.stopCount}</span>
+                <span className="focus-stop-el">&lt;{s.tagName?.toLowerCase()}&gt;{s.id ? ` #${s.id}` : ""}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -448,24 +591,125 @@ function ViolationDetail({ violation }) {
       {activeTab === "elements" && (
         <div className="detail-body">
           <div className="nodes-list">
-            {violation.nodes.slice(0, 5).map((node, i) => (
-              <div key={i} className="node-snippet">
-                <div className="node-snippet-header">
-                  <span className="node-num">#{i + 1}</span>
-                  {node.target?.[0] && (
-                    <span className="node-selector">{node.target[0].slice(0, 60)}</span>
-                  )}
-                </div>
-                <code>{node.html?.slice(0, 200)}{node.html?.length > 200 ? "…" : ""}</code>
-              </div>
+            {violation.nodes.map((node, i) => (
+              <ElementRow key={i} node={node} index={i} />
             ))}
-            {violation.nodes.length > 5 && (
-              <p className="nodes-more">+{violation.nodes.length - 5} more instances</p>
-            )}
           </div>
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ── Element row — collapsed by default, expandable for full details ──────────
+
+function getElementType(node) {
+  // Parse the element type from the HTML or selector for a friendly label
+  const html = node.html || '';
+  const match = html.match(/^<(\w+)/i);
+  if (match) {
+    const tag = match[1].toLowerCase();
+    const tagLabels = {
+      a: 'Link',
+      button: 'Button',
+      input: 'Input field',
+      textarea: 'Text area',
+      select: 'Dropdown',
+      img: 'Image',
+      svg: 'SVG image',
+      h1: 'Heading 1',
+      h2: 'Heading 2',
+      h3: 'Heading 3',
+      h4: 'Heading 4',
+      h5: 'Heading 5',
+      h6: 'Heading 6',
+      p: 'Paragraph',
+      div: 'Container',
+      span: 'Inline text',
+      ul: 'List',
+      ol: 'Numbered list',
+      li: 'List item',
+      nav: 'Navigation',
+      header: 'Header',
+      footer: 'Footer',
+      main: 'Main content',
+      section: 'Section',
+      article: 'Article',
+      label: 'Label',
+      form: 'Form',
+      table: 'Table',
+      iframe: 'Embedded frame',
+    };
+    return tagLabels[tag] || `<${tag}>`;
+  }
+  return 'Element';
+}
+
+function ElementRow({ node, index }) {
+  const [open, setOpen] = useState(false);
+  const elementType = getElementType(node);
+  const selector = node.target?.[0];
+
+  function handleJump(e) {
+    e.stopPropagation();
+    if (!selector) return;
+    chrome.runtime.sendMessage({
+      type: "SCROLL_TO_ELEMENT",
+      selector,
+    });
+  }
+
+  return (
+    <div className={`element-row ${open ? 'element-row--open' : ''}`}>
+      <div className="element-row-header">
+        <span className="element-row-num">#{index + 1}</span>
+        <span className="element-row-type">{elementType}</span>
+        <div className="element-row-actions">
+          {selector && (
+            <button
+              className="element-row-btn element-row-btn--jump"
+              onClick={handleJump}
+              aria-label={`Jump to element ${index + 1} on the page`}
+              title="Scroll to this element on the page"
+            >
+              <Icon name="open_in_new" size={14} />
+              Jump to
+            </button>
+          )}
+          <button
+            className="element-row-btn"
+            onClick={() => setOpen(p => !p)}
+            aria-expanded={open}
+            aria-label={`Toggle details for element ${index + 1}`}
+          >
+            {open ? 'Hide' : 'Details'}
+            <Icon name={open ? "expand_less" : "expand_more"} size={14} />
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="element-row-body">
+          {selector && (
+            <div className="element-row-section">
+              <div className="element-row-label">Selector</div>
+              <code className="element-row-code">{selector}</code>
+            </div>
+          )}
+          {node.html && (
+            <div className="element-row-section">
+              <div className="element-row-label">HTML</div>
+              <code className="element-row-code">{node.html.slice(0, 300)}{node.html.length > 300 ? '…' : ''}</code>
+            </div>
+          )}
+          {node.failureSummary && (
+            <div className="element-row-section">
+              <div className="element-row-label">Why this fails</div>
+              <p className="element-row-text">{node.failureSummary}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -483,30 +727,49 @@ function ReadingLevelCard({ data }) {
     return "University / post-secondary level";
   };
 
-  const howToFix = `Your page scores at a Grade ${data.grade} reading level (${gradeLabel(data.grade)}). WCAG 3.1.5 recommends Grade 8 or below for the main content of your page.
+  const howToFix = `Your page scores at Grade ${data.grade} reading level. The goal is Grade 8 or below.
 
-What this means:
-This score is calculated using the Flesch-Kincaid formula, applied to ALL readable text on the page. This includes paragraphs, headings, labels, and error messages. A Grade ${data.grade} score means the average reader needs a ${gradeLabel(data.grade).toLowerCase()} education to comfortably understand your content.
-
-Target: Grade 8 or below (readable by most adults)
+Why it matters:
+About 1 in 5 adults read at Grade 8 level or lower. Many more read English as a second language. Hard text loses readers.
 
 How to fix it:
-• Break long sentences into two shorter ones. If a sentence has more than 20 words, split it.
-• Replace complex words with simpler ones:
-    "Use" → "Use"
-    "Then" → "Then"
-    "Try" → "Try"
-    "Help" → "Help"
-• Write in active voice:
-    Before: "The form must be completed by the user before submission."
-    After:  "Fill out the form before you submit it."
-• Add a plain-language summary at the top of complex pages. Write 2 to 3 sentences that anyone can understand.
 
-Example rewrite:
-  Before (Grade 14): "Users must authenticate their credentials via the secure login portal before accessing personalised account features."
-  After  (Grade 5):  "Sign in to your account to see your settings."
+1. Make sentences shorter.
+   If a sentence has more than 20 words, split it in two.
 
-Note: Legal terms, medical names, and technical jargon will inflate the score. If your content must use specialist language, add a plain-English explanation or glossary alongside it.`;
+   Hard:  "If you would like to update the email address that we use to send you notifications, please go to the account settings page where you can make this change."
+
+   Easy:  "Want to change your email? Go to account settings."
+
+2. Use simple words instead of fancy ones.
+
+   Instead of           Use this
+   ---------            --------
+   utilize              use
+   demonstrate          show
+   purchase             buy
+   commence             start
+   subsequently         then
+   facilitate           help
+   require              need
+   approximately        about
+   in order to          to
+   prior to             before
+
+3. Talk to the reader. Use "you" not "users".
+
+   Hard:  "Users must verify their identity."
+   Easy:  "You need to verify it's you."
+
+4. Use active voice.
+
+   Hard:  "The form must be filled out by the user."
+   Easy:  "Fill out the form."
+
+5. Add a plain-English summary at the top of complex pages.
+   2 or 3 short sentences that explain the page in simple words.
+
+Note: Legal terms, medical words, and code names raise the score. If you must use them, add a plain-English version next to them.`;
 
   return (
     <div className="reading-card">
@@ -808,7 +1071,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const newViolations = response.violations.filter(v => !normalIds.has(v.id));
       setZoomViolations(newViolations);
       setZoomStatus("done");
-      setActiveTab("zoom");
+      setActiveTab("visuals");
     });
   }
 
@@ -820,8 +1083,8 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
 
   // Apply filters
   const filteredViolations = violations.filter(v => {
-    const version = getWcagVersion(v.tags);
-    const wcagOk = wcagFilter === "All" || version === wcagFilter;
+    const principle = getPrinciple(v.id);
+    const wcagOk = wcagFilter === "All" || principle === wcagFilter;
     const impactOk = impactFilter === "All" || v.impact === impactFilter;
     return wcagOk && impactOk;
   });
@@ -851,58 +1114,12 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
         </div>
       )}
 
-      {/* Tool buttons row */}
+      {/* Tool buttons row — clean: only the primary scan action */}
       <div className="tool-row">
-        <button className="btn-scan" onClick={runScan} disabled={status==="scanning"}>
+        <button className="btn-scan" onClick={runScan} disabled={status==="scanning"} style={{flex:1}}>
           {status==="scanning" ? <><span className="spinner"/> Scanning…</> : "Run scan"}
         </button>
-        <div className="focus-dropdown-wrap">
-          <button
-            className={`tool-btn ${focusMode || tabOrderStops !== null ? "tool-btn--active" : ""}`}
-            onClick={() => setFocusDropdown(p => !p)}
-            title="Keyboard focus tools"
-          >⌨ Focus ▾</button>
-          {focusDropdown && (
-            <div className="focus-dropdown">
-              <button className="focus-dropdown-item" onClick={startFocusMode}>
-                <span className="fdi-icon">⌨</span>
-                <div>
-                  <div className="fdi-title">Step through</div>
-                  <div className="fdi-desc">Press Tab to step through stops one by one</div>
-                </div>
-              </button>
-              <button className="focus-dropdown-item" onClick={showTabOrder}>
-                <span className="fdi-icon">⬡</span>
-                <div>
-                  <div className="fdi-title">Show all stops</div>
-                  <div className="fdi-desc">Number every focusable element at once</div>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-        <button
-          className={`tool-btn ${zoomStatus==="running" ? "tool-btn--loading" : ""}`}
-          onClick={runZoomTest}
-          disabled={zoomStatus==="running" || status!=="done"}
-          title="Test 400% zoom / reflow"
-        >🔍 Zoom</button>
-        <button
-          className={`tool-btn ${highContrast ? "tool-btn--active" : ""}`}
-          onClick={toggleHighContrast}
-          title="Simulate high contrast mode"
-        >◑ HC</button>
       </div>
-
-      {/* Tab order panel */}
-      {tabOrderStops !== null && (
-        <TabOrderPanel
-          stops={tabOrderStops}
-          selectedStop={selectedStop}
-          onStopClick={handleStopClick}
-          onClose={clearTabOrder}
-        />
-      )}
 
       {/* Export modal */}
       {showExport && (
@@ -912,9 +1129,6 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
           onClose={() => setShowExport(false)}
         />
       )}
-
-      {/* Focus mode panel */}
-      {focusMode && <FocusModePanel onStop={stopFocusMode} />}
 
       {/* Summary */}
       {status==="done" && !focusMode && (
@@ -993,7 +1207,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                 const statusLabel = critical>0?"Fix now":serious>0?"Needs work":h.total===0?"No violations":"Minor issues";
                 return (
                   <div key={i} className={`history-row ${i===0?"history-row--current":""}`}>
-                    <span className="history-grade" style={{color: statusColor, fontSize:11, fontWeight:600}}>{statusLabel}</span>
+                    <span className="history-grade" style={{color: statusColor, fontSize:16, fontWeight:600}}>{statusLabel}</span>
                     <div className="history-info">
                       <span className="history-date">{h.date}{i===0?" (latest)":""}</span>
                       <span className="history-stats">
@@ -1009,29 +1223,34 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
           )}
           {showHistory && history.length === 0 && (
             <div className="history-panel">
-              <p style={{fontSize:11,color:"var(--text3)",padding:"8px 0"}}>No previous scans on this domain.</p>
+              <p style={{fontSize:16,color:"var(--text3)",padding:"8px 0"}}>No previous scans on this domain.</p>
             </div>
           )}
           <button className="btn-export" onClick={() => setShowExport(true)}>
             ↗ Export report
           </button>
-
-          {/* Sub-tabs */}
-          <div className="subtabs">
-            <button className={`subtab ${activeTab==="violations"?"subtab--active":""}`} onClick={()=>setActiveTab("violations")}>
-              Violations {violations.length > 0 && <span className="subtab-count">{violations.length}</span>}
-            </button>
-            <button className={`subtab ${activeTab==="zoom"?"subtab--active":""}`} onClick={()=>setActiveTab("zoom")}>
-              Zoom {zoomViolations.length > 0 && <span className="subtab-count subtab-count--amber">{zoomViolations.length}</span>}
-            </button>
-            <button className={`subtab ${activeTab==="dynamic"?"subtab--active":""}`} onClick={()=>setActiveTab("dynamic")}>
-              Dynamic {dynamicIssues.length > 0 && <span className="subtab-count subtab-count--amber">{dynamicIssues.length}</span>}
-            </button>
-            <button className={`subtab ${activeTab==="content"?"subtab--active":""}`} onClick={()=>setActiveTab("content")}>
-              Content {contentAnalysis && contentAnalysis.linkResults?.issues?.length > 0 && <span className="subtab-count subtab-count--amber">{contentAnalysis.linkResults.issues.length}</span>}
-            </button>
-          </div>
         </>
+      )}
+
+      {/* Sub-tabs — render whenever we have any data, not gated to status===done */}
+      {(status==="done" || zoomStatus==="done" || zoomViolations.length>0) && !focusMode && (
+        <div className="subtabs">
+          <button className={`subtab ${activeTab==="violations"?"subtab--active":""}`} onClick={()=>setActiveTab("violations")}>
+            Issues {violations.length > 0 && <span className="subtab-count">{violations.length}</span>}
+          </button>
+          <button className={`subtab ${activeTab==="focus"?"subtab--active":""}`} onClick={()=>setActiveTab("focus")}>
+            Focus
+          </button>
+          <button className={`subtab ${activeTab==="visuals"?"subtab--active":""}`} onClick={()=>setActiveTab("visuals")}>
+            Visuals {zoomViolations.length > 0 && <span className="subtab-count subtab-count--amber">{zoomViolations.length}</span>}
+          </button>
+          <button className={`subtab ${activeTab==="dynamic"?"subtab--active":""}`} onClick={()=>setActiveTab("dynamic")}>
+            Dynamic {dynamicIssues.length > 0 && <span className="subtab-count subtab-count--amber">{dynamicIssues.length}</span>}
+          </button>
+          <button className={`subtab ${activeTab==="content"?"subtab--active":""}`} onClick={()=>setActiveTab("content")}>
+            Content {contentAnalysis && contentAnalysis.linkResults?.issues?.length > 0 && <span className="subtab-count subtab-count--amber">{contentAnalysis.linkResults.issues.length}</span>}
+          </button>
+        </div>
       )}
 
       {/* Error */}
@@ -1065,8 +1284,23 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
               <path d="M10 16h12M16 10v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
             </svg>
           </div>
-          <p>Click <strong>Run scan</strong> to check for WCAG violations.</p>
-          <p className="empty-hint" style={{marginTop:8}}>Use <strong>Focus</strong> to test keyboard navigation, <strong>Zoom</strong> to test 400% reflow, <strong>HC</strong> to preview high contrast mode.</p>
+          <p style={{fontSize:16, fontWeight:600, color:'var(--text)'}}>Ready to check this page</p>
+          <p className="empty-hint" style={{marginTop:8}}>
+            Click <strong>Run scan</strong>. We will look for things that make the page hard to use for some people.
+          </p>
+          <div className="empty-hint" style={{marginTop:14, padding:'12px 14px', background:'var(--bg3)', borderRadius:8, textAlign:'left'}}>
+            <strong>What we check:</strong>
+            <ul style={{margin:'6px 0 0 0', paddingLeft:18, lineHeight:1.7}}>
+              <li>Missing labels on buttons and forms</li>
+              <li>Pictures with no description</li>
+              <li>Links that say "click here"</li>
+              <li>Headings in the wrong order</li>
+              <li>Many other rules from WCAG</li>
+            </ul>
+          </div>
+          <p className="empty-hint" style={{marginTop:10}}>
+            After scanning, use <strong>Focus</strong> to test the keyboard, <strong>Zoom</strong> to test 400% size, or <strong>HC</strong> for high contrast.
+          </p>
         </div>
       )}
 
@@ -1102,7 +1336,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                       <span className="principle-icon"><PrincipleIcon name={principle} /></span>
                       <span className="principle-name">{principle}</span>
                       <span className="principle-count">{group.length} rule{group.length!==1?"s":""} · {instances} instance{instances!==1?"s":""}</span>
-                      <span className="principle-chevron">{isCollapsed?"▶":"▼"}</span>
+                      <span className="principle-chevron-icon"><Icon name={isCollapsed?"expand_more":"expand_less"} size={18} /></span>
                     </button>
                     {!isCollapsed && <div className="principle-desc">{PRINCIPLE_DESC[principle]}</div>}
                     {!isCollapsed && (
@@ -1115,7 +1349,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                           const isNew22 = wcagVer==="2.2";
                           const sc = v.tags.filter(t=>/^\d+\.\d+\.\d+$/.test(t)).join(", ");
                           return (
-                            <div key={v.id} className={`violation ${isActive?"violation--active":""}`}>
+                            <div key={v.id} className={`violation violation--${v.impact || 'minor'} ${isActive?"violation--active":""}`}>
                               <div className="violation-header" onClick={()=>handleViolationClick(v)}>
                                 <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
                                 <div className="violation-info">
@@ -1131,7 +1365,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                                   </div>
                                 </div>
                                 <button className="expand-btn" onClick={e=>{e.stopPropagation();toggleExpanded(v.id);}}>
-                                  {isExp?"▲":"▼"}
+                                  <Icon name={isExp ? "expand_less" : "expand_more"} size={16} />
                                 </button>
                               </div>
                               {isExp && (
@@ -1150,68 +1384,152 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
         </>
       )}
 
-      {/* ── Zoom test tab ── */}
-      {activeTab==="zoom" && (
-        <div className="zoom-tab">
-          {zoomStatus==="idle" && status==="done" && (
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
-              <div className="tab-explainer-title">400% zoom / reflow test</div>
+      {/* ── Focus tab — all keyboard tools live here ── */}
+      {activeTab==="focus" && status==="done" && (
+        <div className="focus-tab">
+          {/* Tab order map (when active) */}
+          {tabOrderStops !== null ? (
+            <TabOrderPanel
+              stops={tabOrderStops}
+              selectedStop={selectedStop}
+              onStopClick={handleStopClick}
+              onClose={clearTabOrder}
+            />
+          ) : focusMode ? (
+            <FocusModePanel onStop={stopFocusMode} />
+          ) : (
+            <div className="focus-tab-home">
+              <div className="tab-explainer-icon"><Icon name="keyboard" size={24} /></div>
+              <div className="tab-explainer-title">Keyboard testing</div>
               <div className="tab-explainer-body">
-                WCAG 1.4.10 needs that content can be viewed at 400% zoom without horizontal scrolling. This test temporarily resizes the page to 320px wide — like a 1280px screen at 400%. It flags any <em>new</em> violations that only appear at that width.
+                People who can't use a mouse rely on the keyboard to use the page. These tools help you check if your page works without a mouse.
               </div>
-              <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Run a normal scan first (already done)</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Click the button below. The page will resize for a moment</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>Results show only issues introduced by the narrow viewport</div>
+
+              <div className="focus-tool-grid">
+                <button className="focus-tool-card" onClick={startFocusMode}>
+                  <div className="focus-tool-icon"><Icon name="keyboard" size={22} /></div>
+                  <div className="focus-tool-title">Test with keyboard</div>
+                  <div className="focus-tool-desc">Watch where focus goes as you press Tab. Shows pass or fail for each focus ring.</div>
+                </button>
+
+                <button className="focus-tool-card" onClick={showTabOrder}>
+                  <div className="focus-tool-icon"><Icon name="account_tree" size={22} /></div>
+                  <div className="focus-tool-title">See the order</div>
+                  <div className="focus-tool-desc">Shows numbered badges on every keyboard stop so you can spot wrong order or hidden problems.</div>
+                </button>
               </div>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:200}} onClick={runZoomTest}>Run zoom test</button>
+
+              <div className="info-callout">
+                <Icon name="info_outline" size={14} />
+                <span><strong>Tip:</strong> Test with keyboard works best. It shows real Tab key behaviour and detects most missing focus rings.</span>
+              </div>
             </div>
           )}
-          {zoomStatus==="idle" && status!=="done" && (
+        </div>
+      )}
+      {activeTab==="focus" && status!=="done" && (
+        <div className="tab-explainer">
+          <div className="tab-explainer-icon"><Icon name="keyboard" size={24} /></div>
+          <div className="tab-explainer-title">Keyboard testing</div>
+          <div className="tab-explainer-body">Run a scan first, then come back here to test keyboard navigation.</div>
+        </div>
+      )}
+
+      {/* ── Visuals tab — zoom test + high contrast preview ── */}
+      {activeTab==="visuals" && (
+        <div className="visuals-tab">
+          {status!=="done" && zoomStatus==="idle" ? (
             <div className="tab-explainer">
               <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
-              <div className="tab-explainer-title">400% zoom / reflow test</div>
-              <div className="tab-explainer-body">Run a scan first using the <strong>Run scan</strong> button, then come back to this tab to test 400% zoom reflow.</div>
+              <div className="tab-explainer-title">Visual tests</div>
+              <div className="tab-explainer-body">Run a scan first, then come back here to test zoom and high contrast mode.</div>
             </div>
-          )}
-          {zoomStatus==="running" && (
-            <div className="empty-state">
-              <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
-              <p>Resizing to 320px and scanning…</p>
-              <p className="empty-hint">The page will briefly reflow. This takes a few seconds.</p>
-            </div>
-          )}
-          {zoomStatus==="done" && zoomViolations.length===0 && (
-            <div className="empty-state empty-state--success">
-              <div className="empty-icon" style={{color:"#1D9E75"}}>
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M10 16l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <p>No new violations at 400% zoom.</p>
-              <p className="empty-hint">Content reflows correctly at narrow viewports. WCAG 1.4.10 satisfied.</p>
-            </div>
-          )}
-          {zoomStatus==="done" && zoomViolations.length>0 && (
-            <div className="violations">
-              <p className="zoom-intro">These violations only appear at 400% zoom / 320px width:</p>
-              {zoomViolations.map(v=>(
-                <div key={v.id} className="violation">
-                  <div className="violation-header" onClick={()=>handleViolationClick(v)}>
-                    <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
-                    <div className="violation-info">
-                      <div className="violation-title">{v.description}</div>
-                      <div className="violation-meta">
-                        <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
-                        <span className="wcag-version-badge" style={{background:"rgba(194,64,12,0.15)",color:"#F0997B"}}>zoom only</span>
-                      </div>
+          ) : (
+            <>
+              {/* Zoom test section */}
+              <div className="visuals-section">
+                <div className="visuals-section-header">
+                  <Icon name="zoom_in" size={18} />
+                  <h3 className="visuals-section-title">Zoom test (400%)</h3>
+                </div>
+                <p className="visuals-section-desc">
+                  Some people zoom their browser to read text. The page must still work at 400% zoom (about 320px wide). This test shrinks the page to that size and looks for new problems.
+                </p>
+
+                {zoomStatus==="idle" && (
+                  <button className="btn-scan" style={{marginTop:8, maxWidth:220}} onClick={runZoomTest}>
+                    Run zoom test
+                  </button>
+                )}
+                {zoomStatus==="running" && (
+                  <div className="empty-state">
+                    <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
+                    <p>Resizing to 320px and scanning…</p>
+                  </div>
+                )}
+                {zoomStatus==="done" && zoomViolations.length===0 && (
+                  <div className="visuals-result visuals-result--ok">
+                    <Icon name="check_circle" size={18} style={{color:"#1D9E75"}}/>
+                    <div>
+                      <strong>No new problems at 400% zoom.</strong>
+                      <p style={{margin:"3px 0 0 0", fontSize:16, color:"var(--text2)"}}>The page reflows correctly. WCAG 1.4.10 passes.</p>
                     </div>
                   </div>
+                )}
+                {zoomStatus==="done" && zoomViolations.length>0 && (
+                  <div className="violations" style={{marginTop:10}}>
+                    <p className="zoom-intro">These problems only show up at 400% zoom:</p>
+                    {zoomViolations.map(v=>(
+                      <div key={v.id} className={`violation violation--${v.impact || 'minor'}`}>
+                        <div className="violation-header" onClick={()=>handleViolationClick(v)}>
+                          <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
+                          <div className="violation-info">
+                            <div className="violation-title">{v.description}</div>
+                            <div className="violation-meta">
+                              <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
+                              <span className="wcag-version-badge" style={{background:"rgba(194,64,12,0.15)",color:"#F0997B"}}>zoom only</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* High contrast section */}
+              <div className="visuals-section">
+                <div className="visuals-section-header">
+                  <Icon name="contrast" size={18} />
+                  <h3 className="visuals-section-title">High contrast preview</h3>
                 </div>
-              ))}
-            </div>
+                <p className="visuals-section-desc">
+                  Some people turn on high contrast mode to read better. This button copies what they see. When it's on, look at the page and check the list below.
+                </p>
+
+                <button
+                  className={`btn-scan ${highContrast ? "btn-stop" : ""}`}
+                  style={{marginTop:8, maxWidth:220}}
+                  onClick={toggleHighContrast}
+                >
+                  {highContrast ? "Turn off high contrast" : "Turn on high contrast"}
+                </button>
+
+                {highContrast && (
+                  <div className="hc-checklist">
+                    <div className="hc-checklist-title">Look at the page now and check:</div>
+                    <ul className="hc-checklist-list">
+                      <li>Can you still read all the text?</li>
+                      <li>Are buttons still easy to see?</li>
+                      <li>Are icons still visible?</li>
+                      <li>Are form fields still clear?</li>
+                      <li>Is colour-only info still understandable?</li>
+                    </ul>
+                    <p className="hc-checklist-hint">If anything is missing or invisible, it's a problem for users who rely on high contrast.</p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1282,7 +1600,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                             <div className="violation-info">
                               <div className="violation-title-row">
                                 <span className="violation-title">{category}</span>
-                                <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27",fontFamily:"var(--mono)",fontSize:11,padding:"2px 7px",borderRadius:4}}>
+                                <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27",fontFamily:"var(--mono)",fontSize:16,padding:"2px 7px",borderRadius:4}}>
                                   {totalCount}x
                                 </span>
                               </div>
@@ -1318,7 +1636,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                                   {samples.map((s, i) => (
                                     <div key={i} className="node-snippet" style={{marginBottom:4}}>
                                       <span className="node-num">#{i+1}</span>
-                                      <code style={{fontSize:11,color:"var(--text2)"}}>{s}</code>
+                                      <code style={{fontSize:16,color:"var(--text2)"}}>{s}</code>
                                     </div>
                                   ))}
                                   {totalCount > 2 && (
@@ -1333,7 +1651,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                     })}
                     {hiddenCount > 0 && (
                       <div className="dynamic-summary" style={{justifyContent:"center",marginTop:6}}>
-                        <span style={{color:"var(--text3)",fontSize:12}}>
+                        <span style={{color:"var(--text3)",fontSize:16}}>
                           +{hiddenCount} more pattern types. Fix the ones above first.
                         </span>
                       </div>

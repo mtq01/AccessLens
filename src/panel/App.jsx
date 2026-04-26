@@ -104,7 +104,7 @@ export default function App() {
   const [ready, setReady]       = useState(false);
   const [tabId, setTabId]       = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
-    try { return localStorage.getItem("al_theme") !== "light"; } catch { return true; }
+    try { return localStorage.getItem("al_theme") === "dark"; } catch { return false; }
   });
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem("al_onboarded"); } catch { return true; }
@@ -221,10 +221,17 @@ export default function App() {
           <span className="logo-text">Access<span className="logo-accent">Lens</span></span>
         </div>
 
-        <nav className="tabs">
+        <nav className="tabs" role="tablist" aria-label="Main sections">
           {TABS.map(t => (
-            <button key={t.id} className={`tab ${tab===t.id?"tab--active":""}`} onClick={()=>setTab(t.id)}>
-              <Icon name={t.icon} size={14} />
+            <button
+              key={t.id}
+              className={`tab ${tab===t.id?"tab--active":""}`}
+              onClick={()=>setTab(t.id)}
+              role="tab"
+              aria-selected={tab===t.id}
+              aria-label={`${t.label} tab`}
+            >
+              <Icon name={t.icon} size={14} aria-hidden="true" />
               {t.label}
             </button>
           ))}

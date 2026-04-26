@@ -14,7 +14,7 @@ chrome.action.onClicked.addListener(function(tab) {
 
   chrome.windows.create({
     url: chrome.runtime.getURL("panel.html"),
-    type: "popup", width: 570, height: 760,
+    type: "popup", width: 720, height: 800,
   }, function(win) { panelWindowId = win.id; });
 });
 
