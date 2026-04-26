@@ -2,6 +2,7 @@ import { Icon } from "./icons";
 import { useState, useEffect } from "react";
 
 const C = {
+  bg: "var(--bg)",
   border: "var(--border)",
   borderMid: "var(--border-mid)",
   text: "var(--text)",
@@ -18,9 +19,82 @@ const C = {
   blue: "var(--blue)",
   blueBg: "var(--blue-bg)",
   blueBtn: "var(--blue-btn)",
+  blueBorder: "var(--blue-border)",
   surface: "var(--bg2)",
   surface2: "var(--bg3)",
 };
+
+const CONTRAST_GROUP_ORDER = ["heading", "text", "link", "button", "input"];
+const CONTRAST_GROUP_LABELS = {
+  heading: "Headings",
+  text: "Text",
+  link: "Links",
+  button: "Buttons",
+  input: "Inputs",
+};
+const CONTRAST_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "failures", label: "Failures" },
+  { id: "warnings", label: "Warnings" },
+];
+
+function normalizeText(text) {
+  return (text || "").replace(/\s+/g, " ").trim();
+}
+
+function getRowStatus(row) {
+  if (!row.aa) return "failures";
+  if (!row.aaa) return "warnings";
+  return "passes";
+}
+
+function getGroupLabel(type) {
+  return CONTRAST_GROUP_LABELS[type] || "Other";
+}
+
+function getFallbackType(label) {
+  const value = (label || "").toLowerCase();
+  if (value.includes("heading") || value.includes("title")) return "heading";
+  if (value.includes("button")) return "button";
+  if (value.includes("link")) return "link";
+  if (
+    value.includes("input") ||
+    value.includes("field") ||
+    value.includes("placeholder")
+  )
+    return "input";
+  return "text";
+}
+
+function groupRows(rows, filter) {
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const status = getRowStatus(row);
+    if (filter !== "all" && status !== filter) return;
+    const type = row.type || "text";
+    if (!grouped.has(type)) grouped.set(type, []);
+    grouped.get(type).push({ ...row, status });
+  });
+
+  const orderedTypes = [
+    ...CONTRAST_GROUP_ORDER,
+    ...Array.from(grouped.keys())
+      .filter((type) => !CONTRAST_GROUP_ORDER.includes(type))
+      .sort(),
+  ].filter((type, index, types) => types.indexOf(type) === index);
+
+  return orderedTypes
+    .map((type) => ({
+      type,
+      label: getGroupLabel(type),
+      rows: grouped.get(type) || [],
+    }))
+    .filter((group) => group.rows.length > 0);
+}
+
+function getFilterLabel(filter) {
+  return CONTRAST_FILTERS.find((item) => item.id === filter)?.label || "All";
+}
 
 const MODE_INFO = {
   auto: {
@@ -86,7 +160,12 @@ const FALLBACK_CONTRAST_DATA = [
     aaa: false,
     label: "Placeholder text",
   },
-];
+].map((row) => ({
+  ...row,
+  type: getFallbackType(row.label),
+  text: row.label,
+  isLargeText: row.label.toLowerCase().includes("heading"),
+}));
 
 function parseRgb(str) {
   const m = str?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
@@ -165,6 +244,8 @@ export default function ContrastPanel() {
   const [fg, setFg] = useState("#5e5c74");
   const [bg, setBg] = useState("#ffffff");
   const [rows, setRows] = useState(FALLBACK_CONTRAST_DATA);
+  const [contrastFilter, setContrastFilter] = useState("all");
+  const [openGroups, setOpenGroups] = useState({});
 
   useEffect(() => {
     const listener = (msg) => {
@@ -194,20 +275,37 @@ export default function ContrastPanel() {
         response.results?.groups
       ) {
         const mapped = [];
-        Object.values(response.results.groups).forEach((items) => {
+        const seenTypes = {};
+        Object.entries(response.results.groups).forEach(([typeKey, items]) => {
           items.forEach((item) => {
+            const type = item.type || typeKey || "text";
+            seenTypes[type] = true;
             mapped.push({
               fg: item.fg,
               bg: item.bg,
               ratio: Number(item.ratio || 0),
               aa: !!item.passesAA,
               aaa: !!item.passesAAA,
+              isLargeText: !!item.isLargeText,
+              aaRequired: Number(item.aaRequired || 4.5),
               label: item.text || "Detected text",
               selector: item.selector || null,
+              type,
+              text: item.text || "(no visible text)",
+              tag: item.tag || null,
             });
           });
         });
-        if (mapped.length > 0) setRows(mapped.sort((a, b) => a.aa - b.aa));
+        if (mapped.length > 0) {
+          setRows(mapped.sort((a, b) => a.aa - b.aa));
+          setOpenGroups((prev) => {
+            const next = { ...prev };
+            Object.keys(seenTypes).forEach((type) => {
+              if (next[type] === undefined) next[type] = true;
+            });
+            return next;
+          });
+        }
       }
       setScanning(false);
       setScanned(true);
@@ -216,7 +314,11 @@ export default function ContrastPanel() {
 
   function jumpToElement(selector) {
     if (!selector) return;
-    chrome.runtime.sendMessage({ type: "HIGHLIGHT_ELEMENT", selector, showDimensions: false });
+    chrome.runtime.sendMessage({
+      type: "HIGHLIGHT_ELEMENT",
+      selector,
+      showDimensions: false,
+    });
   }
 
   function activatePicker() {
@@ -231,6 +333,11 @@ export default function ContrastPanel() {
   const aaFail = rows.filter((r) => !r.aa).length;
   const aaaWarn = rows.filter((r) => r.aa && !r.aaa).length;
   const passing = rows.filter((r) => r.aa).length;
+  const filteredRows = rows.filter((row) => {
+    const status = getRowStatus(row);
+    return contrastFilter === "all" || status === contrastFilter;
+  });
+  const filteredGroups = groupRows(rows, contrastFilter);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -380,16 +487,21 @@ export default function ContrastPanel() {
                 padding: "12px 22px",
                 display: "flex",
                 flexDirection: "column",
-                gap: 6,
+                gap: 10,
               }}
             >
               <div
                 style={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 2,
+                  background:
+                    "linear-gradient(to bottom, #fff 78%, rgba(255,255,255,0))",
+                  paddingBottom: 10,
                   display: "flex",
                   gap: 8,
-                  paddingBottom: 10,
+                  flexWrap: "wrap",
                   borderBottom: `1px solid ${C.border}`,
-                  marginBottom: 2,
                 }}
               >
                 <Pill
@@ -411,7 +523,10 @@ export default function ContrastPanel() {
                   bg={C.greenBg}
                 />
                 <button
-                  onClick={() => setScanned(false)}
+                  onClick={() => {
+                    setScanned(false);
+                    setContrastFilter("all");
+                  }}
                   style={{
                     marginLeft: "auto",
                     background: "none",
@@ -429,100 +544,324 @@ export default function ContrastPanel() {
               </div>
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "44px 1fr 68px 46px 46px 32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 8,
-                  padding: "0 2px 4px",
+                  flexWrap: "wrap",
                 }}
               >
-                {["", "Element", "Ratio", "AA", "AAA", ""].map((h, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: C.textMuted,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                    }}
-                  >
-                    {h}
-                  </span>
-                ))}
-              </div>
-              {rows.map((row, i) => (
                 <div
-                  key={`${row.label}-${i}`}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "44px 1fr 68px 46px 46px 32px",
-                    gap: 8,
-                    alignItems: "center",
-                    background: "#fff",
-                    border: `1.5px solid ${row.aa ? C.border : C.redBorder}`,
-                    borderRadius: 9,
-                    padding: "9px 10px",
+                    display: "inline-flex",
+                    padding: 4,
+                    borderRadius: 10,
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    gap: 4,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 40,
-                      height: 27,
-                      borderRadius: 6,
-                      background: row.bg,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "1px solid rgba(0,0,0,0.07)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{ color: row.fg, fontSize: 11.5, fontWeight: 800 }}
+                  {CONTRAST_FILTERS.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setContrastFilter(filter.id)}
+                      style={{
+                        border: "none",
+                        background:
+                          contrastFilter === filter.id ? "#fff" : "transparent",
+                        color:
+                          contrastFilter === filter.id ? C.text : C.textMuted,
+                        borderRadius: 7,
+                        padding: "6px 10px",
+                        fontSize: 12,
+                        fontWeight: contrastFilter === filter.id ? 800 : 700,
+                        fontFamily: "var(--font)",
+                        boxShadow:
+                          contrastFilter === filter.id
+                            ? "0 1px 3px rgba(0,0,0,0.08)"
+                            : "none",
+                      }}
                     >
-                      Aa
-                    </span>
-                  </div>
-                  <span
-                    style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}
-                  >
-                    {row.label}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 800,
-                      color: row.ratio >= 4.5 ? C.green : C.red,
-                    }}
-                  >
-                    {row.ratio.toFixed(1)}:1
-                  </span>
-                  <PassBadge pass={row.aa} />
-                  <PassBadge pass={row.aaa} />
-                  <button
-                    title="Jump to element"
-                    onClick={() => jumpToElement(row.selector)}
-                    disabled={!row.selector}
-                    style={{
-                      background: "none",
-                      border: `1.5px solid ${C.border}`,
-                      borderRadius: 6,
-                      width: 28,
-                      height: 28,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: row.selector ? "pointer" : "default",
-                      opacity: row.selector ? 1 : 0.3,
-                      color: C.textMuted,
-                      fontSize: 13,
-                      fontFamily: "var(--font)",
-                    }}
-                  >
-                    ↗
-                  </button>
+                      {filter.label}
+                    </button>
+                  ))}
                 </div>
-              ))}
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: C.textMuted,
+                    fontWeight: 600,
+                  }}
+                >
+                  {filteredRows.length} of {rows.length} items shown in{" "}
+                  {getFilterLabel(contrastFilter).toLowerCase()}
+                </div>
+              </div>
+              {filteredGroups.length === 0 ? (
+                <div
+                  style={{
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 11,
+                    padding: "18px 16px",
+                    color: C.textMuted,
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  No contrast results match this filter.
+                </div>
+              ) : (
+                filteredGroups.map((group) => {
+                  const isOpen = openGroups[group.type] !== false;
+                  return (
+                    <div
+                      key={group.type}
+                      style={{
+                        background: "#fff",
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          setOpenGroups((prev) => ({
+                            ...prev,
+                            [group.type]: !isOpen,
+                          }))
+                        }
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: C.surface,
+                          padding: "11px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          cursor: "pointer",
+                          fontFamily: "var(--font)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 800,
+                              color: C.text,
+                            }}
+                          >
+                            {group.label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: C.textMuted,
+                              background: C.bg,
+                              border: `1px solid ${C.border}`,
+                              borderRadius: 999,
+                              padding: "3px 8px",
+                            }}
+                          >
+                            {group.rows.length}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 18,
+                            color: C.textMuted,
+                            transform: isOpen ? "rotate(180deg)" : "none",
+                            transition: "transform .16s",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ⌄
+                        </span>
+                      </button>
+
+                      {isOpen && (
+                        <div
+                          style={{
+                            padding: 12,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 10,
+                          }}
+                        >
+                          {group.rows.map((row, i) => (
+                            <div
+                              key={`${group.type}-${row.selector || row.label}-${i}`}
+                              style={{
+                                background: "#fff",
+                                border: `1.5px solid ${row.aa ? C.border : C.redBorder}`,
+                                borderRadius: 10,
+                                padding: 12,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 10,
+                                  alignItems: "flex-start",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 42,
+                                    height: 30,
+                                    borderRadius: 7,
+                                    background: row.bg,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    border: "1px solid rgba(0,0,0,0.07)",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      color: row.fg,
+                                      fontSize: 11.5,
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    Aa
+                                  </span>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                      flexWrap: "wrap",
+                                      marginBottom: 4,
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: 13.5,
+                                        fontWeight: 700,
+                                        color: C.text,
+                                      }}
+                                    >
+                                      {row.label}
+                                    </span>
+                                    {row.isLargeText && (
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          fontWeight: 800,
+                                          color: C.blue,
+                                          background: C.blueBg,
+                                          border: `1px solid ${C.blueBorder}`,
+                                          borderRadius: 999,
+                                          padding: "3px 8px",
+                                        }}
+                                      >
+                                        Large text
+                                      </span>
+                                    )}
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: C.textMuted,
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.06em",
+                                      }}
+                                    >
+                                      {row.tag || row.type}
+                                    </span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: C.textMuted,
+                                      lineHeight: 1.5,
+                                      whiteSpace: "pre-wrap",
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
+                                    {row.text}
+                                  </div>
+                                </div>
+                                <button
+                                  title="Jump to element"
+                                  onClick={() => jumpToElement(row.selector)}
+                                  disabled={!row.selector}
+                                  style={{
+                                    background: "none",
+                                    border: `1.5px solid ${C.border}`,
+                                    borderRadius: 6,
+                                    width: 28,
+                                    height: 28,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: row.selector
+                                      ? "pointer"
+                                      : "default",
+                                    opacity: row.selector ? 1 : 0.3,
+                                    color: C.textMuted,
+                                    fontSize: 13,
+                                    fontFamily: "var(--font)",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  ↗
+                                </button>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 8,
+                                  flexWrap: "wrap",
+                                  paddingTop: 2,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: 15,
+                                    fontWeight: 800,
+                                    color: row.ratio >= 4.5 ? C.green : C.red,
+                                  }}
+                                >
+                                  {row.ratio.toFixed(1)}:1
+                                </span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: 6,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <PassBadge pass={row.aa} />
+                                  <PassBadge pass={row.aaa} />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </div>

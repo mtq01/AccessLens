@@ -1261,6 +1261,10 @@ function getElementType(el) {
   return "text";
 }
 
+function normalizeTextContent(text) {
+  return (text || "").replace(/\s+/g, " ").trim();
+}
+
 function scanContrast() {
   const results = {
     summary: { total: 0, failures: 0, warnings: 0 },
@@ -1309,7 +1313,7 @@ function scanContrast() {
     el.setAttribute("data-al-cscan", String(cscanIdx));
     const selector = '[data-al-cscan="' + cscanIdx + '"]';
 
-    const textSnippet = (el.textContent || "").trim().slice(0, 40);
+    const textContent = normalizeTextContent(el.textContent || "");
 
     results.groups[type].push({
       ratio: Math.round(ratio * 100) / 100,
@@ -1319,7 +1323,7 @@ function scanContrast() {
       passesAAA,
       isLargeText,
       aaRequired: aaNeedd,
-      text: textSnippet,
+      text: textContent || "(no visible text)",
       tag: el.tagName.toLowerCase(),
       selector,
     });
