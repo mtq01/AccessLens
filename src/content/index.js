@@ -773,6 +773,63 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ disabled: true });
     return true;
   }
+  if (message.type === 'RUN_CONTENT_ANALYSIS') {
+    try {
+      const linkResults  = analyseLinkText();
+      const readingLevel = getReadingLevel();
+      const motionIssues = detectMotion();
+      sendResponse({ success: true, linkResults, readingLevel, motionIssues });
+    } catch(e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
+  if (message.type === 'SCAN_CONTRAST') {
+    try {
+      sendResponse({ success: true, results: scanContrast() });
+    } catch(e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
+  if (message.type === "SCROLL_TO_ELEMENT") {
+    try {
+      let el = null;
+      if (message.selector) el = document.querySelector(message.selector);
+      if (!el && message.text) {
+        const all = document.querySelectorAll('a,button,p,h1,h2,h3,h4,h5,h6,span,li,td');
+        for (const node of all) {
+          if (node.textContent?.trim().startsWith(message.text.trim())) { el = node; break; }
+        }
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const orig = { outline: el.style.outline, outlineOffset: el.style.outlineOffset, transition: el.style.transition };
+        el.style.transition = 'outline 0.15s ease';
+        el.style.outline = '3px solid #4f8ef7';
+        el.style.outlineOffset = '4px';
+        let count = 0;
+        const pulse = setInterval(() => {
+          count++;
+          el.style.outline = count % 2 === 0 ? '3px solid #4f8ef7' : '3px solid #ef9f27';
+          if (count >= 4) {
+            clearInterval(pulse);
+            setTimeout(() => {
+              el.style.outline = orig.outline;
+              el.style.outlineOffset = orig.outlineOffset;
+              el.style.transition = orig.transition;
+            }, 500);
+          }
+        }, 300);
+        sendResponse({ success: true });
+      } else {
+        sendResponse({ success: false });
+      }
+    } catch(e) {
+      sendResponse({ success: false });
+    }
+    return true;
+  }
 });
 
 // ── Link text analyser ────────────────────────────────────────────────────────
@@ -941,20 +998,6 @@ function detectMotion() {
 
 // ── Message handlers ──────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'RUN_CONTENT_ANALYSIS') {
-    try {
-      const linkResults    = analyseLinkText();
-      const readingLevel   = getReadingLevel();
-      const motionIssues   = detectMotion();
-      sendResponse({ success: true, linkResults, readingLevel, motionIssues });
-    } catch(e) {
-      sendResponse({ success: false, error: e.message });
-    }
-    return true;
-  }
-});
-
 // ── Contrast scan ─────────────────────────────────────────────────────────────
 
 function parseRgbStr(str) {
@@ -1053,7 +1096,7 @@ function scanContrast() {
       passesAA,
       passesAAA,
       isLargeText,
-      aaRequired,
+      aaRequired: aaNeedd,
       text: textSnippet,
       tag: el.tagName.toLowerCase(),
       selector,
@@ -1074,66 +1117,4 @@ function scanContrast() {
   return results;
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'SCAN_CONTRAST') {
-    try {
-      sendResponse({ success: true, results: scanContrast() });
-    } catch(e) {
-      sendResponse({ success: false, error: e.message });
-    }
-    return true;
-  }
-});
 
-// ── Scroll to element by selector or text ────────────────────────────────────
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "SCROLL_TO_ELEMENT") {
-    try {
-      let el = null;
-      if (message.selector) {
-        el = document.querySelector(message.selector);
-      }
-      if (!el && message.text) {
-        const all = document.querySelectorAll('a, button, p, h1, h2, h3, h4, h5, h6, span, li, td');
-        for (const node of all) {
-          if (node.textContent?.trim().startsWith(message.text.trim())) {
-            el = node;
-            break;
-          }
-        }
-      }
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Pulsing highlight — more visible than static
-        const orig = {
-          outline: el.style.outline,
-          outlineOffset: el.style.outlineOffset,
-          transition: el.style.transition,
-        };
-        el.style.transition = 'outline 0.15s ease';
-        el.style.outline = '3px solid #4f8ef7';
-        el.style.outlineOffset = '4px';
-        // Pulse twice then fade
-        let count = 0;
-        const pulse = setInterval(() => {
-          count++;
-          el.style.outline = count % 2 === 0 ? '3px solid #4f8ef7' : '3px solid #ef9f27';
-          if (count >= 4) {
-            clearInterval(pulse);
-            setTimeout(() => {
-              el.style.outline = orig.outline;
-              el.style.outlineOffset = orig.outlineOffset;
-              el.style.transition = orig.transition;
-            }, 500);
-          }
-        }, 300);
-        sendResponse({ success: true });
-      } else {
-        sendResponse({ success: false });
-      }
-    } catch(e) {
-      sendResponse({ success: false });
-    }
-    return true;
-  }
-});

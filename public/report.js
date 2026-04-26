@@ -212,11 +212,18 @@ function calcRiskScore(violations) {
 // ── Render ─────────────────────────────────────────────────────────────────────
 function renderReport(data) {
   const { url, scanDate, sections, violations=[], passes=[], tabOrderStops=[], dynamicIssues=[], checklist={} } = data;
-  const { score: riskScore, label: riskLabel, color: gradeColor } = calcRiskScore(violations);
-  const critical  = violations.filter(v=>v.impact==='critical').length;
-  const serious   = violations.filter(v=>v.impact==='serious').length;
-  const moderate  = violations.filter(v=>v.impact==='moderate').length;
-  const minor     = violations.filter(v=>v.impact==='minor').length;
+  const critical = violations.filter(v=>v.impact==='critical').length;
+  const serious  = violations.filter(v=>v.impact==='serious').length;
+  const moderate = violations.filter(v=>v.impact==='moderate').length;
+  const minor    = violations.filter(v=>v.impact==='minor').length;
+
+  // Plain status — no score
+  let riskLabel, gradeColor;
+  if (violations.length === 0) { riskLabel = 'No violations'; gradeColor = '#16a34a'; }
+  else if (critical > 0)       { riskLabel = 'Fix now';       gradeColor = '#dc2626'; }
+  else if (serious > 0)        { riskLabel = 'Needs work';    gradeColor = '#d97706'; }
+  else if (moderate > 0)       { riskLabel = 'Minor issues';  gradeColor = '#2563eb'; }
+  else                         { riskLabel = 'Almost clean';  gradeColor = '#65a30d'; }
   const totalInst = violations.reduce((s,v)=>s+v.nodes.length,0);
 
   let html = '';
@@ -248,8 +255,12 @@ function renderReport(data) {
       </div>
     </div>
     <div class="grade-card" style="color:${gradeColor}; border-color:${gradeColor}; background:${gradeColor}11;">
-      <div class="grade-letter">${riskScore}</div>
-      <div class="grade-label">${riskLabel}</div>
+      <div class="grade-letter" style="font-size:28px;line-height:1.2;">${riskLabel}</div>
+      <div class="grade-chips">
+        ${critical>0?'<span style="color:#dc2626;font-size:11px;font-weight:600;">'+critical+' critical</span>':''}
+        ${serious>0?'<span style="color:#d97706;font-size:11px;font-weight:600;">'+serious+' serious</span>':''}
+        ${violations.length===0?'<span style="color:#16a34a;font-size:11px;">All clear</span>':''}
+      </div>
     </div>
   </div>`;
 

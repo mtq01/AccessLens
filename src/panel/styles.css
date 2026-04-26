@@ -2229,3 +2229,35 @@ html, body {
   color: var(--text2);
 }
 .dynamic-summary strong { color: var(--text); }
+
+/* ── Summary status block (replaces score/grade) ── */
+.summary-status {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  margin-right: 4px;
+  min-width: 110px;
+}
+
+.summary-status-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.summary-impact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.summary-impact-chip {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--mono);
+}

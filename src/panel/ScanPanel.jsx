@@ -655,8 +655,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
+        critical: sorted.filter(v=>v.impact==='critical').length,
+        serious:  sorted.filter(v=>v.impact==='serious').length,
         instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        grade: calcRiskScore(sorted).score,
         violationIds: sorted.map(v => v.id),
       };
       await saveHistory(domain, entry);
@@ -724,8 +725,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
+        critical: sorted.filter(v=>v.impact==='critical').length,
+        serious:  sorted.filter(v=>v.impact==='serious').length,
         instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        grade: calcRiskScore(sorted).score,
         violationIds: sorted.map(v => v.id),
       };
       await saveHistory(domain, entry);
@@ -918,13 +920,40 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       {status==="done" && !focusMode && (
         <>
           <div className="summary">
-            {/* Grade */}
-            {(() => { const {score,label,color} = calcRiskScore(violations); return (
-              <div className="summary-stat summary-stat--grade">
-                <span className="summary-grade" style={{color}}>{score}</span>
-                <span className="summary-label">{label}</span>
-              </div>
-            );})()}
+            {/* Status — plain language, no score */}
+            {(() => {
+              const critical = violations.filter(v=>v.impact==='critical').length;
+              const serious  = violations.filter(v=>v.impact==='serious').length;
+              const moderate = violations.filter(v=>v.impact==='moderate').length;
+              const minor    = violations.filter(v=>v.impact==='minor').length;
+
+              let statusLabel, statusColor, statusBg;
+              if (violations.length === 0) {
+                statusLabel = 'No violations'; statusColor = '#16a34a'; statusBg = 'rgba(22,163,74,0.1)';
+              } else if (critical > 0) {
+                statusLabel = 'Fix now'; statusColor = '#E24B4A'; statusBg = 'rgba(226,75,74,0.1)';
+              } else if (serious > 0) {
+                statusLabel = 'Needs work'; statusColor = '#EF9F27'; statusBg = 'rgba(239,159,39,0.1)';
+              } else if (moderate > 0) {
+                statusLabel = 'Minor issues'; statusColor = '#4f8ef7'; statusBg = 'rgba(79,142,247,0.1)';
+              } else {
+                statusLabel = 'Almost clean'; statusColor = '#65a30d'; statusBg = 'rgba(101,163,13,0.1)';
+              }
+
+              return (
+                <div className="summary-status" style={{background: statusBg, borderColor: statusColor+'33'}}>
+                  <span className="summary-status-label" style={{color: statusColor}}>{statusLabel}</span>
+                  <div className="summary-impact-row">
+                    {critical > 0 && <span className="summary-impact-chip" style={{color:'#E24B4A'}}>{critical} critical</span>}
+                    {serious  > 0 && <span className="summary-impact-chip" style={{color:'#EF9F27'}}>{serious} serious</span>}
+                    {moderate > 0 && <span className="summary-impact-chip" style={{color:'#4f8ef7'}}>{moderate} moderate</span>}
+                    {minor    > 0 && <span className="summary-impact-chip" style={{color:'#888780'}}>{minor} minor</span>}
+                    {violations.length === 0 && <span className="summary-impact-chip" style={{color:'#16a34a'}}>All checks passed</span>}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="summary-stat">
               <span className="summary-num" style={{color: violations.length>0?"#E24B4A":"#1D9E75"}}>{violations.length}</span>
               <span className="summary-label">violations</span>
@@ -958,14 +987,20 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
             <div className="history-panel">
               <div className="history-title">Scan history for {getDomain(pageUrl)}</div>
               {history.map((h, i) => {
-                const histColor = h.grade >= 90?"#22c97a":h.grade>=75?"#65a30d":h.grade>=50?"#EF9F27":h.grade>=25?"#ea580c":"#E24B4A";
-                const histLabel = h.grade >= 90?"Low risk":h.grade>=75?"Manageable":h.grade>=50?"Moderate risk":h.grade>=25?"High risk":"Critical risk";
+                const critical = h.critical || 0;
+                const serious  = h.serious  || 0;
+                const statusColor = critical>0?"#E24B4A":serious>0?"#EF9F27":h.total===0?"#16a34a":"#4f8ef7";
+                const statusLabel = critical>0?"Fix now":serious>0?"Needs work":h.total===0?"No violations":"Minor issues";
                 return (
                   <div key={i} className={`history-row ${i===0?"history-row--current":""}`}>
-                    <span className="history-grade" style={{color: histColor}}>{h.grade}</span>
+                    <span className="history-grade" style={{color: statusColor, fontSize:11, fontWeight:600}}>{statusLabel}</span>
                     <div className="history-info">
                       <span className="history-date">{h.date}{i===0?" (latest)":""}</span>
-                      <span className="history-stats" style={{color: histColor}}>{histLabel} · {h.total} violations</span>
+                      <span className="history-stats">
+                        {critical>0 && <span style={{color:"#E24B4A"}}>{critical} critical </span>}
+                        {serious>0  && <span style={{color:"#EF9F27"}}>{serious} serious </span>}
+                        <span style={{color:"var(--text3)"}}>{h.total} total</span>
+                      </span>
                     </div>
                   </div>
                 );
