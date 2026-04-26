@@ -37,12 +37,15 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
       checklist,
     };
 
-    // Write data to sessionStorage in the extension's origin,
-    // then open report.html which reads it
     const reportUrl = chrome.runtime.getURL("report.html");
 
-    // Use chrome.storage.session to pass data across the extension origin
-    chrome.storage.session.set({ accesslens_report: JSON.stringify(reportData) }, () => {
+    // chrome.storage.local is the most reliable way to pass data
+    // between extension contexts — no race conditions, no size limits
+    chrome.storage.local.set({ accesslens_report: JSON.stringify(reportData) }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Report save failed:", chrome.runtime.lastError.message);
+        return;
+      }
       chrome.tabs.create({ url: reportUrl });
       onClose();
     });
@@ -52,22 +55,21 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
     {
       key: "violations",
       label: "WCAG violations",
-      desc: `${violations.length} rule violations · ${violations.reduce((s,v)=>s+v.nodes.length,0)} instances`,
-      always: violations.length > 0,
+      desc: `${violations.length} rules · ${violations.reduce((s,v)=>s+v.nodes.length,0)} instances`,
     },
     {
       key: "tabOrder",
       label: "Tab order issues",
       desc: tabOrderStops?.length > 0
         ? `${tabOrderStops.filter(s=>s.hasPositiveTabindex||s.isAriaHiddenFocusable||!s.hasFocusRing).length} issues found`
-        : "Run tab order map first to include",
+        : "Run tab order map first",
       disabled: !tabOrderStops || tabOrderStops.length === 0,
     },
     {
       key: "dynamicErrors",
       label: "Dynamic ARIA errors",
       desc: dynamicIssues.length > 0
-        ? `${dynamicIssues.length} dynamic issues detected`
+        ? `${dynamicIssues.length} issues detected`
         : "No dynamic issues detected",
       disabled: dynamicIssues.length === 0,
     },
@@ -93,7 +95,7 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
         <div className="modal-header">
           <div>
             <div className="modal-title">Export report</div>
-            <div className="modal-sub">Choose sections to include</div>
+            <div className="modal-sub">Choose what to include</div>
           </div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
@@ -121,12 +123,12 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
 
         <div className="modal-footer">
           <p className="export-note">
-            The preview opens in a new tab. Use <strong>Download PDF</strong> or <strong>Download CSV</strong> buttons at the top of the preview page.
+            Opens a preview in a new tab. Use <strong>Save PDF</strong> or <strong>Download CSV</strong> from the top of that page.
           </p>
           <div className="modal-actions">
             <button className="btn-cancel-modal" onClick={onClose}>Cancel</button>
             <button className="btn-scan" style={{flex:1}} onClick={openPreview}>
-              Open preview →
+              Open preview
             </button>
           </div>
         </div>

@@ -7,11 +7,11 @@ const CHECKLIST = [
     category: "Keyboard Navigation",
     icon: "keyboard",
     items: [
-      { id: "kb-1", text: "Unplug your mouse. Navigate the entire page using only Tab, Shift+Tab, Enter, Space, and arrow keys.", wcag: "2.1.1" },
-      { id: "kb-2", text: "Every interactive element (links, buttons, inputs, dropdowns, modals) is reachable and operable by keyboard.", wcag: "2.1.1" },
-      { id: "kb-3", text: "No keyboard traps — you can always Tab away from any component.", wcag: "2.1.2" },
-      { id: "kb-4", text: "Focus is never lost (e.g. after closing a modal, focus returns to the trigger button).", wcag: "2.4.3" },
-      { id: "kb-5", text: "Tab order follows the logical reading order of the page — not jumping around unexpectedly.", wcag: "2.4.3" },
+      { id: "kb-1", text: "Unplug your mouse. Try to use the whole page with only Tab, Enter, Space, and arrow keys.", wcag: "2.1.1" },
+      { id: "kb-2", text: "Every link, button, input, and modal works with keyboard only.", wcag: "2.1.1" },
+      { id: "kb-3", text: "You can always Tab away from any part of the page. No dead ends.", wcag: "2.1.2" },
+      { id: "kb-4", text: "After closing a modal, focus goes back to where you were.", wcag: "2.4.3" },
+      { id: "kb-5", text: "Tab order follows the reading order of the page. No unexpected jumps.", wcag: "2.4.3" },
     ]
   },
   {
@@ -19,12 +19,12 @@ const CHECKLIST = [
     category: "Screen Reader",
     icon: "hearing",
     items: [
-      { id: "sr-1", text: "Test with VoiceOver (Mac: Cmd+F5) or NVDA (Windows: free download). Navigate using screen reader shortcuts.", wcag: "4.1.2" },
+      { id: "sr-1", text: "Test with VoiceOver (Mac: Cmd+F5) or NVDA (Windows, free). Try navigating by headings and links.", wcag: "4.1.2" },
       { id: "sr-2", text: "Page title is announced correctly when the page loads.", wcag: "2.4.2" },
-      { id: "sr-3", text: "All images have meaningful alt text that conveys the image's purpose, not just its appearance.", wcag: "1.1.1" },
-      { id: "sr-4", text: "Form fields announce their label, type, and any error messages when focused.", wcag: "1.3.1" },
-      { id: "sr-5", text: "Dynamic content changes (loading states, success messages, errors) are announced without requiring focus.", wcag: "4.1.3" },
-      { id: "sr-6", text: "Modals and dialogs are announced correctly, and focus is trapped inside while open.", wcag: "4.1.2" },
+      { id: "sr-3", text: "All images have alt text that describes what they mean, not just what they look like.", wcag: "1.1.1" },
+      { id: "sr-4", text: "Form fields say their name and type out loud when focused.", wcag: "1.3.1" },
+      { id: "sr-5", text: "New content like errors and success messages is read out loud automatically.", wcag: "4.1.3" },
+      { id: "sr-6", text: "Modals are announced correctly. Focus stays inside while the modal is open.", wcag: "4.1.2" },
     ]
   },
   {
@@ -32,11 +32,11 @@ const CHECKLIST = [
     category: "Visual & Cognitive",
     icon: "visibility",
     items: [
-      { id: "vi-1", text: "Zoom to 200% in the browser (Cmd/Ctrl +). All content is still readable and usable, no overlap.", wcag: "1.4.4" },
-      { id: "vi-2", text: "Zoom to 400%. Content reflows to a single column with no horizontal scrolling required.", wcag: "1.4.10" },
-      { id: "vi-3", text: "All error messages describe the problem in text — not just a red border or colour change.", wcag: "3.3.1" },
-      { id: "vi-4", text: "Instructions do not rely on shape, colour, size, or position alone ('click the green button').", wcag: "1.3.3" },
-      { id: "vi-5", text: "Animation and motion can be paused, stopped, or hidden. Test with Reduce Motion OS setting.", wcag: "2.3.3" },
+      { id: "vi-1", text: "Zoom to 200% (Cmd/Ctrl +). All content is still readable with no overlap.", wcag: "1.4.4" },
+      { id: "vi-2", text: "Zoom to 400%. Content reflows to a single column with no horizontal scrolling needd.", wcag: "1.4.10" },
+      { id: "vi-3", text: "All error messages explain the problem in words. Not just a red border.", wcag: "3.3.1" },
+      { id: "vi-4", text: "Instructions don't rely on colour or position alone. Avoid saying 'click the green button.'", wcag: "1.3.3" },
+      { id: "vi-5", text: "Animation can be paused or stopped. Test with the Reduce Motion setting on your OS.", wcag: "2.3.3" },
     ]
   },
   {
@@ -44,9 +44,9 @@ const CHECKLIST = [
     category: "User Testing",
     icon: "people",
     items: [
-      { id: "ut-1", text: "At least one person who uses assistive technology has tested the primary user flow end-to-end.", wcag: "—" },
-      { id: "ut-2", text: "A user with low vision has tested the page at their preferred zoom/text size.", wcag: "—" },
-      { id: "ut-3", text: "Critical flows (checkout, form submission, sign-up) have been completed successfully by a disabled user.", wcag: "—" },
+      { id: "ut-1", text: "Someone who uses assistive technology has tested the main user flow.", wcag: "—" },
+      { id: "ut-2", text: "Someone with low vision has tested the page at their preferred zoom level.", wcag: "—" },
+      { id: "ut-3", text: "A disabled user has completed the main flows like checkout and sign-up.", wcag: "—" },
     ]
   },
   {
@@ -54,9 +54,9 @@ const CHECKLIST = [
     category: "Documentation",
     icon: "description",
     items: [
-      { id: "doc-1", text: "An Accessibility Statement is published and linked in the footer, stating the standard targeted and a contact method.", wcag: "—" },
-      { id: "doc-2", text: "An ACR (Accessibility Conformance Report / VPAT) has been generated for enterprise or government procurement.", wcag: "—" },
-      { id: "doc-3", text: "Known accessibility issues are documented with planned fix dates, not silently ignored.", wcag: "—" },
+      { id: "doc-1", text: "An Accessibility Statement is in the footer with a contact email for users who need help.", wcag: "—" },
+      { id: "doc-2", text: "An ACR or VPAT has been made for enterprise or government clients.", wcag: "—" },
+      { id: "doc-3", text: "Known issues are written down with fix dates. Nothing is silently ignored.", wcag: "—" },
     ]
   },
 ];
@@ -121,7 +121,7 @@ export default function ChecklistPanel() {
           />
         </div>
         <p className="checklist-note">
-          These checks require human judgment — they cannot be automated. Check off each item as you complete it. Progress is saved locally.
+          These checks need human judgment — they cannot be automated. Check off each item as you complete it. Progress is saved locally.
         </p>
       </div>
 

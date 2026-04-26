@@ -163,7 +163,7 @@ color: #767676; /* ensure 3:1 against background */`,
   <span class="sr-only">Delete item</span>
 </button>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
     ]
   },
 
@@ -280,7 +280,7 @@ color: #767676; /* ensure 3:1 against background */`,
 <input type="checkbox" id="optA" checked>
 <label for="optA">Option A</label>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
       { label: "ARIA in HTML — allowed attributes", url: "https://www.w3.org/TR/html-aria/" },
     ]
   },
@@ -302,7 +302,7 @@ color: #767676; /* ensure 3:1 against background */`,
   <button>Visible button</button>
 </div>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
     ]
   },
 
@@ -321,7 +321,7 @@ color: #767676; /* ensure 3:1 against background */`,
   tabindex="0"
 >Volume: 50%</div>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
       { label: "ARIA Required Attributes", url: "https://www.w3.org/TR/wai-aria-1.2/#requiredState" },
     ]
   },
@@ -354,7 +354,7 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- In React: use boolean, JSX handles the string conversion -->
 <button aria-expanded={isOpen}>Menu</button>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
     ]
   },
 
@@ -399,8 +399,8 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- tabindex="-1": focusable by JS only, not by Tab key -->
 <div tabindex="-1" id="modal-heading">Modal title</div>`,
     links: [
-      { label: "WCAG 2.4.3 — Focus Order", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
-      { label: "MDN — tabindex", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
+      { label: "WCAG 2.4.3", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
+      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
     ]
   },
 

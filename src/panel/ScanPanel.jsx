@@ -3,18 +3,19 @@ import { useState, useEffect } from "react";
 import { getViolationContext } from "./violationContext";
 import ExportModal from "./ExportModal";
 
-// ── Grade calculation ─────────────────────────────────────────────────────────
+// ── Risk score (0–100, higher = safer) ───────────────────────────────────────
 
-function calcGrade(violations) {
-  const score = (violations || []).reduce((s, v) => {
-    const w = { critical: 10, serious: 5, moderate: 2, minor: 1 }[v.impact] || 1;
+function calcRiskScore(violations) {
+  const deductions = (violations || []).reduce((s, v) => {
+    const w = { critical: 10, serious: 5, moderate: 2, minor: 0.5 }[v.impact] || 1;
     return s + w * (v.nodes?.length || 1);
   }, 0);
-  if (score === 0)  return { grade: "A", color: "#22c97a", score };
-  if (score < 10)  return { grade: "B", color: "#65a30d", score };
-  if (score < 30)  return { grade: "C", color: "#EF9F27", score };
-  if (score < 60)  return { grade: "D", color: "#ea580c", score };
-  return              { grade: "F", color: "#E24B4A", score };
+  const score = Math.max(0, Math.round(100 - deductions));
+  if (score >= 90) return { score, label: "Low risk",      color: "#22c97a" };
+  if (score >= 75) return { score, label: "Manageable",    color: "#65a30d" };
+  if (score >= 50) return { score, label: "Moderate risk", color: "#EF9F27" };
+  if (score >= 25) return { score, label: "High risk",     color: "#ea580c" };
+  return                 { score, label: "Critical risk",  color: "#E24B4A" };
 }
 
 // ── Scan history ──────────────────────────────────────────────────────────────
@@ -61,8 +62,8 @@ const RULE_TO_PRINCIPLE = {
   "autocomplete-valid":"Understandable","html-has-lang":"Understandable","html-lang-valid":"Understandable",
   "valid-lang":"Understandable","error-message":"Understandable","identical-links-same-purpose":"Understandable",
   "duplicate-id":"Robust","duplicate-id-active":"Robust","duplicate-id-aria":"Robust",
-  "aria-allowed-attr":"Robust","aria-required-attr":"Robust","aria-required-children":"Robust",
-  "aria-required-parent":"Robust","aria-roles":"Robust","aria-valid-attr":"Robust",
+  "aria-allowed-attr":"Robust","aria-needd-attr":"Robust","aria-needd-children":"Robust",
+  "aria-needd-parent":"Robust","aria-roles":"Robust","aria-valid-attr":"Robust",
   "aria-valid-attr-value":"Robust","aria-hidden-body":"Robust","aria-hidden-focus":"Robust",
   "aria-input-field-name":"Robust","aria-toggle-field-name":"Robust","aria-command-name":"Robust",
   "document-title":"Robust","heading-order":"Robust","region":"Robust","landmark-one-main":"Robust",
@@ -134,8 +135,8 @@ function FilterBar({ wcagFilter, setWcagFilter, impactFilter, setImpactFilter })
 const TAB_ISSUE_GUIDANCE = {
   noFocusRing: {
     title: "No visible focus ring",
-    why: "Keyboard users rely on the focus ring to know which element is currently active. Without it, they're navigating blind — they can Tab through a page but have no idea where they are. This affects anyone who can't use a mouse.",
-    fix: `/* Never do this — it removes the focus indicator entirely */
+    why: "Keyboard users rely on the focus ring to know which element is currently active. Without it, keyboard users have no way to tell which element is active. This affects anyone who can't use a mouse.",
+    fix: `/* Never do this - this removes the focus indicator */
 :focus { outline: none; }
 
 /* Option 1: Use a custom styled focus ring */
@@ -154,36 +155,36 @@ const TAB_ISSUE_GUIDANCE = {
 /* Note: Use :focus-visible not :focus so the ring only
    shows for keyboard users, not mouse clicks */`,
     links: [
-      { label: "WCAG 2.4.11 — Focus Appearance", url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance" },
-      { label: "MDN — :focus-visible", url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible" },
+      { label: "WCAG 2.4.11", url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance" },
+      { label: "MDN: :focus-visible", url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible" },
     ]
   },
   positiveTabindex: {
     title: "Positive tabindex breaks tab order",
-    why: "Positive tabindex values (tabindex=\"1\", tabindex=\"2\", etc.) create a custom tab sequence that overrides the natural DOM order. This almost always creates a confusing, unpredictable experience — elements jump around instead of flowing logically through the page.",
+    why: "Positive tabindex values (tabindex=\"1\", tabindex=\"2\", etc.) create a custom tab sequence that overrides the natural DOM order. This almost always creates a confusing, unpredictable experience — elements jump around instead of flowing in order.",
     fix: `<!-- Never use positive tabindex values -->
 <button tabindex="2">This causes problems</button>
 <button tabindex="1">Tab order is now unpredictable</button>
 
-<!-- Fix: Remove tabindex entirely — let DOM order control tab sequence -->
+<!-- Fix: Remove tabindex entirely -->
 <button>First in DOM = first in tab order</button>
 <button>Second in DOM = second in tab order</button>
 
 <!-- Only two valid tabindex values:
-  tabindex="0"  — adds a non-interactive element to tab order
-  tabindex="-1" — removes from tab order, focusable by JS only -->
+  tabindex="0" 
+  tabindex="-1" -->
 <div role="button" tabindex="0">Custom interactive element</div>`,
     links: [
-      { label: "WCAG 2.4.3 — Focus Order", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
-      { label: "MDN — tabindex", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
+      { label: "WCAG 2.4.3", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
+      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
     ]
   },
   ariaHiddenFocusable: {
     title: "aria-hidden element receives keyboard focus",
-    why: "aria-hidden=\"true\" hides an element from screen readers, but keyboard focus can still land on it. This creates invisible \"ghost\" focus stops — a keyboard user presses Tab, focus moves somewhere, but the screen reader announces nothing. Deeply disorienting.",
+    why: "aria-hidden=\"true\" hides an element from screen readers, but keyboard focus can still land on it. This creates invisible \"ghost\" focus stops — a keyboard user presses Tab but the screen reader says nothing. Very confusing.",
     fix: `<!-- Problem: hidden from AT but still keyboard focusable -->
 <div aria-hidden="true">
-  <button>Ghost button — keyboard reaches it, screen reader ignores it</button>
+  <button>Ghost button. Keyboard can reach it but screen reader ignores it</button>
 </div>
 
 <!-- Fix 1: Add inert attribute to block all interaction -->
@@ -201,8 +202,8 @@ const TAB_ISSUE_GUIDANCE = {
   <button>Fully visible and accessible</button>
 </div>`,
     links: [
-      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-      { label: "MDN — inert attribute", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert" },
+      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert" },
     ]
   }
 };
@@ -260,7 +261,7 @@ function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
 
   function getStopFlag(stop) {
     if (stop.isAriaHiddenFocusable) return "⚠ aria-hidden but focusable";
-    if (stop.hasPositiveTabindex)   return `⚠ tabindex="${stop.tabindex}" — breaks tab order`;
+    if (stop.hasPositiveTabindex)   return `⚠ tabindex="${stop.tabindex}": breaks tab order`;
     if (!stop.hasFocusRing)         return "⚠ no visible focus ring";
     return null;
   }
@@ -291,7 +292,7 @@ function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
 
       {issues.length > 0 ? (
         <div className="tab-order-issues-bar">
-          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""} — click any flagged row for guidance
+          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""}. Click any flagged row for help
         </div>
       ) : (
         <div className="tab-order-ok-bar">✓ No tab order issues detected</div>
@@ -478,31 +479,31 @@ function ReadingLevelCard({ data }) {
   const gradeLabel = (grade) => {
     if (grade <= 5)  return "Elementary school level";
     if (grade <= 8)  return "Middle school level";
-    if (grade <= 12) return `Grade ${grade} — High school level`;
+    if (grade <= 12) return `Grade ${grade} (High school level)`;
     return "University / post-secondary level";
   };
 
   const howToFix = `Your page scores at a Grade ${data.grade} reading level (${gradeLabel(data.grade)}). WCAG 3.1.5 recommends Grade 8 or below for the main content of your page.
 
 What this means:
-This score is calculated using the Flesch-Kincaid formula, applied to ALL readable text on the page — paragraphs, headings, labels, and error messages. A Grade ${data.grade} score means the average reader needs a ${gradeLabel(data.grade).toLowerCase()} education to comfortably understand your content.
+This score is calculated using the Flesch-Kincaid formula, applied to ALL readable text on the page. This includes paragraphs, headings, labels, and error messages. A Grade ${data.grade} score means the average reader needs a ${gradeLabel(data.grade).toLowerCase()} education to comfortably understand your content.
 
 Target: Grade 8 or below (readable by most adults)
 
 How to fix it:
 • Break long sentences into two shorter ones. If a sentence has more than 20 words, split it.
 • Replace complex words with simpler ones:
-    "Utilise" → "Use"
-    "Subsequently" → "Then"
-    "Endeavour" → "Try"
-    "Facilitate" → "Help"
+    "Use" → "Use"
+    "Then" → "Then"
+    "Try" → "Try"
+    "Help" → "Help"
 • Write in active voice:
-    Before: "The form must be completed by the user prior to submission."
+    Before: "The form must be completed by the user before submission."
     After:  "Fill out the form before you submit it."
-• Add a plain-language summary at the top of complex pages — a 2–3 sentence TL;DR that anyone can understand without specialist knowledge.
+• Add a plain-language summary at the top of complex pages. Write 2 to 3 sentences that anyone can understand.
 
 Example rewrite:
-  Before (Grade 14): "Users must authenticate their credentials via the secure login portal prior to accessing personalised account functionality."
+  Before (Grade 14): "Users must authenticate their credentials via the secure login portal before accessing personalised account features."
   After  (Grade 5):  "Sign in to your account to see your settings."
 
 Note: Legal terms, medical names, and technical jargon will inflate the score. If your content must use specialist language, add a plain-English explanation or glossary alongside it.`;
@@ -531,7 +532,7 @@ Note: Legal terms, medical names, and technical jargon will inflate the score. I
       {tab==="what" && (
         <div className="reading-body">
           <p>{data.explanation}</p>
-          <p style={{marginTop:8}}>This score is based on the Flesch-Kincaid formula, applied to all readable text on this page — paragraphs, headings, labels, and error messages. A Grade {data.grade} score means your content is written at a <strong>{gradeLabel(data.grade).toLowerCase()}</strong> reading level.</p>
+          <p style={{marginTop:8}}>This score is based on the Flesch-Kincaid formula, applied to all readable text on this page. This includes paragraphs, headings, labels, and error messages. A Grade {data.grade} score means your content is written at a <strong>{gradeLabel(data.grade).toLowerCase()}</strong> reading level.</p>
           {!data.passesWcag && (
             <div className="content-flag" style={{marginTop:10}}>
               ⚠ WCAG 3.1.5 recommends Grade 8 or below. Consider simplifying your content or adding a plain-language summary.
@@ -586,7 +587,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
     }
   }, [tabId]);
 
-  // Listen for tab switches — reset scan state when user switches tabs
+  // Listen for tab switches
   useEffect(() => {
     const listener = (msg) => {
       if (msg.type === "TAB_CHANGED") {
@@ -654,8 +655,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
+        critical: sorted.filter(v=>v.impact==='critical').length,
+        serious:  sorted.filter(v=>v.impact==='serious').length,
         instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        grade: calcGrade(sorted).grade,
         violationIds: sorted.map(v => v.id),
       };
       await saveHistory(domain, entry);
@@ -723,8 +725,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
+        critical: sorted.filter(v=>v.impact==='critical').length,
+        serious:  sorted.filter(v=>v.impact==='serious').length,
         instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        grade: calcGrade(sorted).grade,
         violationIds: sorted.map(v => v.id),
       };
       await saveHistory(domain, entry);
@@ -833,7 +836,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
         <div className="dev-status-bar">
           <span className="dev-status-icon"><Icon name="bolt" size={14} /></span>
           <span className="dev-status-text">
-            Dev mode active — auto-scanning every {devInterval}s
+            Dev mode on. Auto-scanning every {devInterval}s
           </span>
           {devDelta && (
             devDelta.clean ? (
@@ -917,13 +920,40 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       {status==="done" && !focusMode && (
         <>
           <div className="summary">
-            {/* Grade */}
-            {(() => { const {grade,color} = calcGrade(violations); return (
-              <div className="summary-stat summary-stat--grade">
-                <span className="summary-grade" style={{color}}>{grade}</span>
-                <span className="summary-label">grade</span>
-              </div>
-            );})()}
+            {/* Status — plain language, no score */}
+            {(() => {
+              const critical = violations.filter(v=>v.impact==='critical').length;
+              const serious  = violations.filter(v=>v.impact==='serious').length;
+              const moderate = violations.filter(v=>v.impact==='moderate').length;
+              const minor    = violations.filter(v=>v.impact==='minor').length;
+
+              let statusLabel, statusColor, statusBg;
+              if (violations.length === 0) {
+                statusLabel = 'No violations'; statusColor = '#16a34a'; statusBg = 'rgba(22,163,74,0.1)';
+              } else if (critical > 0) {
+                statusLabel = 'Fix now'; statusColor = '#E24B4A'; statusBg = 'rgba(226,75,74,0.1)';
+              } else if (serious > 0) {
+                statusLabel = 'Needs work'; statusColor = '#EF9F27'; statusBg = 'rgba(239,159,39,0.1)';
+              } else if (moderate > 0) {
+                statusLabel = 'Minor issues'; statusColor = '#4f8ef7'; statusBg = 'rgba(79,142,247,0.1)';
+              } else {
+                statusLabel = 'Almost clean'; statusColor = '#65a30d'; statusBg = 'rgba(101,163,13,0.1)';
+              }
+
+              return (
+                <div className="summary-status" style={{background: statusBg, borderColor: statusColor+'33'}}>
+                  <span className="summary-status-label" style={{color: statusColor}}>{statusLabel}</span>
+                  <div className="summary-impact-row">
+                    {critical > 0 && <span className="summary-impact-chip" style={{color:'#E24B4A'}}>{critical} critical</span>}
+                    {serious  > 0 && <span className="summary-impact-chip" style={{color:'#EF9F27'}}>{serious} serious</span>}
+                    {moderate > 0 && <span className="summary-impact-chip" style={{color:'#4f8ef7'}}>{moderate} moderate</span>}
+                    {minor    > 0 && <span className="summary-impact-chip" style={{color:'#888780'}}>{minor} minor</span>}
+                    {violations.length === 0 && <span className="summary-impact-chip" style={{color:'#16a34a'}}>All checks passed</span>}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="summary-stat">
               <span className="summary-num" style={{color: violations.length>0?"#E24B4A":"#1D9E75"}}>{violations.length}</span>
               <span className="summary-label">violations</span>
@@ -955,15 +985,22 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
           {/* History panel */}
           {showHistory && history.length > 0 && (
             <div className="history-panel">
-              <div className="history-title">Scan history — {getDomain(pageUrl)}</div>
+              <div className="history-title">Scan history for {getDomain(pageUrl)}</div>
               {history.map((h, i) => {
-                const gradeColor = {A:"#22c97a",B:"#65a30d",C:"#EF9F27",D:"#ea580c",F:"#E24B4A"}[h.grade] || "#E24B4A";
+                const critical = h.critical || 0;
+                const serious  = h.serious  || 0;
+                const statusColor = critical>0?"#E24B4A":serious>0?"#EF9F27":h.total===0?"#16a34a":"#4f8ef7";
+                const statusLabel = critical>0?"Fix now":serious>0?"Needs work":h.total===0?"No violations":"Minor issues";
                 return (
                   <div key={i} className={`history-row ${i===0?"history-row--current":""}`}>
-                    <span className="history-grade" style={{color: gradeColor}}>{h.grade}</span>
+                    <span className="history-grade" style={{color: statusColor, fontSize:11, fontWeight:600}}>{statusLabel}</span>
                     <div className="history-info">
                       <span className="history-date">{h.date}{i===0?" (latest)":""}</span>
-                      <span className="history-stats">{h.total} violations · {h.instances} instances</span>
+                      <span className="history-stats">
+                        {critical>0 && <span style={{color:"#E24B4A"}}>{critical} critical </span>}
+                        {serious>0  && <span style={{color:"#EF9F27"}}>{serious} serious </span>}
+                        <span style={{color:"var(--text3)"}}>{h.total} total</span>
+                      </span>
                     </div>
                   </div>
                 );
@@ -1121,11 +1158,11 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
               <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
               <div className="tab-explainer-title">400% zoom / reflow test</div>
               <div className="tab-explainer-body">
-                WCAG 1.4.10 requires that content can be viewed at 400% zoom without horizontal scrolling. This test temporarily resizes the page to 320px wide — equivalent to a 1280px screen at 400% — and flags any <em>new</em> violations that only appear at that width.
+                WCAG 1.4.10 needs that content can be viewed at 400% zoom without horizontal scrolling. This test temporarily resizes the page to 320px wide — like a 1280px screen at 400%. It flags any <em>new</em> violations that only appear at that width.
               </div>
               <div className="tab-explainer-steps">
                 <div className="tab-step"><span className="tab-step-num">1</span>Run a normal scan first (already done)</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Click the button below — the page will resize briefly</div>
+                <div className="tab-step"><span className="tab-step-num">2</span>Click the button below. The page will resize for a moment</div>
                 <div className="tab-step"><span className="tab-step-num">3</span>Results show only issues introduced by the narrow viewport</div>
               </div>
               <button className="btn-scan" style={{marginTop:14,maxWidth:200}} onClick={runZoomTest}>Run zoom test</button>
@@ -1186,45 +1223,124 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
             <div className="tab-explainer">
               <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
               <div className="tab-explainer-title">Dynamic ARIA error detection</div>
+            <div className="tab-explainer">
+              <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
+              <div className="tab-explainer-title">Form error detection</div>
               <div className="tab-explainer-body">
-                axe-core only scans the DOM at one point in time. Forms that inject error messages <em>after</em> a failed submission — the most common pattern in React and Vue apps — are invisible to a static scan. This tab watches for those dynamically added elements and flags any that are missing proper ARIA associations.
+                This tab catches a specific problem: when a form shows an error message after you submit it, screen readers often never hear it. That's because the error was added to the page by JavaScript <em>after</em> the screen reader already read the page.
               </div>
               <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Keep AccessLens open — the watcher is already running</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Submit a form on this page with empty or invalid fields</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>If error messages appear without <code>role="alert"</code> or <code>aria-live</code>, they'll be flagged here automatically</div>
+                <div className="tab-step"><span className="tab-step-num">1</span>Keep this panel open</div>
+                <div className="tab-step"><span className="tab-step-num">2</span>Find a form on the page and submit it with empty or invalid fields</div>
+                <div className="tab-step"><span className="tab-step-num">3</span>If error messages appear without <code>role="alert"</code>, they show up here</div>
               </div>
               <div className="tab-explainer-note">
-                <strong>Nothing found yet</strong> — either no dynamic errors exist on this page, or no forms have been submitted. Try triggering a form validation error and check back.
+                <strong>Nothing here yet.</strong> This tab only shows issues when JavaScript adds new content to the page. It does not scan existing page content.
               </div>
+            </div>
             </div>
           ) : (
             <div className="violations">
-              {dynamicIssues.map((issue,i)=>(
-                <div key={i} className="violation">
-                  <div className="violation-header">
-                    <span className="impact-bar" style={{background:IMPACT_COLOURS.serious}}/>
-                    <div className="violation-info">
-                      <div className="violation-title-row">
-                        <span className="violation-title">{issue.description}</span>
-                        <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27"}}>Dynamic</span>
-                      </div>
-                      <div className="violation-meta">
-                        <span className="impact-badge" style={{color:IMPACT_COLOURS.serious}}>serious</span>
-                        <span className="wcag-badge">ARIA live region</span>
-                      </div>
-                    </div>
+              {/* Summary */}
+              {(() => {
+                const total = dynamicIssues.reduce((s,i) => s + (i.count||1), 0);
+                return (
+                  <div className="dynamic-summary">
+                    <Icon name="info_outline" size={14} />
+                    <span>
+                      <strong>{dynamicIssues.length}</strong> unique pattern{dynamicIssues.length!==1?"s":""} found
+                      {total > dynamicIssues.length ? ` across ${total} elements` : ''}.
+                      Fix each pattern once to fix all copies.
+                    </span>
                   </div>
-                  <div className="violation-detail">
-                    {issue.issues.map((msg,j)=>(
-                      <p key={j} className="violation-help" style={{marginBottom:4}}>• {msg}</p>
-                    ))}
-                    <div className="node-snippet" style={{marginTop:8}}>
-                      <code>{issue.html}</code>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })()}
+
+              {/* Group by category — cap at 10 shown */}
+              {(() => {
+                const groups = {};
+                dynamicIssues.forEach(issue => {
+                  const cat = issue.category || issue.description || 'Content';
+                  if (!groups[cat]) groups[cat] = [];
+                  groups[cat].push(issue);
+                });
+
+                const entries = Object.entries(groups).slice(0, 10);
+                const hiddenCount = Object.keys(groups).length - entries.length;
+
+                return (
+                  <>
+                    {entries.map(([category, catIssues]) => {
+                      const totalCount = catIssues.reduce((s, i) => s + (i.count || 1), 0);
+                      const samples = catIssues.slice(0, 2).map(i => i.sampleText).filter(t => t && t.length > 2);
+                      const firstIssue = catIssues[0];
+
+                      return (
+                        <div key={category} className="violation">
+                          <div className="violation-header">
+                            <span className="impact-bar" style={{background:IMPACT_COLOURS.serious}}/>
+                            <div className="violation-info">
+                              <div className="violation-title-row">
+                                <span className="violation-title">{category}</span>
+                                <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27",fontFamily:"var(--mono)",fontSize:11,padding:"2px 7px",borderRadius:4}}>
+                                  {totalCount}x
+                                </span>
+                              </div>
+                              <div className="violation-meta">
+                                <span className="impact-badge" style={{color:IMPACT_COLOURS.serious}}>serious</span>
+                                <span className="wcag-badge">Missing ARIA</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="violation-detail">
+                            <div className="tab-stop-detail-body">
+                              {firstIssue.issues.slice(0,1).map((msg, j) => {
+                                const isLiveRegion = msg.includes("aria-live") || msg.includes("role=alert");
+                                const why = isLiveRegion
+                                  ? "Screen readers only read new content inside a live region. Without role=\"alert\" or aria-live, blind users never hear this."
+                                  : "Link error messages to inputs using aria-describedby so screen readers read the error when the user focuses the field.";
+                                const fix = isLiveRegion
+                                  ? `<!-- Errors and alerts -->\n<div role="alert">Something went wrong</div>\n\n<!-- Status updates -->\n<div aria-live="polite">Changes saved</div>`
+                                  : `<!-- Give the message an ID -->\n<div id="field-error">Enter a valid email</div>\n\n<!-- Link it to the input -->\n<input type="email" aria-describedby="field-error">`;
+                                return (
+                                  <div key={j} style={{marginBottom:10}}>
+                                    <p className="detail-why" style={{marginBottom:4}}><strong>What is wrong:</strong> {msg}</p>
+                                    <p className="detail-why" style={{marginBottom:6}}>{why}</p>
+                                    <pre className="detail-code"><code>{fix}</code></pre>
+                                  </div>
+                                );
+                              })}
+                              {samples.length > 0 && (
+                                <div style={{marginTop:8}}>
+                                  <div className="detail-label" style={{marginBottom:6}}>
+                                    <Icon name="search" size={12} /> Found on this page
+                                  </div>
+                                  {samples.map((s, i) => (
+                                    <div key={i} className="node-snippet" style={{marginBottom:4}}>
+                                      <span className="node-num">#{i+1}</span>
+                                      <code style={{fontSize:11,color:"var(--text2)"}}>{s}</code>
+                                    </div>
+                                  ))}
+                                  {totalCount > 2 && (
+                                    <p className="nodes-more">+{totalCount - 2} more of this type</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {hiddenCount > 0 && (
+                      <div className="dynamic-summary" style={{justifyContent:"center",marginTop:6}}>
+                        <span style={{color:"var(--text3)",fontSize:12}}>
+                          +{hiddenCount} more pattern types. Fix the ones above first.
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -1275,7 +1391,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
               {/* Link text */}
               <div className="content-section">
                 <div className="content-section-title">
-                  🔗 Link text
+                  <Icon name="link" size={16} style={{marginRight:6}} /> Link text
                   <span className="content-section-meta">{contentAnalysis.linkResults?.total} links total</span>
                 </div>
                 {contentAnalysis.linkResults?.issues?.length === 0 ? (

@@ -196,26 +196,34 @@ function getWcagVersion(tags) {
   return null;
 }
 
-function calcGrade(violations) {
-  const score = (violations||[]).reduce((s,v) => {
-    const w = {critical:10,serious:5,moderate:2,minor:1}[v.impact]||1;
+function calcRiskScore(violations) {
+  const deductions = (violations||[]).reduce((s,v) => {
+    const w = {critical:10,serious:5,moderate:2,minor:0.5}[v.impact]||1;
     return s + w*(v.nodes?.length||1);
   },0);
-  if (score===0)  return {grade:'A',color:'#16a34a'};
-  if (score<10)  return {grade:'B',color:'#65a30d'};
-  if (score<30)  return {grade:'C',color:'#d97706'};
-  if (score<60)  return {grade:'D',color:'#ea580c'};
-  return             {grade:'F',color:'#dc2626'};
+  const score = Math.max(0, Math.round(100 - deductions));
+  if (score>=90) return {score, label:'Low risk',      color:'#16a34a'};
+  if (score>=75) return {score, label:'Manageable',    color:'#65a30d'};
+  if (score>=50) return {score, label:'Moderate risk', color:'#d97706'};
+  if (score>=25) return {score, label:'High risk',     color:'#ea580c'};
+  return              {score, label:'Critical risk',  color:'#dc2626'};
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────────
 function renderReport(data) {
   const { url, scanDate, sections, violations=[], passes=[], tabOrderStops=[], dynamicIssues=[], checklist={} } = data;
-  const { grade, color: gradeColor } = calcGrade(violations);
-  const critical  = violations.filter(v=>v.impact==='critical').length;
-  const serious   = violations.filter(v=>v.impact==='serious').length;
-  const moderate  = violations.filter(v=>v.impact==='moderate').length;
-  const minor     = violations.filter(v=>v.impact==='minor').length;
+  const critical = violations.filter(v=>v.impact==='critical').length;
+  const serious  = violations.filter(v=>v.impact==='serious').length;
+  const moderate = violations.filter(v=>v.impact==='moderate').length;
+  const minor    = violations.filter(v=>v.impact==='minor').length;
+
+  // Plain status — no score
+  let riskLabel, gradeColor;
+  if (violations.length === 0) { riskLabel = 'No violations'; gradeColor = '#16a34a'; }
+  else if (critical > 0)       { riskLabel = 'Fix now';       gradeColor = '#dc2626'; }
+  else if (serious > 0)        { riskLabel = 'Needs work';    gradeColor = '#d97706'; }
+  else if (moderate > 0)       { riskLabel = 'Minor issues';  gradeColor = '#2563eb'; }
+  else                         { riskLabel = 'Almost clean';  gradeColor = '#65a30d'; }
   const totalInst = violations.reduce((s,v)=>s+v.nodes.length,0);
 
   let html = '';
@@ -247,8 +255,12 @@ function renderReport(data) {
       </div>
     </div>
     <div class="grade-card" style="color:${gradeColor}; border-color:${gradeColor}; background:${gradeColor}11;">
-      <div class="grade-letter">${grade}</div>
-      <div class="grade-label">Overall</div>
+      <div class="grade-letter" style="font-size:28px;line-height:1.2;">${riskLabel}</div>
+      <div class="grade-chips">
+        ${critical>0?'<span style="color:#dc2626;font-size:11px;font-weight:600;">'+critical+' critical</span>':''}
+        ${serious>0?'<span style="color:#d97706;font-size:11px;font-weight:600;">'+serious+' serious</span>':''}
+        ${violations.length===0?'<span style="color:#16a34a;font-size:11px;">All clear</span>':''}
+      </div>
     </div>
   </div>`;
 
@@ -566,7 +578,7 @@ function renderReport(data) {
 
 // ── CSV export ─────────────────────────────────────────────────────────────────
 window.downloadCSV = function() {
-  chrome.storage.session.get('accesslens_report', (result) => {
+  chrome.storage.local.get('accesslens_report', (result) => {
     const raw = result.accesslens_report;
     if (!raw) return;
     const data = JSON.parse(raw);
@@ -593,17 +605,29 @@ window.downloadCSV = function() {
 
 // ── Boot ───────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  chrome.storage.session.get('accesslens_report', (result) => {
-    const raw = result.accesslens_report;
-    if (!raw) {
-      document.getElementById('report-root').innerHTML =
-        '<p style="color:#888;padding:60px;text-align:center;font-size:15px;">No report data found. Generate a report from the AccessLens extension.</p>';
-      return;
-    }
-    try { renderReport(JSON.parse(raw)); }
-    catch(e) {
-      document.getElementById('report-root').innerHTML =
-        '<p style="color:#dc2626;padding:60px;font-size:15px;">Error rendering report: ' + e.message + '</p>';
-    }
-  });
+  function tryLoad(attemptsLeft) {
+    chrome.storage.local.get('accesslens_report', (result) => {
+      if (chrome.runtime.lastError) {
+        document.getElementById('report-root').innerHTML =
+          '<p style="color:#888;padding:60px;text-align:center;">Could not load report data.</p>';
+        return;
+      }
+      const raw = result && result.accesslens_report;
+      if (!raw) {
+        if (attemptsLeft > 0) {
+          setTimeout(() => tryLoad(attemptsLeft - 1), 250);
+        } else {
+          document.getElementById('report-root').innerHTML =
+            '<p style="color:#888;padding:60px;text-align:center;font-size:15px;">No report found. Generate one from the AccessLens extension first.</p>';
+        }
+        return;
+      }
+      try { renderReport(JSON.parse(raw)); }
+      catch(e) {
+        document.getElementById('report-root').innerHTML =
+          '<p style="color:#dc2626;padding:60px;font-size:15px;">Could not load report: ' + e.message + '</p>';
+      }
+    });
+  }
+  tryLoad(8);
 });

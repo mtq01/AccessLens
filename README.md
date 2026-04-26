@@ -152,4 +152,3 @@ Use the Manual Checklist tab to track your human testing progress.
 - **axe-core 4.9** — WCAG rule engine
 - **Webpack 5** — bundler
 - **Chrome Manifest V3** — extension platform
-# AccessLens
