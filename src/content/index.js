@@ -108,113 +108,120 @@ const FOCUSABLE = [
 ].join(', ');
 
 // ── Focus ring detection via CSS rule inspection ─────────────────────────────
-// Rather than focusing each element (which doesn't reliably trigger style
-// recalculation in content scripts), we read the page's actual CSS rules
-// and check whether any :focus or :focus-visible rule applies to the element.
+// We read the page's stylesheet rules directly rather than trying to
+// trigger :focus and read computed styles (which doesn't work in content scripts).
 
 let _focusRuleCache = null;
 
 function buildFocusRuleCache() {
   if (_focusRuleCache) return _focusRuleCache;
 
-  const rules = [];
+  const positiveRules = []; // rules that ADD a visible focus indicator
+  const removalRules  = []; // rules that REMOVE the focus indicator with no replacement
+
   try {
     for (const sheet of document.styleSheets) {
       let cssRules;
       try { cssRules = sheet.cssRules; } catch { continue; }
       if (!cssRules) continue;
+
       for (const rule of cssRules) {
         if (!(rule instanceof CSSStyleRule)) continue;
         const sel = rule.selectorText || '';
-        if (sel.includes(':focus') || sel.includes(':focus-visible') || sel.includes(':focus-within')) {
-          // Check if the rule actually sets a visible focus indicator
-          const s = rule.style;
-          const hasOutline = s.outline && s.outline !== 'none' && s.outline !== '0';
-          const hasOutlineWidth = s.outlineWidth && s.outlineWidth !== '0' && s.outlineWidth !== '0px';
-          const hasBoxShadow = s.boxShadow && s.boxShadow !== 'none';
-          const hasBorder = s.border && s.border !== 'none';
-          const hasBorderColor = s.borderColor;
-          const hasBackground = s.backgroundColor;
-          const outlineExplicitlyNone = s.outline === 'none' || s.outlineWidth === '0' || s.outlineWidth === '0px';
 
-          if (!outlineExplicitlyNone && (hasOutline || hasOutlineWidth || hasBoxShadow || hasBorder || hasBorderColor || hasBackground)) {
-            // Strip the :focus/:focus-visible part to get the base selector
-            const baseSelector = sel
-              .replace(/:focus-visible/g, '')
-              .replace(/:focus-within/g, '')
-              .replace(/:focus/g, '')
-              .trim();
-            rules.push({ baseSelector, rule, hasOutline, hasBoxShadow, outlineExplicitlyNone });
-          } else if (outlineExplicitlyNone && !hasBoxShadow) {
-            // Explicitly removes focus ring with no replacement
-            const baseSelector = sel
-              .replace(/:focus-visible/g, '')
-              .replace(/:focus-within/g, '')
-              .replace(/:focus/g, '')
-              .trim();
-            rules.push({ baseSelector, rule, removes: true });
-          }
+        // Only care about rules that include a focus pseudo-class
+        const hasFocusPseudo = sel.includes(':focus-visible') ||
+                               sel.includes(':focus-within') ||
+                               sel.includes(':focus');
+        if (!hasFocusPseudo) continue;
+
+        const s = rule.style;
+        const outlineNone = s.outline === 'none' ||
+                            s.outlineWidth === '0' ||
+                            s.outlineWidth === '0px';
+        const hasVisibleOutline  = s.outlineWidth && parseFloat(s.outlineWidth) > 0 && !outlineNone;
+        const hasOutlineShorthand= s.outline && s.outline !== 'none' && !outlineNone;
+        const hasBoxShadow       = s.boxShadow && s.boxShadow !== 'none';
+        const hasBorderChange    = s.border && s.border !== 'none';
+        const hasBackground      = s.backgroundColor && s.backgroundColor !== 'transparent' && s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+
+        const addsVisual = hasVisibleOutline || hasOutlineShorthand || hasBoxShadow || hasBorderChange || hasBackground;
+        const removesVisual = outlineNone && !hasBoxShadow && !hasBorderChange && !hasBackground;
+
+        // Keep the full selector but strip the focus pseudo-class part only
+        // e.g. "button:focus-visible" → "button"
+        // e.g. ".nav a:focus" → ".nav a"
+        // We must preserve the rest of the selector for accurate matching
+        const baseSelector = sel
+          .split(',')
+          .map(part => part
+            .replace(/:focus-visible/g, '')
+            .replace(/:focus-within/g, '')
+            .replace(/:focus/g, '')
+            .trim()
+          )
+          .filter(Boolean)
+          .join(', ');
+
+        if (!baseSelector) continue;
+
+        if (addsVisual) {
+          positiveRules.push({ baseSelector });
+        } else if (removesVisual) {
+          removalRules.push({ baseSelector });
         }
       }
     }
   } catch(e) {}
 
-  _focusRuleCache = rules;
-  return rules;
+  _focusRuleCache = { positiveRules, removalRules };
+  return _focusRuleCache;
 }
 
 function elementHasFocusRingViaCSS(el) {
-  const rules = buildFocusRuleCache();
+  const { positiveRules, removalRules } = buildFocusRuleCache();
 
-  let hasPositiveRule = false;
-  let hasRemovalRule = false;
+  // Check if any positive rule targets this element
+  const hasPositive = positiveRules.some(entry => {
+    try { return el.matches(entry.baseSelector); } catch { return false; }
+  });
 
-  for (const entry of rules) {
-    if (!entry.baseSelector) continue;
-    try {
-      // Check if this element matches the base selector
-      if (el.matches(entry.baseSelector)) {
-        if (entry.removes) {
-          hasRemovalRule = true;
-        } else {
-          hasPositiveRule = true;
-        }
-      }
-    } catch(e) {
-      // Invalid selector — skip
-    }
-  }
+  // Check if any removal rule targets this element
+  const hasRemoval = removalRules.some(entry => {
+    try { return el.matches(entry.baseSelector); } catch { return false; }
+  });
 
-  // If there's a positive rule and no removal, it has a focus ring
-  // If there's only a removal rule, it doesn't
-  // If no rules at all, browser default focus ring applies (most browsers show one)
-  if (hasPositiveRule) return true;
-  if (hasRemovalRule) return false;
+  // Positive rule wins if present
+  if (hasPositive) return true;
 
-  // No CSS rules found — check if browser default outline would show
-  // Native elements (button, input, a, select) get browser defaults
-  const nativeElements = ['button', 'input', 'select', 'textarea', 'a'];
-  if (nativeElements.includes(el.tagName.toLowerCase())) {
-    // Check if outline:none is set globally via inline style or a * rule
+  // Explicit removal with no replacement = no focus ring
+  if (hasRemoval) return false;
+
+  // No CSS rules found — fall back to browser defaults
+  // Native interactive elements get browser default focus rings unless
+  // a global reset (like * { outline: none }) removed them
+  const tag = el.tagName.toLowerCase();
+  const nativeInteractive = ['button', 'input', 'select', 'textarea', 'a', 'details', 'summary'];
+  if (nativeInteractive.includes(tag)) {
+    // Check for a global outline reset via computed style at rest
+    // If outline-width is already > 0 at rest, the browser is applying a default
     const style = window.getComputedStyle(el);
     const outlineWidth = parseFloat(style.outlineWidth) || 0;
-    // If outline is 0 in resting state, check if it's been explicitly zeroed
-    if (outlineWidth === 0) {
-      // Could be browser default that only appears on focus
-      // Give benefit of the doubt — native elements usually have browser defaults
-      return true;
-    }
-    return outlineWidth > 0;
+    // Non-zero outline at rest means there's definitely an outline
+    if (outlineWidth > 0) return true;
+    // Zero at rest on a native element — browser will apply focus ring on focus
+    // UNLESS a global reset has been applied. Check for * { outline: none } pattern.
+    const globalReset = removalRules.some(entry => {
+      try { return entry.baseSelector === '*' || entry.baseSelector === ':root'; } catch { return false; }
+    });
+    return !globalReset;
   }
 
-  // For custom elements with no CSS focus rules, assume no focus ring
+  // Non-native element with no CSS rules = no focus ring
   return false;
 }
 
 async function getTabOrder() {
-  // Invalidate CSS rule cache for fresh scan
-  _focusRuleCache = null;
-
   const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
     .filter(el => {
       const ti = parseInt(el.getAttribute('tabindex') ?? '0', 10);
@@ -237,7 +244,6 @@ async function getTabOrder() {
     const tabindex = el.getAttribute('tabindex');
     const hasPositiveTabindex = tabindex !== null && parseInt(tabindex, 10) > 0;
     const isAriaHiddenFocusable = el.closest('[aria-hidden="true"]') !== null;
-    const hasFocusRing = elementHasFocusRingViaCSS(el);
 
     const tag = el.tagName.toLowerCase();
     const id  = el.id ? `#${el.id}` : '';
@@ -260,7 +266,6 @@ async function getTabOrder() {
       tabindex: tabindex || '0',
       hasPositiveTabindex,
       isAriaHiddenFocusable,
-      hasFocusRing,
       rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
     };
   });
@@ -302,11 +307,10 @@ async function showAllTabOrder() {
     // Skip elements with zero size (hidden)
     if (rect.width === 0 && rect.height === 0) return;
 
-    // Colour by issue type
-    let color = '#4f8ef7'; // blue — normal
-    if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red (bug)
-    else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber (avoid this)
-    else if (!stop.hasFocusRing)       color = '#C2410C'; // dark red (no focus ring)
+    // Colour by issue type — only two reliable states
+    let color = '#4f8ef7'; // blue — normal stop
+    if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red — definite bug
+    else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber — breaks tab order
 
     // Element outline — absolute so it stays anchored on scroll
     const outline = document.createElement('div');
@@ -357,6 +361,86 @@ async function showAllTabOrder() {
   return stops;
 }
 
+// ── Focus ring tester ─────────────────────────────────────────────────────────
+// Instead of trying to detect focus rings programmatically (unreliable),
+// we overlay a bright visual ring that follows real keyboard focus.
+// This lets the developer see exactly what a keyboard user experiences.
+
+let focusRingTesterActive = false;
+let focusRingOverlay = null;
+let focusRingListener = null;
+let focusRingScrollListener = null;
+
+function updateFocusRingOverlay(el) {
+  if (!el || el === document.body || el === document.documentElement) {
+    if (focusRingOverlay) focusRingOverlay.style.display = 'none';
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return;
+
+  const top  = rect.top  + window.scrollY;
+  const left = rect.left + window.scrollX;
+
+  if (!focusRingOverlay) {
+    focusRingOverlay = document.createElement('div');
+    focusRingOverlay.id = '__al_focus_ring__';
+    Object.assign(focusRingOverlay.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: '2147483647',
+      borderRadius: '4px',
+      transition: 'top 0.1s, left 0.1s, width 0.1s, height 0.1s',
+      outline: '3px solid #4f8ef7',
+      outlineOffset: '3px',
+      boxShadow: '0 0 0 6px rgba(79,142,247,0.2)',
+    });
+    document.documentElement.appendChild(focusRingOverlay);
+  }
+
+  Object.assign(focusRingOverlay.style, {
+    display: 'block',
+    top:    (top  - 3) + 'px',
+    left:   (left - 3) + 'px',
+    width:  (rect.width  + 6) + 'px',
+    height: (rect.height + 6) + 'px',
+  });
+}
+
+function startFocusRingTester() {
+  if (focusRingTesterActive) return;
+  focusRingTesterActive = true;
+
+  focusRingListener = (e) => updateFocusRingOverlay(e.target);
+  focusRingScrollListener = () => {
+    const el = document.activeElement;
+    if (el) updateFocusRingOverlay(el);
+  };
+
+  document.addEventListener('focusin',  focusRingListener, true);
+  document.addEventListener('focusout', () => {
+    if (focusRingOverlay) focusRingOverlay.style.display = 'none';
+  }, true);
+  window.addEventListener('scroll', focusRingScrollListener, true);
+
+  // Show on whatever is currently focused
+  if (document.activeElement) updateFocusRingOverlay(document.activeElement);
+}
+
+function stopFocusRingTester() {
+  focusRingTesterActive = false;
+  if (focusRingListener) {
+    document.removeEventListener('focusin', focusRingListener, true);
+  }
+  if (focusRingScrollListener) {
+    window.removeEventListener('scroll', focusRingScrollListener, true);
+  }
+  if (focusRingOverlay) {
+    focusRingOverlay.remove();
+    focusRingOverlay = null;
+  }
+}
+
 function scrollToStop(stopIndex) {
   const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
     .filter(el => {
@@ -404,32 +488,34 @@ function startFocusMode() {
     const rect = el.getBoundingClientRect();
     const style = window.getComputedStyle(el);
 
-    // Check if focus ring is visible
-    const outline = style.outline;
+    // Real Tab presses give us a brief moment where focus styles ARE applied.
+    // Check for outline or box-shadow that indicates a visible focus ring.
     const outlineWidth = parseFloat(style.outlineWidth) || 0;
-    const boxShadow = style.boxShadow;
-    const hasFocusRing = outlineWidth > 0 || (boxShadow && boxShadow !== "none");
+    const outlineStyle = style.outlineStyle;
+    const boxShadow    = style.boxShadow;
 
-    const color = hasFocusRing ? "#1D9E75" : "#E24B4A";
-    const overlay = createOverlay(rect, color, 0.1);
+    const hasOutline   = outlineWidth > 0 && outlineStyle !== 'none';
+    const hasBoxShadow = boxShadow && boxShadow !== 'none';
+    const hasFocusRing = hasOutline || hasBoxShadow;
 
-    // Stop number badge
-    overlay.appendChild(makeBadge(`#${focusStopCount}`, color, { top: "-22px", left: "0" }));
+    // Colour overlay reflects detection result for the panel feedback,
+    // but we always draw the OUR overlay so the user can see their position.
+    const overlayColor = hasFocusRing ? '#16a34a' : '#d97706';
 
-    // Focus ring status badge
-    const status = hasFocusRing ? "Focus ring ✓" : "No focus ring ✗";
-    overlay.appendChild(makeBadge(status, color, { bottom: "-22px", left: "0" }));
+    const overlay = createOverlay(rect, overlayColor, 0.10);
+    overlay.style.outline = `2px dashed ${overlayColor}`;
+    overlay.style.outlineOffset = '4px';
+    overlay.appendChild(makeBadge(`#${focusStopCount}`, overlayColor, { top: '-22px', left: '0' }));
 
     document.documentElement.appendChild(overlay);
-    const counter = document.getElementById("__al_focus_counter__");
-    if (counter) counter.textContent = `Stop ${focusStopCount}: ${el.tagName.toLowerCase()}${el.id ? "#"+el.id : ""}`;
+    const counter = document.getElementById('__al_focus_counter__');
+    if (counter) counter.textContent = `Stop ${focusStopCount}: ${el.tagName.toLowerCase()}${el.id ? '#'+el.id : ''}`;
 
-    // Report back to panel
     chrome.runtime.sendMessage({
-      type: "FOCUS_UPDATE",
+      type: 'FOCUS_UPDATE',
       stopCount: focusStopCount,
       tagName: el.tagName,
-      id: el.id || "",
+      id: el.id || '',
       hasFocusRing,
       selector: el.id ? `#${el.id}` : el.tagName.toLowerCase(),
     });
@@ -773,6 +859,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ disabled: true });
     return true;
   }
+  if (message.type === "START_FOCUS_RING_TESTER") {
+    startFocusRingTester();
+    sendResponse({ success: true });
+    return true;
+  }
+  if (message.type === "STOP_FOCUS_RING_TESTER") {
+    stopFocusRingTester();
+    sendResponse({ success: true });
+    return true;
+  }
   if (message.type === 'RUN_CONTENT_ANALYSIS') {
     try {
       const linkResults  = analyseLinkText();
@@ -1001,10 +1097,9 @@ function detectMotion() {
 // ── Contrast scan ─────────────────────────────────────────────────────────────
 
 function parseRgbStr(str) {
-  if (!str) return null;
-  const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return null;
-  return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
+  const rgba = parseRgba(str);
+  if (!rgba) return null;
+  return [rgba.r, rgba.g, rgba.b];
 }
 
 function luminance([r, g, b]) {
@@ -1025,14 +1120,69 @@ function rgbToHex([r, g, b]) {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+function parseRgba(str) {
+  if (!str) return null;
+  const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!m) return null;
+  return {
+    r: parseInt(m[1]),
+    g: parseInt(m[2]),
+    b: parseInt(m[3]),
+    a: m[4] !== undefined ? parseFloat(m[4]) : 1,
+  };
+}
+
+function isTransparent(colorStr) {
+  if (!colorStr) return true;
+  if (colorStr === 'transparent') return true;
+  const rgba = parseRgba(colorStr);
+  if (!rgba) return true;
+  return rgba.a === 0;
+}
+
+// Blend a foreground colour with alpha over a background
+function blendWithBg(fg, bg) {
+  if (fg.a === 1) return fg;
+  const a = fg.a;
+  return {
+    r: Math.round(fg.r * a + bg.r * (1 - a)),
+    g: Math.round(fg.g * a + bg.g * (1 - a)),
+    b: Math.round(fg.b * a + bg.b * (1 - a)),
+    a: 1,
+  };
+}
+
 function getEffectiveBg(el) {
-  let node = el;
+  // Collect all background colours up the tree, then blend them
+  const layers = [];
+  let node = el.parentElement;
+
   while (node && node !== document.documentElement) {
     const bg = window.getComputedStyle(node).backgroundColor;
-    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+    if (!isTransparent(bg)) {
+      const rgba = parseRgba(bg);
+      if (rgba) layers.push(rgba);
+      if (rgba && rgba.a === 1) break; // fully opaque — stop here
+    }
     node = node.parentElement;
   }
-  return 'rgb(255,255,255)';
+
+  // Default white if nothing found
+  if (layers.length === 0) return 'rgb(255,255,255)';
+
+  // Blend layers bottom to top
+  let result = layers[layers.length - 1];
+  for (let i = layers.length - 2; i >= 0; i--) {
+    result = blendWithBg(layers[i], result);
+  }
+  return `rgb(${result.r},${result.g},${result.b})`;
+}
+
+function getEffectiveFg(el) {
+  const style = window.getComputedStyle(el);
+  const color = style.color;
+  if (isTransparent(color)) return null; // invisible text — skip
+  return color;
 }
 
 function getElementType(el) {
@@ -1046,7 +1196,19 @@ function getElementType(el) {
 
 function scanContrast() {
   const results = { summary: { total: 0, failures: 0, warnings: 0 }, groups: {} };
-  const SELECTORS = 'p, span, a, button, h1, h2, h3, h4, h5, h6, label, li, td, th, input, select, div[role="button"]';
+  // Cast a wide net — better to catch more and filter than miss things
+  const SELECTORS = [
+    'p', 'span', 'a', 'button',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'label', 'li', 'td', 'th',
+    'input', 'select', 'textarea',
+    'div[role="button"]', 'div[role="link"]',
+    'nav', 'header', 'footer', 'main', 'section', 'article', 'aside',
+    'figcaption', 'caption', 'legend', 'dt', 'dd',
+    'strong', 'em', 'small', 'code', 'blockquote',
+    '[role="menuitem"]', '[role="option"]', '[role="tab"]',
+    '[role="heading"]', '[role="listitem"]',
+  ].join(', ');
   const els = Array.from(document.querySelectorAll(SELECTORS));
   const seen = new Set();
 
@@ -1056,13 +1218,22 @@ function scanContrast() {
     const style = window.getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden') return;
 
-    const fgStr = style.color;
+    // Use getEffectiveFg — skips invisible/transparent text
+    const fgStr = getEffectiveFg(el);
+    if (!fgStr) return;
+
     const bgStr = getEffectiveBg(el);
     const fgRgb = parseRgbStr(fgStr);
     const bgRgb = parseRgbStr(bgStr);
     if (!fgRgb || !bgRgb) return;
 
-    const key = fgStr + '|' + bgStr;
+    // Skip if fg === bg (invisible text rendered on matching bg)
+    if (fgRgb[0]===bgRgb[0] && fgRgb[1]===bgRgb[1] && fgRgb[2]===bgRgb[2]) return;
+
+    // Dedup by hex colours — same colour pair only reported once
+    const fgHex = rgbToHex(fgRgb);
+    const bgHex = rgbToHex(bgRgb);
+    const key = fgHex + '|' + bgHex;
     if (seen.has(key)) return;
     seen.add(key);
 
@@ -1082,7 +1253,7 @@ function scanContrast() {
     const type = getElementType(el);
     if (!results.groups[type]) results.groups[type] = [];
 
-    // Always tag the element with a unique marker for reliable jump-to
+    // Tag element for reliable jump-to
     const cscanIdx = results.summary.total;
     el.setAttribute('data-al-cscan', String(cscanIdx));
     const selector = '[data-al-cscan="' + cscanIdx + '"]';
@@ -1091,8 +1262,8 @@ function scanContrast() {
 
     results.groups[type].push({
       ratio: Math.round(ratio * 100) / 100,
-      fg: rgbToHex(fgRgb),
-      bg: rgbToHex(bgRgb),
+      fg: fgHex,
+      bg: bgHex,
       passesAA,
       passesAAA,
       isLargeText,

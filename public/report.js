@@ -257,9 +257,9 @@ function renderReport(data) {
     <div class="grade-card" style="color:${gradeColor}; border-color:${gradeColor}; background:${gradeColor}11;">
       <div class="grade-letter" style="font-size:28px;line-height:1.2;">${riskLabel}</div>
       <div class="grade-chips">
-        ${critical>0?'<span style="color:#dc2626;font-size:11px;font-weight:600;">'+critical+' critical</span>':''}
-        ${serious>0?'<span style="color:#d97706;font-size:11px;font-weight:600;">'+serious+' serious</span>':''}
-        ${violations.length===0?'<span style="color:#16a34a;font-size:11px;">All clear</span>':''}
+        ${critical>0?'<span style="color:#dc2626;font-size:16px;font-weight:600;">'+critical+' critical</span>':''}
+        ${serious>0?'<span style="color:#d97706;font-size:16px;font-weight:600;">'+serious+' serious</span>':''}
+        ${violations.length===0?'<span style="color:#16a34a;font-size:16px;">All clear</span>':''}
       </div>
     </div>
   </div>`;
@@ -618,14 +618,14 @@ window.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => tryLoad(attemptsLeft - 1), 250);
         } else {
           document.getElementById('report-root').innerHTML =
-            '<p style="color:#888;padding:60px;text-align:center;font-size:15px;">No report found. Generate one from the AccessLens extension first.</p>';
+            '<p style="color:#888;padding:60px;text-align:center;font-size:16px;">No report found. Generate one from the AccessLens extension first.</p>';
         }
         return;
       }
       try { renderReport(JSON.parse(raw)); }
       catch(e) {
         document.getElementById('report-root').innerHTML =
-          '<p style="color:#dc2626;padding:60px;font-size:15px;">Could not load report: ' + e.message + '</p>';
+          '<p style="color:#dc2626;padding:60px;font-size:16px;">Could not load report: ' + e.message + '</p>';
       }
     });
   }
