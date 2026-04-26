@@ -1,6 +1,7 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 
+// Webpack build used by current npm scripts.
 module.exports = {
   // Only bundle content script and panel — background is plain JS, copied directly
   entry: {

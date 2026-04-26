@@ -3,19 +3,22 @@ import { useState, useEffect } from "react";
 import { getViolationContext } from "./violationContext";
 import ExportModal from "./ExportModal";
 
+// Main scan tab: run checks, show issues, and open export.
+
 // ── Risk score (0–100, higher = safer) ───────────────────────────────────────
 
 function calcRiskScore(violations) {
   const deductions = (violations || []).reduce((s, v) => {
-    const w = { critical: 10, serious: 5, moderate: 2, minor: 0.5 }[v.impact] || 1;
+    const w =
+      { critical: 10, serious: 5, moderate: 2, minor: 0.5 }[v.impact] || 1;
     return s + w * (v.nodes?.length || 1);
   }, 0);
   const score = Math.max(0, Math.round(100 - deductions));
-  if (score >= 90) return { score, label: "Low risk",      color: "#22c97a" };
-  if (score >= 75) return { score, label: "Manageable",    color: "#65a30d" };
+  if (score >= 90) return { score, label: "Low risk", color: "#22c97a" };
+  if (score >= 75) return { score, label: "Manageable", color: "#65a30d" };
   if (score >= 50) return { score, label: "Moderate risk", color: "#EF9F27" };
-  if (score >= 25) return { score, label: "High risk",     color: "#ea580c" };
-  return                 { score, label: "Critical risk",  color: "#E24B4A" };
+  if (score >= 25) return { score, label: "High risk", color: "#ea580c" };
+  return { score, label: "Critical risk", color: "#E24B4A" };
 }
 
 // ── Scan history ──────────────────────────────────────────────────────────────
@@ -24,8 +27,8 @@ const HISTORY_KEY = "accesslens_history";
 const MAX_HISTORY = 5;
 
 function loadHistory(domain) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(HISTORY_KEY, result => {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(HISTORY_KEY, (result) => {
       const all = result[HISTORY_KEY] || {};
       resolve(all[domain] || []);
     });
@@ -33,8 +36,8 @@ function loadHistory(domain) {
 }
 
 function saveHistory(domain, entry) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(HISTORY_KEY, result => {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(HISTORY_KEY, (result) => {
       const all = result[HISTORY_KEY] || {};
       const prev = all[domain] || [];
       all[domain] = [entry, ...prev].slice(0, MAX_HISTORY);
@@ -44,84 +47,153 @@ function saveHistory(domain, entry) {
 }
 
 function getDomain(url) {
-  try { return new URL(url).hostname; } catch { return url || "unknown"; }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url || "unknown";
+  }
 }
 const IMPACT_ORDER = ["critical", "serious", "moderate", "minor"];
-const IMPACT_COLOURS = { critical:"#E24B4A", serious:"#EF9F27", moderate:"#378ADD", minor:"#888780" };
-
-const RULE_TO_PRINCIPLE = {
-  "image-alt":"Perceivable","input-image-alt":"Perceivable","area-alt":"Perceivable",
-  "object-alt":"Perceivable","video-caption":"Perceivable","audio-caption":"Perceivable",
-  "color-contrast":"Perceivable","color-contrast-enhanced":"Perceivable","non-text-contrast":"Perceivable",
-  "reflow":"Perceivable","text-spacing":"Perceivable","meta-viewport":"Perceivable",
-  "keyboard":"Operable","focus-trap":"Operable","tabindex":"Operable",
-  "scrollable-region-focusable":"Operable","focus-visible":"Operable","focus-order-semantics":"Operable",
-  "target-size":"Operable","target-size-2":"Operable","bypass":"Operable","skip-link":"Operable",
-  "link-name":"Operable","button-name":"Operable","frame-title":"Operable",
-  "label":"Understandable","label-content-name-mismatch":"Understandable","select-name":"Understandable",
-  "autocomplete-valid":"Understandable","html-has-lang":"Understandable","html-lang-valid":"Understandable",
-  "valid-lang":"Understandable","error-message":"Understandable","identical-links-same-purpose":"Understandable",
-  "duplicate-id":"Robust","duplicate-id-active":"Robust","duplicate-id-aria":"Robust",
-  "aria-allowed-attr":"Robust","aria-needd-attr":"Robust","aria-needd-children":"Robust",
-  "aria-needd-parent":"Robust","aria-roles":"Robust","aria-valid-attr":"Robust",
-  "aria-valid-attr-value":"Robust","aria-hidden-body":"Robust","aria-hidden-focus":"Robust",
-  "aria-input-field-name":"Robust","aria-toggle-field-name":"Robust","aria-command-name":"Robust",
-  "document-title":"Robust","heading-order":"Robust","region":"Robust","landmark-one-main":"Robust",
-  "list":"Robust","listitem":"Robust","definition-list":"Robust","dlitem":"Robust",
-  "th-has-data-cells":"Robust","td-headers-attr":"Robust","scope-attr-valid":"Robust",
+const IMPACT_COLOURS = {
+  critical: "#E24B4A",
+  serious: "#EF9F27",
+  moderate: "#378ADD",
+  minor: "#888780",
 };
 
-const PRINCIPLES = ["Perceivable","Operable","Understandable","Robust"];
-const PRINCIPLE_ICON_NAMES = { Perceivable:"visibility", Operable:"keyboard", Understandable:"chat_bubble_outline", Robust:"build" };
+const RULE_TO_PRINCIPLE = {
+  "image-alt": "Perceivable",
+  "input-image-alt": "Perceivable",
+  "area-alt": "Perceivable",
+  "object-alt": "Perceivable",
+  "video-caption": "Perceivable",
+  "audio-caption": "Perceivable",
+  "color-contrast": "Perceivable",
+  "color-contrast-enhanced": "Perceivable",
+  "non-text-contrast": "Perceivable",
+  reflow: "Perceivable",
+  "text-spacing": "Perceivable",
+  "meta-viewport": "Perceivable",
+  keyboard: "Operable",
+  "focus-trap": "Operable",
+  tabindex: "Operable",
+  "scrollable-region-focusable": "Operable",
+  "focus-visible": "Operable",
+  "focus-order-semantics": "Operable",
+  "target-size": "Operable",
+  "target-size-2": "Operable",
+  bypass: "Operable",
+  "skip-link": "Operable",
+  "link-name": "Operable",
+  "button-name": "Operable",
+  "frame-title": "Operable",
+  label: "Understandable",
+  "label-content-name-mismatch": "Understandable",
+  "select-name": "Understandable",
+  "autocomplete-valid": "Understandable",
+  "html-has-lang": "Understandable",
+  "html-lang-valid": "Understandable",
+  "valid-lang": "Understandable",
+  "error-message": "Understandable",
+  "identical-links-same-purpose": "Understandable",
+  "duplicate-id": "Robust",
+  "duplicate-id-active": "Robust",
+  "duplicate-id-aria": "Robust",
+  "aria-allowed-attr": "Robust",
+  "aria-needd-attr": "Robust",
+  "aria-needd-children": "Robust",
+  "aria-needd-parent": "Robust",
+  "aria-roles": "Robust",
+  "aria-valid-attr": "Robust",
+  "aria-valid-attr-value": "Robust",
+  "aria-hidden-body": "Robust",
+  "aria-hidden-focus": "Robust",
+  "aria-input-field-name": "Robust",
+  "aria-toggle-field-name": "Robust",
+  "aria-command-name": "Robust",
+  "document-title": "Robust",
+  "heading-order": "Robust",
+  region: "Robust",
+  "landmark-one-main": "Robust",
+  list: "Robust",
+  listitem: "Robust",
+  "definition-list": "Robust",
+  dlitem: "Robust",
+  "th-has-data-cells": "Robust",
+  "td-headers-attr": "Robust",
+  "scope-attr-valid": "Robust",
+};
+
+const PRINCIPLES = ["Perceivable", "Operable", "Understandable", "Robust"];
+const PRINCIPLE_ICON_NAMES = {
+  Perceivable: "visibility",
+  Operable: "keyboard",
+  Understandable: "chat_bubble_outline",
+  Robust: "build",
+};
 function PrincipleIcon({ name }) {
   return <Icon name={PRINCIPLE_ICON_NAMES[name] || "build"} size={14} />;
 }
 const PRINCIPLE_DESC = {
-  Perceivable:"Content must be presentable in ways users can perceive",
-  Operable:"Interface components must be operable by all users",
-  Understandable:"Information and UI operation must be understandable",
-  Robust:"Content must be robust enough for assistive technologies",
+  Perceivable: "Content must be presentable in ways users can perceive",
+  Operable: "Interface components must be operable by all users",
+  Understandable: "Information and UI operation must be understandable",
+  Robust: "Content must be robust enough for assistive technologies",
 };
 
 function getWcagVersion(tags) {
   if (!tags) return null;
-  if (tags.some(t => t==="wcag22aa"||t==="wcag22a")) return "2.2";
-  if (tags.some(t => t==="wcag21aa"||t==="wcag21a")) return "2.1";
-  if (tags.some(t => t==="wcag2aa" ||t==="wcag2a"))  return "2.0";
+  if (tags.some((t) => t === "wcag22aa" || t === "wcag22a")) return "2.2";
+  if (tags.some((t) => t === "wcag21aa" || t === "wcag21a")) return "2.1";
+  if (tags.some((t) => t === "wcag2aa" || t === "wcag2a")) return "2.0";
   return null;
 }
 
-function getPrinciple(v) { return RULE_TO_PRINCIPLE[v.id] || "Robust"; }
+function getPrinciple(v) {
+  return RULE_TO_PRINCIPLE[v.id] || "Robust";
+}
 
 function groupByPrinciple(violations) {
-  const g = {}; PRINCIPLES.forEach(p => { g[p] = []; });
-  violations.forEach(v => g[getPrinciple(v)].push(v));
+  const g = {};
+  PRINCIPLES.forEach((p) => {
+    g[p] = [];
+  });
+  violations.forEach((v) => g[getPrinciple(v)].push(v));
   return g;
 }
 
 // ── Filter bar ────────────────────────────────────────────────────────────────
-function FilterBar({ wcagFilter, setWcagFilter, impactFilter, setImpactFilter }) {
+function FilterBar({
+  wcagFilter,
+  setWcagFilter,
+  impactFilter,
+  setImpactFilter,
+}) {
   return (
     <div className="filter-bar">
       <div className="filter-group">
         <span className="filter-label">Standard</span>
-        {["All","2.0","2.1","2.2"].map(v => (
+        {["All", "2.0", "2.1", "2.2"].map((v) => (
           <button
             key={v}
-            className={`filter-btn ${wcagFilter===v ? "filter-btn--active" : ""}`}
+            className={`filter-btn ${wcagFilter === v ? "filter-btn--active" : ""}`}
             onClick={() => setWcagFilter(v)}
-          >{v}</button>
+          >
+            {v}
+          </button>
         ))}
       </div>
       <div className="filter-group">
         <span className="filter-label">Impact</span>
-        {["All","critical","serious","moderate","minor"].map(v => (
+        {["All", "critical", "serious", "moderate", "minor"].map((v) => (
           <button
             key={v}
-            className={`filter-btn ${impactFilter===v ? "filter-btn--active" : ""}`}
+            className={`filter-btn ${impactFilter === v ? "filter-btn--active" : ""}`}
             onClick={() => setImpactFilter(v)}
-            style={v!=="All" ? { color: IMPACT_COLOURS[v] } : {}}
-          >{v==="All"?"All":v.charAt(0).toUpperCase()+v.slice(1)}</button>
+            style={v !== "All" ? { color: IMPACT_COLOURS[v] } : {}}
+          >
+            {v === "All" ? "All" : v.charAt(0).toUpperCase() + v.slice(1)}
+          </button>
         ))}
       </div>
     </div>
@@ -155,13 +227,19 @@ const TAB_ISSUE_GUIDANCE = {
 /* Note: Use :focus-visible not :focus so the ring only
    shows for keyboard users, not mouse clicks */`,
     links: [
-      { label: "WCAG 2.4.11", url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance" },
-      { label: "MDN: :focus-visible", url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible" },
-    ]
+      {
+        label: "WCAG 2.4.11",
+        url: "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance",
+      },
+      {
+        label: "MDN: :focus-visible",
+        url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible",
+      },
+    ],
   },
   positiveTabindex: {
     title: "Positive tabindex breaks tab order",
-    why: "Positive tabindex values (tabindex=\"1\", tabindex=\"2\", etc.) create a custom tab sequence that overrides the natural DOM order. This almost always creates a confusing, unpredictable experience — elements jump around instead of flowing in order.",
+    why: 'Positive tabindex values (tabindex="1", tabindex="2", etc.) create a custom tab sequence that overrides the natural DOM order. This almost always creates a confusing, unpredictable experience — elements jump around instead of flowing in order.',
     fix: `<!-- Never use positive tabindex values -->
 <button tabindex="2">This causes problems</button>
 <button tabindex="1">Tab order is now unpredictable</button>
@@ -175,13 +253,19 @@ const TAB_ISSUE_GUIDANCE = {
   tabindex="-1" -->
 <div role="button" tabindex="0">Custom interactive element</div>`,
     links: [
-      { label: "WCAG 2.4.3", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
-      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
-    ]
+      {
+        label: "WCAG 2.4.3",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order",
+      },
+      {
+        label: "MDN",
+        url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex",
+      },
+    ],
   },
   ariaHiddenFocusable: {
     title: "aria-hidden element receives keyboard focus",
-    why: "aria-hidden=\"true\" hides an element from screen readers, but keyboard focus can still land on it. This creates invisible \"ghost\" focus stops — a keyboard user presses Tab but the screen reader says nothing. Very confusing.",
+    why: 'aria-hidden="true" hides an element from screen readers, but keyboard focus can still land on it. This creates invisible "ghost" focus stops — a keyboard user presses Tab but the screen reader says nothing. Very confusing.',
     fix: `<!-- Problem: hidden from AT but still keyboard focusable -->
 <div aria-hidden="true">
   <button>Ghost button. Keyboard can reach it but screen reader ignores it</button>
@@ -202,16 +286,22 @@ const TAB_ISSUE_GUIDANCE = {
   <button>Fully visible and accessible</button>
 </div>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert" },
-    ]
-  }
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+      {
+        label: "MDN",
+        url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert",
+      },
+    ],
+  },
 };
 
 function getIssueType(stop) {
   if (stop.isAriaHiddenFocusable) return "ariaHiddenFocusable";
-  if (stop.hasPositiveTabindex)   return "positiveTabindex";
-  if (!stop.hasFocusRing)         return "noFocusRing";
+  if (stop.hasPositiveTabindex) return "positiveTabindex";
+  if (!stop.hasFocusRing) return "noFocusRing";
   return null;
 }
 
@@ -224,24 +314,50 @@ function TabStopDetail({ stop }) {
   return (
     <div className="tab-stop-detail">
       <div className="detail-tabs">
-        <button className={`detail-tab ${detailTab==="why"?"detail-tab--active":""}`} onClick={e=>{e.stopPropagation();setDetailTab("why");}}>Why it matters</button>
-        <button className={`detail-tab ${detailTab==="fix"?"detail-tab--active":""}`} onClick={e=>{e.stopPropagation();setDetailTab("fix");}}>How to fix</button>
+        <button
+          className={`detail-tab ${detailTab === "why" ? "detail-tab--active" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDetailTab("why");
+          }}
+        >
+          Why it matters
+        </button>
+        <button
+          className={`detail-tab ${detailTab === "fix" ? "detail-tab--active" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDetailTab("fix");
+          }}
+        >
+          How to fix
+        </button>
       </div>
-      {detailTab==="why" && (
+      {detailTab === "why" && (
         <div className="tab-stop-detail-body">
           <p className="detail-why">{guidance.why}</p>
           <div className="detail-links">
-            {guidance.links.map((l,i) => (
-              <a key={i} href={l.url} target="_blank" rel="noreferrer" className="detail-link" onClick={e=>e.stopPropagation()}>
-                <span className="detail-link-icon">↗</span>{l.label}
+            {guidance.links.map((l, i) => (
+              <a
+                key={i}
+                href={l.url}
+                target="_blank"
+                rel="noreferrer"
+                className="detail-link"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="detail-link-icon">↗</span>
+                {l.label}
               </a>
             ))}
           </div>
         </div>
       )}
-      {detailTab==="fix" && (
+      {detailTab === "fix" && (
         <div className="tab-stop-detail-body">
-          <pre className="detail-code"><code>{guidance.fix}</code></pre>
+          <pre className="detail-code">
+            <code>{guidance.fix}</code>
+          </pre>
         </div>
       )}
     </div>
@@ -250,19 +366,22 @@ function TabStopDetail({ stop }) {
 
 function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
   const [expandedStop, setExpandedStop] = useState(null);
-  const issues = stops.filter(s => s.hasPositiveTabindex || s.isAriaHiddenFocusable || !s.hasFocusRing);
+  const issues = stops.filter(
+    (s) => s.hasPositiveTabindex || s.isAriaHiddenFocusable || !s.hasFocusRing,
+  );
 
   function getStopColour(stop) {
     if (stop.isAriaHiddenFocusable) return "#E24B4A";
-    if (stop.hasPositiveTabindex)   return "#EF9F27";
-    if (!stop.hasFocusRing)         return "#C2410C";
+    if (stop.hasPositiveTabindex) return "#EF9F27";
+    if (!stop.hasFocusRing) return "#C2410C";
     return "#4f8ef7";
   }
 
   function getStopFlag(stop) {
     if (stop.isAriaHiddenFocusable) return "⚠ aria-hidden but focusable";
-    if (stop.hasPositiveTabindex)   return `⚠ tabindex="${stop.tabindex}": breaks tab order`;
-    if (!stop.hasFocusRing)         return "⚠ no visible focus ring";
+    if (stop.hasPositiveTabindex)
+      return `⚠ tabindex="${stop.tabindex}": breaks tab order`;
+    if (!stop.hasFocusRing) return "⚠ no visible focus ring";
     return null;
   }
 
@@ -270,7 +389,7 @@ function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
     const issueType = getIssueType(stop);
     if (issueType) {
       // Toggle detail panel; also scroll to element
-      setExpandedStop(prev => prev === stop.index ? null : stop.index);
+      setExpandedStop((prev) => (prev === stop.index ? null : stop.index));
     }
     onStopClick(stop);
   }
@@ -279,34 +398,59 @@ function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
     <div className="tab-order-panel">
       <div className="tab-order-header">
         <div className="tab-order-header-left">
-          <span className="tab-order-title"><Icon name="account_tree" size={14} style={{marginRight:4}} />Tab order map</span>
-          <span className="tab-order-count">{stops.length} focusable elements</span>
+          <span className="tab-order-title">
+            <Icon name="account_tree" size={14} style={{ marginRight: 4 }} />
+            Tab order map
+          </span>
+          <span className="tab-order-count">
+            {stops.length} focusable elements
+          </span>
         </div>
-        <button className="btn-stop" onClick={onClose}>Clear</button>
+        <button className="btn-stop" onClick={onClose}>
+          Clear
+        </button>
       </div>
 
       <div className="tab-order-howto">
-        <span className="howto-icon"><Icon name="lightbulb" size={16} /></span>
-        <span>Numbered badges are on the page. <strong>Click a flagged row</strong> to scroll to the element and see how to fix it.</span>
+        <span className="howto-icon">
+          <Icon name="lightbulb" size={16} />
+        </span>
+        <span>
+          Numbered badges are on the page. <strong>Click a flagged row</strong>{" "}
+          to scroll to the element and see how to fix it.
+        </span>
       </div>
 
       {issues.length > 0 ? (
         <div className="tab-order-issues-bar">
-          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""}. Click any flagged row for help
+          ⚠ {issues.length} issue{issues.length !== 1 ? "s" : ""}. Click any
+          flagged row for help
         </div>
       ) : (
         <div className="tab-order-ok-bar">✓ No tab order issues detected</div>
       )}
 
       <div className="tab-order-legend">
-        <span className="legend-item"><span className="legend-dot" style={{background:"#4f8ef7"}}/>Normal</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#EF9F27"}}/>Positive tabindex</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#E24B4A"}}/>aria-hidden bug</span>
-        <span className="legend-item"><span className="legend-dot" style={{background:"#C2410C"}}/>No focus ring</span>
+        <span className="legend-item">
+          <span className="legend-dot" style={{ background: "#4f8ef7" }} />
+          Normal
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot" style={{ background: "#EF9F27" }} />
+          Positive tabindex
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot" style={{ background: "#E24B4A" }} />
+          aria-hidden bug
+        </span>
+        <span className="legend-item">
+          <span className="legend-dot" style={{ background: "#C2410C" }} />
+          No focus ring
+        </span>
       </div>
 
       <div className="tab-order-list">
-        {stops.map(stop => {
+        {stops.map((stop) => {
           const flag = getStopFlag(stop);
           const color = getStopColour(stop);
           const isSelected = selectedStop === stop.index;
@@ -318,17 +462,30 @@ function TabOrderPanel({ stops, selectedStop, onStopClick, onClose }) {
               <button
                 className={`tab-stop-row ${isSelected ? "tab-stop-row--active" : ""} ${flag ? "tab-stop-row--issue" : ""}`}
                 onClick={() => handleRowClick(stop)}
-                title={hasIssue ? "Click to see how to fix this issue" : "Click to scroll to this element"}
+                title={
+                  hasIssue
+                    ? "Click to see how to fix this issue"
+                    : "Click to scroll to this element"
+                }
               >
-                <span className="tab-stop-num" style={{background: color}}>{stop.index}</span>
+                <span className="tab-stop-num" style={{ background: color }}>
+                  {stop.index}
+                </span>
                 <div className="tab-stop-info">
                   <span className="tab-stop-label">{stop.label}</span>
-                  {flag && <span className="tab-stop-flag" style={{color}}>{flag}</span>}
+                  {flag && (
+                    <span className="tab-stop-flag" style={{ color }}>
+                      {flag}
+                    </span>
+                  )}
                 </div>
-                {hasIssue
-                  ? <span className="tab-stop-arrow" style={{color}}>{isExpanded ? "▲" : "▼"}</span>
-                  : <span className="tab-stop-arrow">↗</span>
-                }
+                {hasIssue ? (
+                  <span className="tab-stop-arrow" style={{ color }}>
+                    {isExpanded ? "▲" : "▼"}
+                  </span>
+                ) : (
+                  <span className="tab-stop-arrow">↗</span>
+                )}
               </button>
               {isExpanded && <TabStopDetail stop={stop} />}
             </div>
@@ -348,7 +505,7 @@ function FocusModePanel({ onStop }) {
     const listener = (msg) => {
       if (msg.type === "FOCUS_UPDATE") {
         setCurrentStop(msg);
-        setStops(prev => [...prev, msg]);
+        setStops((prev) => [...prev, msg]);
       }
       if (msg.type === "FOCUS_MODE_STOPPED") onStop(stops);
     };
@@ -359,17 +516,33 @@ function FocusModePanel({ onStop }) {
   return (
     <div className="focus-mode-panel">
       <div className="focus-mode-header">
-        <span className="focus-mode-title"><Icon name="keyboard" size={14} style={{marginRight:4}} />Focus mode active</span>
-        <button className="btn-stop" onClick={() => {
-          chrome.runtime.sendMessage({ type: "STOP_FOCUS_MODE" });
-        }}>Stop</button>
+        <span className="focus-mode-title">
+          <Icon name="keyboard" size={14} style={{ marginRight: 4 }} />
+          Focus mode active
+        </span>
+        <button
+          className="btn-stop"
+          onClick={() => {
+            chrome.runtime.sendMessage({ type: "STOP_FOCUS_MODE" });
+          }}
+        >
+          Stop
+        </button>
       </div>
-      <p className="focus-mode-hint">Press <kbd>Tab</kbd> on the page to step through focus stops. Green = focus ring visible. Red = missing.</p>
+      <p className="focus-mode-hint">
+        Press <kbd>Tab</kbd> on the page to step through focus stops. Green =
+        focus ring visible. Red = missing.
+      </p>
       {currentStop && (
         <div className="focus-current">
           <span className="focus-stop-num">Stop #{currentStop.stopCount}</span>
-          <span className="focus-stop-tag">{currentStop.tagName.toLowerCase()}{currentStop.id ? "#"+currentStop.id : ""}</span>
-          <span className={`focus-ring-status ${currentStop.hasFocusRing ? "focus-ring--ok" : "focus-ring--bad"}`}>
+          <span className="focus-stop-tag">
+            {currentStop.tagName.toLowerCase()}
+            {currentStop.id ? "#" + currentStop.id : ""}
+          </span>
+          <span
+            className={`focus-ring-status ${currentStop.hasFocusRing ? "focus-ring--ok" : "focus-ring--bad"}`}
+          >
             {currentStop.hasFocusRing ? "✓ Focus ring" : "✗ No focus ring"}
           </span>
         </div>
@@ -379,7 +552,10 @@ function FocusModePanel({ onStop }) {
           {stops.slice(-8).map((s, i) => (
             <div key={i} className="focus-stop-row">
               <span className="focus-stop-n">#{s.stopCount}</span>
-              <span className="focus-stop-el">{s.tagName.toLowerCase()}{s.id ? "#"+s.id : ""}</span>
+              <span className="focus-stop-el">
+                {s.tagName.toLowerCase()}
+                {s.id ? "#" + s.id : ""}
+              </span>
               <span className={s.hasFocusRing ? "focus-ok" : "focus-bad"}>
                 {s.hasFocusRing ? "✓" : "✗"}
               </span>
@@ -400,16 +576,19 @@ function ViolationDetail({ violation }) {
 
   return (
     <div className="violation-detail">
-
       {/* Detail tabs */}
       <div className="detail-tabs">
-        {["why", "fix", "elements"].map(t => (
+        {["why", "fix", "elements"].map((t) => (
           <button
             key={t}
             className={`detail-tab ${activeTab === t ? "detail-tab--active" : ""}`}
             onClick={() => setActiveTab(t)}
           >
-            {t === "why" ? "Why it matters" : t === "fix" ? "How to fix" : `Elements (${violation.nodes.length})`}
+            {t === "why"
+              ? "Why it matters"
+              : t === "fix"
+                ? "How to fix"
+                : `Elements (${violation.nodes.length})`}
           </button>
         ))}
       </div>
@@ -421,13 +600,24 @@ function ViolationDetail({ violation }) {
           {ctx.links.length > 0 && (
             <div className="detail-links">
               {ctx.links.map((l, i) => (
-                <a key={i} href={l.url} target="_blank" rel="noreferrer" className="detail-link">
+                <a
+                  key={i}
+                  href={l.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="detail-link"
+                >
                   <span className="detail-link-icon">↗</span>
                   {l.label}
                 </a>
               ))}
               {violation.helpUrl && (
-                <a href={violation.helpUrl} target="_blank" rel="noreferrer" className="detail-link">
+                <a
+                  href={violation.helpUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="detail-link"
+                >
                   <span className="detail-link-icon">↗</span>
                   axe-core rule documentation
                 </a>
@@ -440,7 +630,9 @@ function ViolationDetail({ violation }) {
       {/* How to fix */}
       {activeTab === "fix" && (
         <div className="detail-body">
-          <pre className="detail-code"><code>{ctx.fix}</code></pre>
+          <pre className="detail-code">
+            <code>{ctx.fix}</code>
+          </pre>
         </div>
       )}
 
@@ -453,19 +645,25 @@ function ViolationDetail({ violation }) {
                 <div className="node-snippet-header">
                   <span className="node-num">#{i + 1}</span>
                   {node.target?.[0] && (
-                    <span className="node-selector">{node.target[0].slice(0, 60)}</span>
+                    <span className="node-selector">
+                      {node.target[0].slice(0, 60)}
+                    </span>
                   )}
                 </div>
-                <code>{node.html?.slice(0, 200)}{node.html?.length > 200 ? "…" : ""}</code>
+                <code>
+                  {node.html?.slice(0, 200)}
+                  {node.html?.length > 200 ? "…" : ""}
+                </code>
               </div>
             ))}
             {violation.nodes.length > 5 && (
-              <p className="nodes-more">+{violation.nodes.length - 5} more instances</p>
+              <p className="nodes-more">
+                +{violation.nodes.length - 5} more instances
+              </p>
             )}
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -477,8 +675,8 @@ function ReadingLevelCard({ data }) {
   const gradeTarget = 8;
 
   const gradeLabel = (grade) => {
-    if (grade <= 5)  return "Elementary school level";
-    if (grade <= 8)  return "Middle school level";
+    if (grade <= 5) return "Elementary school level";
+    if (grade <= 8) return "Middle school level";
     if (grade <= 12) return `Grade ${grade} (High school level)`;
     return "University / post-secondary level";
   };
@@ -512,37 +710,68 @@ Note: Legal terms, medical names, and technical jargon will inflate the score. I
     <div className="reading-card">
       <div className="reading-header">
         <div>
-          <div className="reading-grade" style={{color: data.color}}>Grade {data.grade}</div>
-          <div className="reading-label" style={{color: data.color}}>{data.label}</div>
+          <div className="reading-grade" style={{ color: data.color }}>
+            Grade {data.grade}
+          </div>
+          <div className="reading-label" style={{ color: data.color }}>
+            {data.label}
+          </div>
         </div>
         <div className="reading-meta-right">
           <span className="reading-meta">{data.wordCount} words</span>
           <span className="reading-meta">{data.sentenceCount} sentences</span>
-          <span className={`pass-badge ${data.passesWcag ? "pass-badge--pass" : "pass-badge--fail"}`}>
+          <span
+            className={`pass-badge ${data.passesWcag ? "pass-badge--pass" : "pass-badge--fail"}`}
+          >
             WCAG 3.1.5
           </span>
         </div>
       </div>
 
-      <div className="detail-tabs" style={{marginTop:8}}>
-        <button className={`detail-tab ${tab==="what"?"detail-tab--active":""}`} onClick={()=>setTab("what")}>What this means</button>
-        <button className={`detail-tab ${tab==="fix"?"detail-tab--active":""}`} onClick={()=>setTab("fix")}>How to fix</button>
+      <div className="detail-tabs" style={{ marginTop: 8 }}>
+        <button
+          className={`detail-tab ${tab === "what" ? "detail-tab--active" : ""}`}
+          onClick={() => setTab("what")}
+        >
+          What this means
+        </button>
+        <button
+          className={`detail-tab ${tab === "fix" ? "detail-tab--active" : ""}`}
+          onClick={() => setTab("fix")}
+        >
+          How to fix
+        </button>
       </div>
 
-      {tab==="what" && (
+      {tab === "what" && (
         <div className="reading-body">
           <p>{data.explanation}</p>
-          <p style={{marginTop:8}}>This score is based on the Flesch-Kincaid formula, applied to all readable text on this page. This includes paragraphs, headings, labels, and error messages. A Grade {data.grade} score means your content is written at a <strong>{gradeLabel(data.grade).toLowerCase()}</strong> reading level.</p>
+          <p style={{ marginTop: 8 }}>
+            This score is based on the Flesch-Kincaid formula, applied to all
+            readable text on this page. This includes paragraphs, headings,
+            labels, and error messages. A Grade {data.grade} score means your
+            content is written at a{" "}
+            <strong>{gradeLabel(data.grade).toLowerCase()}</strong> reading
+            level.
+          </p>
           {!data.passesWcag && (
-            <div className="content-flag" style={{marginTop:10}}>
-              ⚠ WCAG 3.1.5 recommends Grade 8 or below. Consider simplifying your content or adding a plain-language summary.
+            <div className="content-flag" style={{ marginTop: 10 }}>
+              ⚠ WCAG 3.1.5 recommends Grade 8 or below. Consider simplifying
+              your content or adding a plain-language summary.
             </div>
           )}
         </div>
       )}
 
-      {tab==="fix" && (
-        <pre className="detail-code" style={{marginTop:0,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
+      {tab === "fix" && (
+        <pre
+          className="detail-code"
+          style={{
+            marginTop: 0,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
           <code>{howToFix}</code>
         </pre>
       )}
@@ -551,24 +780,25 @@ Note: Legal terms, medical names, and technical jargon will inflate the score. I
 }
 
 export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
-  const [status, setStatus]         = useState("idle");
-  const [errorMsg, setErrorMsg]     = useState("");
+  // UI state for scan results and helper tools.
+  const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState("");
   const [violations, setViolations] = useState([]);
   const [dynamicIssues, setDynamicIssues] = useState([]);
-  const [passes, setPasses]         = useState([]);
+  const [passes, setPasses] = useState([]);
   const [activeSelector, setActiveSelector] = useState(null);
-  const [expanded, setExpanded]     = useState({});
+  const [expanded, setExpanded] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [wcagFilter, setWcagFilter] = useState("All");
   const [impactFilter, setImpactFilter] = useState("All");
-  const [focusMode, setFocusMode]   = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [focusDropdown, setFocusDropdown] = useState(false);
   const [tabOrderStops, setTabOrderStops] = useState(null); // null=off, []=active
   const [selectedStop, setSelectedStop] = useState(null);
   const [zoomStatus, setZoomStatus] = useState("idle"); // idle|running|done
   const [zoomViolations, setZoomViolations] = useState([]);
   const [highContrast, setHighContrast] = useState(false);
-  const [activeTab, setActiveTab]   = useState("violations"); // violations|zoom|dynamic
+  const [activeTab, setActiveTab] = useState("violations"); // violations|zoom|dynamic
 
   const [showExport, setShowExport] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
@@ -618,23 +848,27 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
   }, []);
 
   async function runScan() {
+    // Full manual scan started by button click.
     setStatus("scanning");
-    setViolations([]); setPasses([]); setDynamicIssues([]);
-    setActiveSelector(null); setExpanded({});
+    setViolations([]);
+    setPasses([]);
+    setDynamicIssues([]);
+    setActiveSelector(null);
+    setExpanded({});
     setDelta(null);
 
     chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
       if (chrome.runtime.lastError || !response?.success) {
         const err = response?.error || chrome.runtime.lastError?.message || "";
-        setErrorMsg(err === "chrome_restricted"
-          ? "chrome_restricted"
-          : "inject_failed"
+        setErrorMsg(
+          err === "chrome_restricted" ? "chrome_restricted" : "inject_failed",
         );
         setStatus("error");
         return;
       }
       const sorted = [...response.violations].sort(
-        (a,b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact)
+        (a, b) =>
+          IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact),
       );
       setViolations(sorted);
       setPasses(response.passes || []);
@@ -646,19 +880,19 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const prev = await loadHistory(domain);
       if (prev.length > 0) {
         const prevIds = new Set(prev[0].violationIds || []);
-        const currIds = new Set(sorted.map(v => v.id));
-        const added = [...currIds].filter(id => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter(id => !currIds.has(id)).length;
+        const currIds = new Set(sorted.map((v) => v.id));
+        const added = [...currIds].filter((id) => !prevIds.has(id)).length;
+        const fixed = [...prevIds].filter((id) => !currIds.has(id)).length;
         if (added > 0 || fixed > 0) setDelta({ added, fixed });
       }
 
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
-        critical: sorted.filter(v=>v.impact==='critical').length,
-        serious:  sorted.filter(v=>v.impact==='serious').length,
-        instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        violationIds: sorted.map(v => v.id),
+        critical: sorted.filter((v) => v.impact === "critical").length,
+        serious: sorted.filter((v) => v.impact === "serious").length,
+        instances: sorted.reduce((s, v) => s + v.nodes.length, 0),
+        violationIds: sorted.map((v) => v.id),
       };
       await saveHistory(domain, entry);
       const updated = await loadHistory(domain);
@@ -666,7 +900,7 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
     });
   }
 
-  const [devDelta, setDevDelta]     = useState(null); // {added, fixed} from auto-scan
+  const [devDelta, setDevDelta] = useState(null); // {added, fixed} from auto-scan
   const [lastAutoScan, setLastAutoScan] = useState(null);
 
   // Auto-scan when countdown resets to devInterval (meaning it just ticked over)
@@ -690,20 +924,22 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
   }, [devMode]);
 
   function triggerAutoScan() {
+    // Silent background scan used by Dev mode timer.
     setLastAutoScan(Date.now());
     // Silent scan — update results without full loading state reset
     chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
       if (chrome.runtime.lastError || !response?.success) return;
       const sorted = [...response.violations].sort(
-        (a,b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact)
+        (a, b) =>
+          IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact),
       );
 
       // Compute delta vs current violations
-      setViolations(prev => {
-        const prevIds = new Set(prev.map(v => v.id));
-        const currIds = new Set(sorted.map(v => v.id));
-        const added = [...currIds].filter(id => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter(id => !currIds.has(id)).length;
+      setViolations((prev) => {
+        const prevIds = new Set(prev.map((v) => v.id));
+        const currIds = new Set(sorted.map((v) => v.id));
+        const added = [...currIds].filter((id) => !prevIds.has(id)).length;
+        const fixed = [...prevIds].filter((id) => !currIds.has(id)).length;
         setDevDelta({ added, fixed, clean: added === 0 && fixed === 0 });
         return sorted;
       });
@@ -711,13 +947,27 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       setStatus("done");
 
       // Update extension badge with critical/serious count
-      const critical = sorted.filter(v => v.impact === "critical" || v.impact === "serious").length;
+      const critical = sorted.filter(
+        (v) => v.impact === "critical" || v.impact === "serious",
+      ).length;
       if (critical > 0) {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: String(critical), color: "#E24B4A" });
+        chrome.runtime.sendMessage({
+          type: "SET_BADGE",
+          text: String(critical),
+          color: "#E24B4A",
+        });
       } else if (sorted.length > 0) {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: String(sorted.length), color: "#EF9F27" });
+        chrome.runtime.sendMessage({
+          type: "SET_BADGE",
+          text: String(sorted.length),
+          color: "#EF9F27",
+        });
       } else {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: "✓", color: "#22c97a" });
+        chrome.runtime.sendMessage({
+          type: "SET_BADGE",
+          text: "✓",
+          color: "#22c97a",
+        });
       }
 
       // Save to history
@@ -725,10 +975,10 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       const entry = {
         date: new Date().toLocaleString(),
         total: sorted.length,
-        critical: sorted.filter(v=>v.impact==='critical').length,
-        serious:  sorted.filter(v=>v.impact==='serious').length,
-        instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        violationIds: sorted.map(v => v.id),
+        critical: sorted.filter((v) => v.impact === "critical").length,
+        serious: sorted.filter((v) => v.impact === "serious").length,
+        instances: sorted.reduce((s, v) => s + v.nodes.length, 0),
+        violationIds: sorted.map((v) => v.id),
       };
       await saveHistory(domain, entry);
       const updated = await loadHistory(domain);
@@ -764,12 +1014,20 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
     } else {
       setActiveSelector(selector);
-      chrome.runtime.sendMessage({ type: "HIGHLIGHT_ELEMENT", selector, showDimensions: isTargetSize });
+      chrome.runtime.sendMessage({
+        type: "HIGHLIGHT_ELEMENT",
+        selector,
+        showDimensions: isTargetSize,
+      });
     }
   }
 
-  function toggleExpanded(id) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
-  function toggleGroup(p) { setCollapsedGroups(prev => ({ ...prev, [p]: !prev[p] })); }
+  function toggleExpanded(id) {
+    setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  }
+  function toggleGroup(p) {
+    setCollapsedGroups((prev) => ({ ...prev, [p]: !prev[p] }));
+  }
 
   function startFocusMode() {
     setFocusMode(true);
@@ -777,7 +1035,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
     setFocusDropdown(false);
     chrome.runtime.sendMessage({ type: "START_FOCUS_MODE" });
   }
-  function stopFocusMode() { setFocusMode(false); }
+  function stopFocusMode() {
+    setFocusMode(false);
+  }
 
   function showTabOrder() {
     setFocusDropdown(false);
@@ -796,16 +1056,24 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
 
   function handleStopClick(stop) {
     setSelectedStop(stop.index);
-    chrome.runtime.sendMessage({ type: "SCROLL_TO_STOP", stopIndex: stop.index });
+    chrome.runtime.sendMessage({
+      type: "SCROLL_TO_STOP",
+      stopIndex: stop.index,
+    });
   }
 
   async function runZoomTest() {
     setZoomStatus("running");
     chrome.runtime.sendMessage({ type: "RUN_ZOOM_TEST" }, (response) => {
-      if (!response?.success) { setZoomStatus("idle"); return; }
+      if (!response?.success) {
+        setZoomStatus("idle");
+        return;
+      }
       // Only show NEW violations not in the normal scan
-      const normalIds = new Set(violations.map(v => v.id));
-      const newViolations = response.violations.filter(v => !normalIds.has(v.id));
+      const normalIds = new Set(violations.map((v) => v.id));
+      const newViolations = response.violations.filter(
+        (v) => !normalIds.has(v.id),
+      );
       setZoomViolations(newViolations);
       setZoomStatus("done");
       setActiveTab("zoom");
@@ -815,11 +1083,13 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
   function toggleHighContrast() {
     const next = !highContrast;
     setHighContrast(next);
-    chrome.runtime.sendMessage({ type: next ? "ENABLE_HIGH_CONTRAST" : "DISABLE_HIGH_CONTRAST" });
+    chrome.runtime.sendMessage({
+      type: next ? "ENABLE_HIGH_CONTRAST" : "DISABLE_HIGH_CONTRAST",
+    });
   }
 
   // Apply filters
-  const filteredViolations = violations.filter(v => {
+  const filteredViolations = violations.filter((v) => {
     const version = getWcagVersion(v.tags);
     const wcagOk = wcagFilter === "All" || version === wcagFilter;
     const impactOk = impactFilter === "All" || v.impact === impactFilter;
@@ -834,64 +1104,89 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       {/* Dev mode status bar */}
       {devMode && (
         <div className="dev-status-bar">
-          <span className="dev-status-icon"><Icon name="bolt" size={14} /></span>
+          <span className="dev-status-icon">
+            <Icon name="bolt" size={14} />
+          </span>
           <span className="dev-status-text">
             Dev mode on. Auto-scanning every {devInterval}s
           </span>
-          {devDelta && (
-            devDelta.clean ? (
+          {devDelta &&
+            (devDelta.clean ? (
               <span className="dev-status-clean">✓ No changes</span>
             ) : (
               <span className="dev-status-delta">
-                {devDelta.added > 0 && <span className="delta-added">↑{devDelta.added} new</span>}
-                {devDelta.fixed > 0 && <span className="delta-fixed">↓{devDelta.fixed} fixed</span>}
+                {devDelta.added > 0 && (
+                  <span className="delta-added">↑{devDelta.added} new</span>
+                )}
+                {devDelta.fixed > 0 && (
+                  <span className="delta-fixed">↓{devDelta.fixed} fixed</span>
+                )}
               </span>
-            )
-          )}
+            ))}
         </div>
       )}
 
       {/* Tool buttons row */}
       <div className="tool-row">
-        <button className="btn-scan" onClick={runScan} disabled={status==="scanning"}>
-          {status==="scanning" ? <><span className="spinner"/> Scanning…</> : "Run scan"}
+        <button
+          className="btn-scan"
+          onClick={runScan}
+          disabled={status === "scanning"}
+        >
+          {status === "scanning" ? (
+            <>
+              <span className="spinner" /> Scanning…
+            </>
+          ) : (
+            "Run scan"
+          )}
         </button>
         <div className="focus-dropdown-wrap">
           <button
             className={`tool-btn ${focusMode || tabOrderStops !== null ? "tool-btn--active" : ""}`}
-            onClick={() => setFocusDropdown(p => !p)}
+            onClick={() => setFocusDropdown((p) => !p)}
             title="Keyboard focus tools"
-          >⌨ Focus ▾</button>
+          >
+            ⌨ Focus ▾
+          </button>
           {focusDropdown && (
             <div className="focus-dropdown">
               <button className="focus-dropdown-item" onClick={startFocusMode}>
                 <span className="fdi-icon">⌨</span>
                 <div>
                   <div className="fdi-title">Step through</div>
-                  <div className="fdi-desc">Press Tab to step through stops one by one</div>
+                  <div className="fdi-desc">
+                    Press Tab to step through stops one by one
+                  </div>
                 </div>
               </button>
               <button className="focus-dropdown-item" onClick={showTabOrder}>
                 <span className="fdi-icon">⬡</span>
                 <div>
                   <div className="fdi-title">Show all stops</div>
-                  <div className="fdi-desc">Number every focusable element at once</div>
+                  <div className="fdi-desc">
+                    Number every focusable element at once
+                  </div>
                 </div>
               </button>
             </div>
           )}
         </div>
         <button
-          className={`tool-btn ${zoomStatus==="running" ? "tool-btn--loading" : ""}`}
+          className={`tool-btn ${zoomStatus === "running" ? "tool-btn--loading" : ""}`}
           onClick={runZoomTest}
-          disabled={zoomStatus==="running" || status!=="done"}
+          disabled={zoomStatus === "running" || status !== "done"}
           title="Test 400% zoom / reflow"
-        >🔍 Zoom</button>
+        >
+          🔍 Zoom
+        </button>
         <button
           className={`tool-btn ${highContrast ? "tool-btn--active" : ""}`}
           onClick={toggleHighContrast}
           title="Simulate high contrast mode"
-        >◑ HC</button>
+        >
+          ◑ HC
+        </button>
       </div>
 
       {/* Tab order panel */}
@@ -917,67 +1212,146 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       {focusMode && <FocusModePanel onStop={stopFocusMode} />}
 
       {/* Summary */}
-      {status==="done" && !focusMode && (
+      {status === "done" && !focusMode && (
         <>
           <div className="summary">
             {/* Status — plain language, no score */}
             {(() => {
-              const critical = violations.filter(v=>v.impact==='critical').length;
-              const serious  = violations.filter(v=>v.impact==='serious').length;
-              const moderate = violations.filter(v=>v.impact==='moderate').length;
-              const minor    = violations.filter(v=>v.impact==='minor').length;
+              const critical = violations.filter(
+                (v) => v.impact === "critical",
+              ).length;
+              const serious = violations.filter(
+                (v) => v.impact === "serious",
+              ).length;
+              const moderate = violations.filter(
+                (v) => v.impact === "moderate",
+              ).length;
+              const minor = violations.filter(
+                (v) => v.impact === "minor",
+              ).length;
 
               let statusLabel, statusColor, statusBg;
               if (violations.length === 0) {
-                statusLabel = 'No violations'; statusColor = '#16a34a'; statusBg = 'rgba(22,163,74,0.1)';
+                statusLabel = "No violations";
+                statusColor = "#16a34a";
+                statusBg = "rgba(22,163,74,0.1)";
               } else if (critical > 0) {
-                statusLabel = 'Fix now'; statusColor = '#E24B4A'; statusBg = 'rgba(226,75,74,0.1)';
+                statusLabel = "Fix now";
+                statusColor = "#E24B4A";
+                statusBg = "rgba(226,75,74,0.1)";
               } else if (serious > 0) {
-                statusLabel = 'Needs work'; statusColor = '#EF9F27'; statusBg = 'rgba(239,159,39,0.1)';
+                statusLabel = "Needs work";
+                statusColor = "#EF9F27";
+                statusBg = "rgba(239,159,39,0.1)";
               } else if (moderate > 0) {
-                statusLabel = 'Minor issues'; statusColor = '#4f8ef7'; statusBg = 'rgba(79,142,247,0.1)';
+                statusLabel = "Minor issues";
+                statusColor = "#4f8ef7";
+                statusBg = "rgba(79,142,247,0.1)";
               } else {
-                statusLabel = 'Almost clean'; statusColor = '#65a30d'; statusBg = 'rgba(101,163,13,0.1)';
+                statusLabel = "Almost clean";
+                statusColor = "#65a30d";
+                statusBg = "rgba(101,163,13,0.1)";
               }
 
               return (
-                <div className="summary-status" style={{background: statusBg, borderColor: statusColor+'33'}}>
-                  <span className="summary-status-label" style={{color: statusColor}}>{statusLabel}</span>
+                <div
+                  className="summary-status"
+                  style={{
+                    background: statusBg,
+                    borderColor: statusColor + "33",
+                  }}
+                >
+                  <span
+                    className="summary-status-label"
+                    style={{ color: statusColor }}
+                  >
+                    {statusLabel}
+                  </span>
                   <div className="summary-impact-row">
-                    {critical > 0 && <span className="summary-impact-chip" style={{color:'#E24B4A'}}>{critical} critical</span>}
-                    {serious  > 0 && <span className="summary-impact-chip" style={{color:'#EF9F27'}}>{serious} serious</span>}
-                    {moderate > 0 && <span className="summary-impact-chip" style={{color:'#4f8ef7'}}>{moderate} moderate</span>}
-                    {minor    > 0 && <span className="summary-impact-chip" style={{color:'#888780'}}>{minor} minor</span>}
-                    {violations.length === 0 && <span className="summary-impact-chip" style={{color:'#16a34a'}}>All checks passed</span>}
+                    {critical > 0 && (
+                      <span
+                        className="summary-impact-chip"
+                        style={{ color: "#E24B4A" }}
+                      >
+                        {critical} critical
+                      </span>
+                    )}
+                    {serious > 0 && (
+                      <span
+                        className="summary-impact-chip"
+                        style={{ color: "#EF9F27" }}
+                      >
+                        {serious} serious
+                      </span>
+                    )}
+                    {moderate > 0 && (
+                      <span
+                        className="summary-impact-chip"
+                        style={{ color: "#4f8ef7" }}
+                      >
+                        {moderate} moderate
+                      </span>
+                    )}
+                    {minor > 0 && (
+                      <span
+                        className="summary-impact-chip"
+                        style={{ color: "#888780" }}
+                      >
+                        {minor} minor
+                      </span>
+                    )}
+                    {violations.length === 0 && (
+                      <span
+                        className="summary-impact-chip"
+                        style={{ color: "#16a34a" }}
+                      >
+                        All checks passed
+                      </span>
+                    )}
                   </div>
                 </div>
               );
             })()}
 
             <div className="summary-stat">
-              <span className="summary-num" style={{color: violations.length>0?"#E24B4A":"#1D9E75"}}>{violations.length}</span>
+              <span
+                className="summary-num"
+                style={{ color: violations.length > 0 ? "#E24B4A" : "#1D9E75" }}
+              >
+                {violations.length}
+              </span>
               <span className="summary-label">violations</span>
             </div>
             <div className="summary-stat">
-              <span className="summary-num" style={{color:"#888780"}}>{totalIssues}</span>
+              <span className="summary-num" style={{ color: "#888780" }}>
+                {totalIssues}
+              </span>
               <span className="summary-label">instances</span>
             </div>
             <div className="summary-stat">
-              <span className="summary-num" style={{color:"#1D9E75"}}>{passes.length}</span>
+              <span className="summary-num" style={{ color: "#1D9E75" }}>
+                {passes.length}
+              </span>
               <span className="summary-label">passed</span>
             </div>
             <button
-              className={`summary-history-btn ${showHistory?"summary-history-btn--active":""}`}
-              onClick={() => setShowHistory(p=>!p)}
+              className={`summary-history-btn ${showHistory ? "summary-history-btn--active" : ""}`}
+              onClick={() => setShowHistory((p) => !p)}
               title="Scan history"
-            ><Icon name="history" size={16} /></button>
+            >
+              <Icon name="history" size={16} />
+            </button>
           </div>
 
           {/* Delta bar */}
           {delta && (
             <div className="delta-bar">
-              {delta.added > 0 && <span className="delta-added">↑ {delta.added} new</span>}
-              {delta.fixed > 0 && <span className="delta-fixed">↓ {delta.fixed} fixed</span>}
+              {delta.added > 0 && (
+                <span className="delta-added">↑ {delta.added} new</span>
+              )}
+              {delta.fixed > 0 && (
+                <span className="delta-fixed">↓ {delta.fixed} fixed</span>
+              )}
               <span className="delta-label">since last scan</span>
             </div>
           )}
@@ -985,21 +1359,62 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
           {/* History panel */}
           {showHistory && history.length > 0 && (
             <div className="history-panel">
-              <div className="history-title">Scan history for {getDomain(pageUrl)}</div>
+              <div className="history-title">
+                Scan history for {getDomain(pageUrl)}
+              </div>
               {history.map((h, i) => {
                 const critical = h.critical || 0;
-                const serious  = h.serious  || 0;
-                const statusColor = critical>0?"#E24B4A":serious>0?"#EF9F27":h.total===0?"#16a34a":"#4f8ef7";
-                const statusLabel = critical>0?"Fix now":serious>0?"Needs work":h.total===0?"No violations":"Minor issues";
+                const serious = h.serious || 0;
+                const statusColor =
+                  critical > 0
+                    ? "#E24B4A"
+                    : serious > 0
+                      ? "#EF9F27"
+                      : h.total === 0
+                        ? "#16a34a"
+                        : "#4f8ef7";
+                const statusLabel =
+                  critical > 0
+                    ? "Fix now"
+                    : serious > 0
+                      ? "Needs work"
+                      : h.total === 0
+                        ? "No violations"
+                        : "Minor issues";
                 return (
-                  <div key={i} className={`history-row ${i===0?"history-row--current":""}`}>
-                    <span className="history-grade" style={{color: statusColor, fontSize:11, fontWeight:600}}>{statusLabel}</span>
+                  <div
+                    key={i}
+                    className={`history-row ${i === 0 ? "history-row--current" : ""}`}
+                  >
+                    <span
+                      className="history-grade"
+                      style={{
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {statusLabel}
+                    </span>
                     <div className="history-info">
-                      <span className="history-date">{h.date}{i===0?" (latest)":""}</span>
+                      <span className="history-date">
+                        {h.date}
+                        {i === 0 ? " (latest)" : ""}
+                      </span>
                       <span className="history-stats">
-                        {critical>0 && <span style={{color:"#E24B4A"}}>{critical} critical </span>}
-                        {serious>0  && <span style={{color:"#EF9F27"}}>{serious} serious </span>}
-                        <span style={{color:"var(--text3)"}}>{h.total} total</span>
+                        {critical > 0 && (
+                          <span style={{ color: "#E24B4A" }}>
+                            {critical} critical{" "}
+                          </span>
+                        )}
+                        {serious > 0 && (
+                          <span style={{ color: "#EF9F27" }}>
+                            {serious} serious{" "}
+                          </span>
+                        )}
+                        <span style={{ color: "var(--text3)" }}>
+                          {h.total} total
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -1009,7 +1424,15 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
           )}
           {showHistory && history.length === 0 && (
             <div className="history-panel">
-              <p style={{fontSize:11,color:"var(--text3)",padding:"8px 0"}}>No previous scans on this domain.</p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--text3)",
+                  padding: "8px 0",
+                }}
+              >
+                No previous scans on this domain.
+              </p>
             </div>
           )}
           <button className="btn-export" onClick={() => setShowExport(true)}>
@@ -1018,37 +1441,87 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
 
           {/* Sub-tabs */}
           <div className="subtabs">
-            <button className={`subtab ${activeTab==="violations"?"subtab--active":""}`} onClick={()=>setActiveTab("violations")}>
-              Violations {violations.length > 0 && <span className="subtab-count">{violations.length}</span>}
+            <button
+              className={`subtab ${activeTab === "violations" ? "subtab--active" : ""}`}
+              onClick={() => setActiveTab("violations")}
+            >
+              Violations{" "}
+              {violations.length > 0 && (
+                <span className="subtab-count">{violations.length}</span>
+              )}
             </button>
-            <button className={`subtab ${activeTab==="zoom"?"subtab--active":""}`} onClick={()=>setActiveTab("zoom")}>
-              Zoom {zoomViolations.length > 0 && <span className="subtab-count subtab-count--amber">{zoomViolations.length}</span>}
+            <button
+              className={`subtab ${activeTab === "zoom" ? "subtab--active" : ""}`}
+              onClick={() => setActiveTab("zoom")}
+            >
+              Zoom{" "}
+              {zoomViolations.length > 0 && (
+                <span className="subtab-count subtab-count--amber">
+                  {zoomViolations.length}
+                </span>
+              )}
             </button>
-            <button className={`subtab ${activeTab==="dynamic"?"subtab--active":""}`} onClick={()=>setActiveTab("dynamic")}>
-              Dynamic {dynamicIssues.length > 0 && <span className="subtab-count subtab-count--amber">{dynamicIssues.length}</span>}
+            <button
+              className={`subtab ${activeTab === "dynamic" ? "subtab--active" : ""}`}
+              onClick={() => setActiveTab("dynamic")}
+            >
+              Dynamic{" "}
+              {dynamicIssues.length > 0 && (
+                <span className="subtab-count subtab-count--amber">
+                  {dynamicIssues.length}
+                </span>
+              )}
             </button>
-            <button className={`subtab ${activeTab==="content"?"subtab--active":""}`} onClick={()=>setActiveTab("content")}>
-              Content {contentAnalysis && contentAnalysis.linkResults?.issues?.length > 0 && <span className="subtab-count subtab-count--amber">{contentAnalysis.linkResults.issues.length}</span>}
+            <button
+              className={`subtab ${activeTab === "content" ? "subtab--active" : ""}`}
+              onClick={() => setActiveTab("content")}
+            >
+              Content{" "}
+              {contentAnalysis &&
+                contentAnalysis.linkResults?.issues?.length > 0 && (
+                  <span className="subtab-count subtab-count--amber">
+                    {contentAnalysis.linkResults.issues.length}
+                  </span>
+                )}
             </button>
           </div>
         </>
       )}
 
       {/* Error */}
-      {status==="error" && (
+      {status === "error" && (
         <div className="empty-state empty-state--error">
           {errorMsg === "chrome_restricted" ? (
             <>
-              <div className="error-icon"><Icon name="block" size={28} /></div>
+              <div className="error-icon">
+                <Icon name="block" size={28} />
+              </div>
               <p>Can't scan Chrome's own pages</p>
-              <p className="empty-hint">Navigate to any regular website (http:// or https://) then click the AccessLens icon to open a fresh panel on that page.</p>
+              <p className="empty-hint">
+                Navigate to any regular website (http:// or https://) then click
+                the AccessLens icon to open a fresh panel on that page.
+              </p>
             </>
           ) : (
             <>
-              <div className="error-icon"><Icon name="warning_amber" size={28} /></div>
+              <div className="error-icon">
+                <Icon name="warning_amber" size={28} />
+              </div>
               <p>Scan failed</p>
-              <p className="empty-hint">This can happen if you switched tabs while the panel was open. <strong>Close this panel</strong>, navigate to the page you want to scan, then click the AccessLens icon again.</p>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:180,background:"var(--red)"}} onClick={runScan}>
+              <p className="empty-hint">
+                This can happen if you switched tabs while the panel was open.{" "}
+                <strong>Close this panel</strong>, navigate to the page you want
+                to scan, then click the AccessLens icon again.
+              </p>
+              <button
+                className="btn-scan"
+                style={{
+                  marginTop: 14,
+                  maxWidth: 180,
+                  background: "var(--red)",
+                }}
+                onClick={runScan}
+              >
                 ↺ Try again
               </button>
             </>
@@ -1057,155 +1530,322 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       )}
 
       {/* Idle */}
-      {status==="idle" && !focusMode && (
+      {status === "idle" && !focusMode && (
         <div className="empty-state">
           <div className="empty-icon">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5" opacity="0.3"/>
-              <path d="M10 16h12M16 10v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+              <circle
+                cx="16"
+                cy="16"
+                r="14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                opacity="0.3"
+              />
+              <path
+                d="M10 16h12M16 10v12"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                opacity="0.5"
+              />
             </svg>
           </div>
-          <p>Click <strong>Run scan</strong> to check for WCAG violations.</p>
-          <p className="empty-hint" style={{marginTop:8}}>Use <strong>Focus</strong> to test keyboard navigation, <strong>Zoom</strong> to test 400% reflow, <strong>HC</strong> to preview high contrast mode.</p>
+          <p>
+            Click <strong>Run scan</strong> to check for WCAG violations.
+          </p>
+          <p className="empty-hint" style={{ marginTop: 8 }}>
+            Use <strong>Focus</strong> to test keyboard navigation,{" "}
+            <strong>Zoom</strong> to test 400% reflow, <strong>HC</strong> to
+            preview high contrast mode.
+          </p>
         </div>
       )}
 
       {/* All clear */}
-      {status==="done" && violations.length===0 && activeTab==="violations" && (
-        <div className="empty-state empty-state--success">
-          <div className="empty-icon" style={{color:"#1D9E75"}}>
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 16l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+      {status === "done" &&
+        violations.length === 0 &&
+        activeTab === "violations" && (
+          <div className="empty-state empty-state--success">
+            <div className="empty-icon" style={{ color: "#1D9E75" }}>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="14"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M10 16l4 4 8-8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <p>No violations found. Nice work.</p>
           </div>
-          <p>No violations found. Nice work.</p>
-        </div>
-      )}
+        )}
 
       {/* ── Violations tab ── */}
-      {status==="done" && activeTab==="violations" && violations.length>0 && (
-        <>
-          <FilterBar wcagFilter={wcagFilter} setWcagFilter={setWcagFilter} impactFilter={impactFilter} setImpactFilter={setImpactFilter}/>
-          {filteredViolations.length === 0 ? (
-            <div className="empty-state"><p>No violations match the current filters.</p></div>
-          ) : (
-            <div className="violation-groups">
-              {PRINCIPLES.map(principle => {
-                const group = grouped[principle];
-                if (!group.length) return null;
-                const isCollapsed = collapsedGroups[principle];
-                const instances = group.reduce((s,v)=>s+v.nodes.length,0);
-                return (
-                  <div key={principle} className="principle-group">
-                    <button className="principle-header" onClick={()=>toggleGroup(principle)}>
-                      <span className="principle-icon"><PrincipleIcon name={principle} /></span>
-                      <span className="principle-name">{principle}</span>
-                      <span className="principle-count">{group.length} rule{group.length!==1?"s":""} · {instances} instance{instances!==1?"s":""}</span>
-                      <span className="principle-chevron">{isCollapsed?"▶":"▼"}</span>
-                    </button>
-                    {!isCollapsed && <div className="principle-desc">{PRINCIPLE_DESC[principle]}</div>}
-                    {!isCollapsed && (
-                      <div className="violations">
-                        {group.map(v => {
-                          const selector = v.nodes[0]?.target?.[0];
-                          const isActive = activeSelector===selector;
-                          const isExp = expanded[v.id];
-                          const wcagVer = getWcagVersion(v.tags);
-                          const isNew22 = wcagVer==="2.2";
-                          const sc = v.tags.filter(t=>/^\d+\.\d+\.\d+$/.test(t)).join(", ");
-                          return (
-                            <div key={v.id} className={`violation ${isActive?"violation--active":""}`}>
-                              <div className="violation-header" onClick={()=>handleViolationClick(v)}>
-                                <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
-                                <div className="violation-info">
-                                  <div className="violation-title-row">
-                                    <span className="violation-title">{v.description}</span>
-                                    {isNew22 && <span className="badge-new22">New in 2.2</span>}
+      {status === "done" &&
+        activeTab === "violations" &&
+        violations.length > 0 && (
+          <>
+            <FilterBar
+              wcagFilter={wcagFilter}
+              setWcagFilter={setWcagFilter}
+              impactFilter={impactFilter}
+              setImpactFilter={setImpactFilter}
+            />
+            {filteredViolations.length === 0 ? (
+              <div className="empty-state">
+                <p>No violations match the current filters.</p>
+              </div>
+            ) : (
+              <div className="violation-groups">
+                {PRINCIPLES.map((principle) => {
+                  const group = grouped[principle];
+                  if (!group.length) return null;
+                  const isCollapsed = collapsedGroups[principle];
+                  const instances = group.reduce(
+                    (s, v) => s + v.nodes.length,
+                    0,
+                  );
+                  return (
+                    <div key={principle} className="principle-group">
+                      <button
+                        className="principle-header"
+                        onClick={() => toggleGroup(principle)}
+                      >
+                        <span className="principle-icon">
+                          <PrincipleIcon name={principle} />
+                        </span>
+                        <span className="principle-name">{principle}</span>
+                        <span className="principle-count">
+                          {group.length} rule{group.length !== 1 ? "s" : ""} ·{" "}
+                          {instances} instance{instances !== 1 ? "s" : ""}
+                        </span>
+                        <span className="principle-chevron">
+                          {isCollapsed ? "▶" : "▼"}
+                        </span>
+                      </button>
+                      {!isCollapsed && (
+                        <div className="principle-desc">
+                          {PRINCIPLE_DESC[principle]}
+                        </div>
+                      )}
+                      {!isCollapsed && (
+                        <div className="violations">
+                          {group.map((v) => {
+                            const selector = v.nodes[0]?.target?.[0];
+                            const isActive = activeSelector === selector;
+                            const isExp = expanded[v.id];
+                            const wcagVer = getWcagVersion(v.tags);
+                            const isNew22 = wcagVer === "2.2";
+                            const sc = v.tags
+                              .filter((t) => /^\d+\.\d+\.\d+$/.test(t))
+                              .join(", ");
+                            return (
+                              <div
+                                key={v.id}
+                                className={`violation ${isActive ? "violation--active" : ""}`}
+                              >
+                                <div
+                                  className="violation-header"
+                                  onClick={() => handleViolationClick(v)}
+                                >
+                                  <span
+                                    className="impact-bar"
+                                    style={{
+                                      background:
+                                        IMPACT_COLOURS[v.impact] || "#888",
+                                    }}
+                                  />
+                                  <div className="violation-info">
+                                    <div className="violation-title-row">
+                                      <span className="violation-title">
+                                        {v.description}
+                                      </span>
+                                      {isNew22 && (
+                                        <span className="badge-new22">
+                                          New in 2.2
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="violation-meta">
+                                      <span
+                                        className="impact-badge"
+                                        style={{
+                                          color: IMPACT_COLOURS[v.impact],
+                                        }}
+                                      >
+                                        {v.impact}
+                                      </span>
+                                      {wcagVer && (
+                                        <span className="wcag-version-badge">
+                                          WCAG {wcagVer}
+                                        </span>
+                                      )}
+                                      {sc && (
+                                        <span className="wcag-badge">{sc}</span>
+                                      )}
+                                      <span className="node-count">
+                                        {v.nodes.length}{" "}
+                                        {v.nodes.length === 1
+                                          ? "instance"
+                                          : "instances"}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="violation-meta">
-                                    <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
-                                    {wcagVer && <span className="wcag-version-badge">WCAG {wcagVer}</span>}
-                                    {sc && <span className="wcag-badge">{sc}</span>}
-                                    <span className="node-count">{v.nodes.length} {v.nodes.length===1?"instance":"instances"}</span>
-                                  </div>
+                                  <button
+                                    className="expand-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpanded(v.id);
+                                    }}
+                                  >
+                                    {isExp ? "▲" : "▼"}
+                                  </button>
                                 </div>
-                                <button className="expand-btn" onClick={e=>{e.stopPropagation();toggleExpanded(v.id);}}>
-                                  {isExp?"▲":"▼"}
-                                </button>
+                                {isExp && <ViolationDetail violation={v} />}
                               </div>
-                              {isExp && (
-                                <ViolationDetail violation={v} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
 
       {/* ── Zoom test tab ── */}
-      {activeTab==="zoom" && (
+      {activeTab === "zoom" && (
         <div className="zoom-tab">
-          {zoomStatus==="idle" && status==="done" && (
+          {zoomStatus === "idle" && status === "done" && (
             <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
+              <div className="tab-explainer-icon">
+                <Icon name="zoom_in" size={24} />
+              </div>
               <div className="tab-explainer-title">400% zoom / reflow test</div>
               <div className="tab-explainer-body">
-                WCAG 1.4.10 needs that content can be viewed at 400% zoom without horizontal scrolling. This test temporarily resizes the page to 320px wide — like a 1280px screen at 400%. It flags any <em>new</em> violations that only appear at that width.
+                WCAG 1.4.10 needs that content can be viewed at 400% zoom
+                without horizontal scrolling. This test temporarily resizes the
+                page to 320px wide — like a 1280px screen at 400%. It flags any{" "}
+                <em>new</em> violations that only appear at that width.
               </div>
               <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Run a normal scan first (already done)</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Click the button below. The page will resize for a moment</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>Results show only issues introduced by the narrow viewport</div>
+                <div className="tab-step">
+                  <span className="tab-step-num">1</span>Run a normal scan first
+                  (already done)
+                </div>
+                <div className="tab-step">
+                  <span className="tab-step-num">2</span>Click the button below.
+                  The page will resize for a moment
+                </div>
+                <div className="tab-step">
+                  <span className="tab-step-num">3</span>Results show only
+                  issues introduced by the narrow viewport
+                </div>
               </div>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:200}} onClick={runZoomTest}>Run zoom test</button>
+              <button
+                className="btn-scan"
+                style={{ marginTop: 14, maxWidth: 200 }}
+                onClick={runZoomTest}
+              >
+                Run zoom test
+              </button>
             </div>
           )}
-          {zoomStatus==="idle" && status!=="done" && (
+          {zoomStatus === "idle" && status !== "done" && (
             <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
+              <div className="tab-explainer-icon">
+                <Icon name="zoom_in" size={24} />
+              </div>
               <div className="tab-explainer-title">400% zoom / reflow test</div>
-              <div className="tab-explainer-body">Run a scan first using the <strong>Run scan</strong> button, then come back to this tab to test 400% zoom reflow.</div>
+              <div className="tab-explainer-body">
+                Run a scan first using the <strong>Run scan</strong> button,
+                then come back to this tab to test 400% zoom reflow.
+              </div>
             </div>
           )}
-          {zoomStatus==="running" && (
+          {zoomStatus === "running" && (
             <div className="empty-state">
-              <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
+              <span
+                className="spinner"
+                style={{ width: 20, height: 20, margin: "0 auto 8px" }}
+              />
               <p>Resizing to 320px and scanning…</p>
-              <p className="empty-hint">The page will briefly reflow. This takes a few seconds.</p>
+              <p className="empty-hint">
+                The page will briefly reflow. This takes a few seconds.
+              </p>
             </div>
           )}
-          {zoomStatus==="done" && zoomViolations.length===0 && (
+          {zoomStatus === "done" && zoomViolations.length === 0 && (
             <div className="empty-state empty-state--success">
-              <div className="empty-icon" style={{color:"#1D9E75"}}>
+              <div className="empty-icon" style={{ color: "#1D9E75" }}>
                 <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-                  <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M10 16l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M10 16l4 4 8-8"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
               <p>No new violations at 400% zoom.</p>
-              <p className="empty-hint">Content reflows correctly at narrow viewports. WCAG 1.4.10 satisfied.</p>
+              <p className="empty-hint">
+                Content reflows correctly at narrow viewports. WCAG 1.4.10
+                satisfied.
+              </p>
             </div>
           )}
-          {zoomStatus==="done" && zoomViolations.length>0 && (
+          {zoomStatus === "done" && zoomViolations.length > 0 && (
             <div className="violations">
-              <p className="zoom-intro">These violations only appear at 400% zoom / 320px width:</p>
-              {zoomViolations.map(v=>(
+              <p className="zoom-intro">
+                These violations only appear at 400% zoom / 320px width:
+              </p>
+              {zoomViolations.map((v) => (
                 <div key={v.id} className="violation">
-                  <div className="violation-header" onClick={()=>handleViolationClick(v)}>
-                    <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
+                  <div
+                    className="violation-header"
+                    onClick={() => handleViolationClick(v)}
+                  >
+                    <span
+                      className="impact-bar"
+                      style={{ background: IMPACT_COLOURS[v.impact] || "#888" }}
+                    />
                     <div className="violation-info">
                       <div className="violation-title">{v.description}</div>
                       <div className="violation-meta">
-                        <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
-                        <span className="wcag-version-badge" style={{background:"rgba(194,64,12,0.15)",color:"#F0997B"}}>zoom only</span>
+                        <span
+                          className="impact-badge"
+                          style={{ color: IMPACT_COLOURS[v.impact] }}
+                        >
+                          {v.impact}
+                        </span>
+                        <span
+                          className="wcag-version-badge"
+                          style={{
+                            background: "rgba(194,64,12,0.15)",
+                            color: "#F0997B",
+                          }}
+                        >
+                          zoom only
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1217,40 +1857,66 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       )}
 
       {/* ── Dynamic errors tab ── */}
-      {activeTab==="dynamic" && (
+      {activeTab === "dynamic" && (
         <div className="dynamic-tab">
-          {dynamicIssues.length===0 ? (
+          {dynamicIssues.length === 0 ? (
             <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
-              <div className="tab-explainer-title">Dynamic ARIA error detection</div>
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
-              <div className="tab-explainer-title">Form error detection</div>
-              <div className="tab-explainer-body">
-                This tab catches a specific problem: when a form shows an error message after you submit it, screen readers often never hear it. That's because the error was added to the page by JavaScript <em>after</em> the screen reader already read the page.
+              <div className="tab-explainer-icon">
+                <Icon name="bolt" size={24} />
               </div>
-              <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Keep this panel open</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Find a form on the page and submit it with empty or invalid fields</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>If error messages appear without <code>role="alert"</code>, they show up here</div>
+              <div className="tab-explainer-title">
+                Dynamic ARIA error detection
               </div>
-              <div className="tab-explainer-note">
-                <strong>Nothing here yet.</strong> This tab only shows issues when JavaScript adds new content to the page. It does not scan existing page content.
+              <div className="tab-explainer">
+                <div className="tab-explainer-icon">
+                  <Icon name="bolt" size={24} />
+                </div>
+                <div className="tab-explainer-title">Form error detection</div>
+                <div className="tab-explainer-body">
+                  This tab catches a specific problem: when a form shows an
+                  error message after you submit it, screen readers often never
+                  hear it. That's because the error was added to the page by
+                  JavaScript <em>after</em> the screen reader already read the
+                  page.
+                </div>
+                <div className="tab-explainer-steps">
+                  <div className="tab-step">
+                    <span className="tab-step-num">1</span>Keep this panel open
+                  </div>
+                  <div className="tab-step">
+                    <span className="tab-step-num">2</span>Find a form on the
+                    page and submit it with empty or invalid fields
+                  </div>
+                  <div className="tab-step">
+                    <span className="tab-step-num">3</span>If error messages
+                    appear without <code>role="alert"</code>, they show up here
+                  </div>
+                </div>
+                <div className="tab-explainer-note">
+                  <strong>Nothing here yet.</strong> This tab only shows issues
+                  when JavaScript adds new content to the page. It does not scan
+                  existing page content.
+                </div>
               </div>
-            </div>
             </div>
           ) : (
             <div className="violations">
               {/* Summary */}
               {(() => {
-                const total = dynamicIssues.reduce((s,i) => s + (i.count||1), 0);
+                const total = dynamicIssues.reduce(
+                  (s, i) => s + (i.count || 1),
+                  0,
+                );
                 return (
                   <div className="dynamic-summary">
                     <Icon name="info_outline" size={14} />
                     <span>
-                      <strong>{dynamicIssues.length}</strong> unique pattern{dynamicIssues.length!==1?"s":""} found
-                      {total > dynamicIssues.length ? ` across ${total} elements` : ''}.
-                      Fix each pattern once to fix all copies.
+                      <strong>{dynamicIssues.length}</strong> unique pattern
+                      {dynamicIssues.length !== 1 ? "s" : ""} found
+                      {total > dynamicIssues.length
+                        ? ` across ${total} elements`
+                        : ""}
+                      . Fix each pattern once to fix all copies.
                     </span>
                   </div>
                 );
@@ -1259,8 +1925,8 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
               {/* Group by category — cap at 10 shown */}
               {(() => {
                 const groups = {};
-                dynamicIssues.forEach(issue => {
-                  const cat = issue.category || issue.description || 'Content';
+                dynamicIssues.forEach((issue) => {
+                  const cat = issue.category || issue.description || "Content";
                   if (!groups[cat]) groups[cat] = [];
                   groups[cat].push(issue);
                 });
@@ -1271,58 +1937,115 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                 return (
                   <>
                     {entries.map(([category, catIssues]) => {
-                      const totalCount = catIssues.reduce((s, i) => s + (i.count || 1), 0);
-                      const samples = catIssues.slice(0, 2).map(i => i.sampleText).filter(t => t && t.length > 2);
+                      const totalCount = catIssues.reduce(
+                        (s, i) => s + (i.count || 1),
+                        0,
+                      );
+                      const samples = catIssues
+                        .slice(0, 2)
+                        .map((i) => i.sampleText)
+                        .filter((t) => t && t.length > 2);
                       const firstIssue = catIssues[0];
 
                       return (
                         <div key={category} className="violation">
                           <div className="violation-header">
-                            <span className="impact-bar" style={{background:IMPACT_COLOURS.serious}}/>
+                            <span
+                              className="impact-bar"
+                              style={{ background: IMPACT_COLOURS.serious }}
+                            />
                             <div className="violation-info">
                               <div className="violation-title-row">
-                                <span className="violation-title">{category}</span>
-                                <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27",fontFamily:"var(--mono)",fontSize:11,padding:"2px 7px",borderRadius:4}}>
+                                <span className="violation-title">
+                                  {category}
+                                </span>
+                                <span
+                                  className="badge-new22"
+                                  style={{
+                                    background: "rgba(239,159,39,0.18)",
+                                    color: "#EF9F27",
+                                    fontFamily: "var(--mono)",
+                                    fontSize: 11,
+                                    padding: "2px 7px",
+                                    borderRadius: 4,
+                                  }}
+                                >
                                   {totalCount}x
                                 </span>
                               </div>
                               <div className="violation-meta">
-                                <span className="impact-badge" style={{color:IMPACT_COLOURS.serious}}>serious</span>
+                                <span
+                                  className="impact-badge"
+                                  style={{ color: IMPACT_COLOURS.serious }}
+                                >
+                                  serious
+                                </span>
                                 <span className="wcag-badge">Missing ARIA</span>
                               </div>
                             </div>
                           </div>
                           <div className="violation-detail">
                             <div className="tab-stop-detail-body">
-                              {firstIssue.issues.slice(0,1).map((msg, j) => {
-                                const isLiveRegion = msg.includes("aria-live") || msg.includes("role=alert");
+                              {firstIssue.issues.slice(0, 1).map((msg, j) => {
+                                const isLiveRegion =
+                                  msg.includes("aria-live") ||
+                                  msg.includes("role=alert");
                                 const why = isLiveRegion
-                                  ? "Screen readers only read new content inside a live region. Without role=\"alert\" or aria-live, blind users never hear this."
+                                  ? 'Screen readers only read new content inside a live region. Without role="alert" or aria-live, blind users never hear this.'
                                   : "Link error messages to inputs using aria-describedby so screen readers read the error when the user focuses the field.";
                                 const fix = isLiveRegion
                                   ? `<!-- Errors and alerts -->\n<div role="alert">Something went wrong</div>\n\n<!-- Status updates -->\n<div aria-live="polite">Changes saved</div>`
                                   : `<!-- Give the message an ID -->\n<div id="field-error">Enter a valid email</div>\n\n<!-- Link it to the input -->\n<input type="email" aria-describedby="field-error">`;
                                 return (
-                                  <div key={j} style={{marginBottom:10}}>
-                                    <p className="detail-why" style={{marginBottom:4}}><strong>What is wrong:</strong> {msg}</p>
-                                    <p className="detail-why" style={{marginBottom:6}}>{why}</p>
-                                    <pre className="detail-code"><code>{fix}</code></pre>
+                                  <div key={j} style={{ marginBottom: 10 }}>
+                                    <p
+                                      className="detail-why"
+                                      style={{ marginBottom: 4 }}
+                                    >
+                                      <strong>What is wrong:</strong> {msg}
+                                    </p>
+                                    <p
+                                      className="detail-why"
+                                      style={{ marginBottom: 6 }}
+                                    >
+                                      {why}
+                                    </p>
+                                    <pre className="detail-code">
+                                      <code>{fix}</code>
+                                    </pre>
                                   </div>
                                 );
                               })}
                               {samples.length > 0 && (
-                                <div style={{marginTop:8}}>
-                                  <div className="detail-label" style={{marginBottom:6}}>
-                                    <Icon name="search" size={12} /> Found on this page
+                                <div style={{ marginTop: 8 }}>
+                                  <div
+                                    className="detail-label"
+                                    style={{ marginBottom: 6 }}
+                                  >
+                                    <Icon name="search" size={12} /> Found on
+                                    this page
                                   </div>
                                   {samples.map((s, i) => (
-                                    <div key={i} className="node-snippet" style={{marginBottom:4}}>
-                                      <span className="node-num">#{i+1}</span>
-                                      <code style={{fontSize:11,color:"var(--text2)"}}>{s}</code>
+                                    <div
+                                      key={i}
+                                      className="node-snippet"
+                                      style={{ marginBottom: 4 }}
+                                    >
+                                      <span className="node-num">#{i + 1}</span>
+                                      <code
+                                        style={{
+                                          fontSize: 11,
+                                          color: "var(--text2)",
+                                        }}
+                                      >
+                                        {s}
+                                      </code>
                                     </div>
                                   ))}
                                   {totalCount > 2 && (
-                                    <p className="nodes-more">+{totalCount - 2} more of this type</p>
+                                    <p className="nodes-more">
+                                      +{totalCount - 2} more of this type
+                                    </p>
                                   )}
                                 </div>
                               )}
@@ -1332,9 +2055,13 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                       );
                     })}
                     {hiddenCount > 0 && (
-                      <div className="dynamic-summary" style={{justifyContent:"center",marginTop:6}}>
-                        <span style={{color:"var(--text3)",fontSize:12}}>
-                          +{hiddenCount} more pattern types. Fix the ones above first.
+                      <div
+                        className="dynamic-summary"
+                        style={{ justifyContent: "center", marginTop: 6 }}
+                      >
+                        <span style={{ color: "var(--text3)", fontSize: 12 }}>
+                          +{hiddenCount} more pattern types. Fix the ones above
+                          first.
                         </span>
                       </div>
                     )}
@@ -1347,52 +2074,74 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       )}
 
       {/* ── Content analysis tab ── */}
-      {activeTab==="content" && (
+      {activeTab === "content" && (
         <div className="content-tab">
-          {contentStatus==="idle" && (
+          {contentStatus === "idle" && (
             <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="edit_note" size={24} /></div>
-              <div className="tab-explainer-title">Content accessibility analysis</div>
-              <div className="tab-explainer-body">
-                Checks three things axe-core doesn't cover: ambiguous link text that's meaningless to screen reader users navigating by link list, the reading level of your page content (WCAG 3.1.5), and CSS animations running without pause controls (WCAG 2.2.2).
+              <div className="tab-explainer-icon">
+                <Icon name="edit_note" size={24} />
               </div>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:220}} onClick={runContentAnalysis}>
+              <div className="tab-explainer-title">
+                Content accessibility analysis
+              </div>
+              <div className="tab-explainer-body">
+                Checks three things axe-core doesn't cover: ambiguous link text
+                that's meaningless to screen reader users navigating by link
+                list, the reading level of your page content (WCAG 3.1.5), and
+                CSS animations running without pause controls (WCAG 2.2.2).
+              </div>
+              <button
+                className="btn-scan"
+                style={{ marginTop: 14, maxWidth: 220 }}
+                onClick={runContentAnalysis}
+              >
                 Analyse content
               </button>
             </div>
           )}
 
-          {contentStatus==="running" && (
+          {contentStatus === "running" && (
             <div className="empty-state">
-              <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
+              <span
+                className="spinner"
+                style={{ width: 20, height: 20, margin: "0 auto 8px" }}
+              />
               <p>Analysing content…</p>
             </div>
           )}
 
-          {contentStatus==="error" && (
+          {contentStatus === "error" && (
             <div className="empty-state empty-state--error">
               <p>Could not analyse this page.</p>
             </div>
           )}
 
-          {contentStatus==="done" && contentAnalysis && (
+          {contentStatus === "done" && contentAnalysis && (
             <div className="content-results">
-
               {/* Reading level */}
               <div className="content-section">
-                <div className="content-section-title"><Icon name="menu_book" size={16} style={{marginRight:6}} />Reading level</div>
+                <div className="content-section-title">
+                  <Icon name="menu_book" size={16} style={{ marginRight: 6 }} />
+                  Reading level
+                </div>
                 {contentAnalysis.readingLevel?.grade ? (
                   <ReadingLevelCard data={contentAnalysis.readingLevel} />
                 ) : (
-                  <p className="content-empty">{contentAnalysis.readingLevel?.message || "Not enough text to analyse."}</p>
+                  <p className="content-empty">
+                    {contentAnalysis.readingLevel?.message ||
+                      "Not enough text to analyse."}
+                  </p>
                 )}
               </div>
 
               {/* Link text */}
               <div className="content-section">
                 <div className="content-section-title">
-                  <Icon name="link" size={16} style={{marginRight:6}} /> Link text
-                  <span className="content-section-meta">{contentAnalysis.linkResults?.total} links total</span>
+                  <Icon name="link" size={16} style={{ marginRight: 6 }} /> Link
+                  text
+                  <span className="content-section-meta">
+                    {contentAnalysis.linkResults?.total} links total
+                  </span>
                 </div>
                 {contentAnalysis.linkResults?.issues?.length === 0 ? (
                   <p className="content-ok">✓ All link text is descriptive</p>
@@ -1401,18 +2150,27 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                     {contentAnalysis.linkResults.issues.map((issue, i) => (
                       <div key={i} className="content-issue">
                         <div className="content-issue-head">
-                          <span className={`content-issue-type ${issue.type==="empty"?"content-issue-type--red":"content-issue-type--amber"}`}>
+                          <span
+                            className={`content-issue-type ${issue.type === "empty" ? "content-issue-type--red" : "content-issue-type--amber"}`}
+                          >
                             {issue.type === "empty" ? "Empty" : "Ambiguous"}
                           </span>
-                          <code className="content-issue-text">"{issue.text}"</code>
+                          <code className="content-issue-text">
+                            "{issue.text}"
+                          </code>
                           <button
                             className="cscan-jump-btn"
-                            onClick={() => chrome.runtime.sendMessage({
-                              type: "SCROLL_TO_ELEMENT",
-                              selector: issue.selector || null,
-                              text: issue.type !== "empty" ? issue.text : null,
-                            })}
-                          ><Icon name="open_in_new" size={12} /> Jump</button>
+                            onClick={() =>
+                              chrome.runtime.sendMessage({
+                                type: "SCROLL_TO_ELEMENT",
+                                selector: issue.selector || null,
+                                text:
+                                  issue.type !== "empty" ? issue.text : null,
+                              })
+                            }
+                          >
+                            <Icon name="open_in_new" size={12} /> Jump
+                          </button>
                         </div>
                         <p className="content-issue-msg">{issue.message}</p>
                       </div>
@@ -1423,9 +2181,18 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
 
               {/* Motion */}
               <div className="content-section">
-                <div className="content-section-title"><Icon name="movie_filter" size={16} style={{marginRight:6}} />Animations</div>
+                <div className="content-section-title">
+                  <Icon
+                    name="movie_filter"
+                    size={16}
+                    style={{ marginRight: 6 }}
+                  />
+                  Animations
+                </div>
                 {contentAnalysis.motionIssues?.length === 0 ? (
-                  <p className="content-ok">✓ No problematic animations detected</p>
+                  <p className="content-ok">
+                    ✓ No problematic animations detected
+                  </p>
                 ) : (
                   <div className="content-issues">
                     {contentAnalysis.motionIssues.map((issue, i) => (
@@ -1434,7 +2201,9 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                           <span className="content-issue-type content-issue-type--amber">
                             {issue.type === "infinite" ? "Infinite" : "Long"}
                           </span>
-                          <code className="content-issue-text">{issue.animName} · {issue.duration}</code>
+                          <code className="content-issue-text">
+                            {issue.animName} · {issue.duration}
+                          </code>
                         </div>
                         <p className="content-issue-msg">{issue.message}</p>
                       </div>
@@ -1443,7 +2212,10 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
                 )}
               </div>
 
-              <button className="btn-rerun" onClick={runContentAnalysis}><Icon name="refresh" size={14} style={{marginRight:4}} />Re-analyse</button>
+              <button className="btn-rerun" onClick={runContentAnalysis}>
+                <Icon name="refresh" size={14} style={{ marginRight: 4 }} />
+                Re-analyse
+              </button>
             </div>
           )}
         </div>

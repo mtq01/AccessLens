@@ -1,5 +1,7 @@
 import axe from "axe-core";
 
+// This file runs inside the web page.
+// It does scans, highlights elements, and sends results back to the panel.
 let pickerActive = false;
 let focusModeActive = false;
 let focusStopCount = 0;
@@ -12,7 +14,7 @@ let dynamicIssues = [];
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function clearHighlights() {
-  document.querySelectorAll(".__al_hl__").forEach(el => el.remove());
+  document.querySelectorAll(".__al_hl__").forEach((el) => el.remove());
 }
 
 function makeBadge(text, bg, extraStyles = {}) {
@@ -38,17 +40,19 @@ function createOverlay(rect, color, opacity = 0.08) {
   const el = document.createElement("div");
   el.className = "__al_hl__";
   // Use absolute + scroll offset so overlays stay anchored when scrolling
-  const top  = rect.top  + window.scrollY;
+  const top = rect.top + window.scrollY;
   const left = rect.left + window.scrollX;
   Object.assign(el.style, {
     position: "absolute",
-    top:    top    + "px",
-    left:   left   + "px",
-    width:  rect.width  + "px",
+    top: top + "px",
+    left: left + "px",
+    width: rect.width + "px",
     height: rect.height + "px",
     outline: `2px solid ${color}`,
     outlineOffset: "2px",
-    background: `${color}${Math.round(opacity * 255).toString(16).padStart(2,"0")}`,
+    background: `${color}${Math.round(opacity * 255)
+      .toString(16)
+      .padStart(2, "0")}`,
     borderRadius: "2px",
     pointerEvents: "none",
     zIndex: "2147483646",
@@ -59,9 +63,13 @@ function createOverlay(rect, color, opacity = 0.08) {
 // ── Scan ─────────────────────────────────────────────────────────────────────
 
 async function runScan() {
+  // Run axe-core and return violations + passes.
   try {
     const results = await axe.run(document, {
-      runOnly: { type: "tag", values: ["wcag2a","wcag2aa","wcag21aa","wcag22aa"] },
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"],
+      },
     });
     return {
       success: true,
@@ -85,27 +93,42 @@ function highlightElement(selector, showDimensions = false) {
     const overlay = createOverlay(rect, "#E24B4A");
 
     const short = selector.length > 40 ? selector.slice(0, 40) + "…" : selector;
-    overlay.appendChild(makeBadge(short, "#E24B4A", { top: "-22px", left: "0" }));
+    overlay.appendChild(
+      makeBadge(short, "#E24B4A", { top: "-22px", left: "0" }),
+    );
 
     if (showDimensions) {
-      const w = Math.round(rect.width), h = Math.round(rect.height);
+      const w = Math.round(rect.width),
+        h = Math.round(rect.height);
       const ok = w >= 24 && h >= 24;
       const text = ok ? `${w}×${h}px ✓` : `${w}×${h}px. Needs 24×24px minimum`;
-      overlay.appendChild(makeBadge(text, ok ? "#1D9E75" : "#C2410C", { bottom: "-24px", right: "0" }));
+      overlay.appendChild(
+        makeBadge(text, ok ? "#1D9E75" : "#C2410C", {
+          bottom: "-24px",
+          right: "0",
+        }),
+      );
     }
 
     document.documentElement.appendChild(overlay);
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-  } catch(e) {}
+  } catch (e) {}
 }
 
 // ── Tab order visualiser ──────────────────────────────────────────────────────
 
 const FOCUSABLE = [
-  'a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])',
-  'textarea:not([disabled])', 'button:not([disabled])', 'iframe',
-  '[tabindex]', '[contenteditable="true"]', 'details > summary',
-].join(', ');
+  "a[href]",
+  "area[href]",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "button:not([disabled])",
+  "iframe",
+  "[tabindex]",
+  '[contenteditable="true"]',
+  "details > summary",
+].join(", ");
 
 // ── Focus ring detection via CSS rule inspection ─────────────────────────────
 // Rather than focusing each element (which doesn't reliably trigger style
@@ -121,43 +144,72 @@ function buildFocusRuleCache() {
   try {
     for (const sheet of document.styleSheets) {
       let cssRules;
-      try { cssRules = sheet.cssRules; } catch { continue; }
+      try {
+        cssRules = sheet.cssRules;
+      } catch {
+        continue;
+      }
       if (!cssRules) continue;
       for (const rule of cssRules) {
         if (!(rule instanceof CSSStyleRule)) continue;
-        const sel = rule.selectorText || '';
-        if (sel.includes(':focus') || sel.includes(':focus-visible') || sel.includes(':focus-within')) {
+        const sel = rule.selectorText || "";
+        if (
+          sel.includes(":focus") ||
+          sel.includes(":focus-visible") ||
+          sel.includes(":focus-within")
+        ) {
           // Check if the rule actually sets a visible focus indicator
           const s = rule.style;
-          const hasOutline = s.outline && s.outline !== 'none' && s.outline !== '0';
-          const hasOutlineWidth = s.outlineWidth && s.outlineWidth !== '0' && s.outlineWidth !== '0px';
-          const hasBoxShadow = s.boxShadow && s.boxShadow !== 'none';
-          const hasBorder = s.border && s.border !== 'none';
+          const hasOutline =
+            s.outline && s.outline !== "none" && s.outline !== "0";
+          const hasOutlineWidth =
+            s.outlineWidth &&
+            s.outlineWidth !== "0" &&
+            s.outlineWidth !== "0px";
+          const hasBoxShadow = s.boxShadow && s.boxShadow !== "none";
+          const hasBorder = s.border && s.border !== "none";
           const hasBorderColor = s.borderColor;
           const hasBackground = s.backgroundColor;
-          const outlineExplicitlyNone = s.outline === 'none' || s.outlineWidth === '0' || s.outlineWidth === '0px';
+          const outlineExplicitlyNone =
+            s.outline === "none" ||
+            s.outlineWidth === "0" ||
+            s.outlineWidth === "0px";
 
-          if (!outlineExplicitlyNone && (hasOutline || hasOutlineWidth || hasBoxShadow || hasBorder || hasBorderColor || hasBackground)) {
+          if (
+            !outlineExplicitlyNone &&
+            (hasOutline ||
+              hasOutlineWidth ||
+              hasBoxShadow ||
+              hasBorder ||
+              hasBorderColor ||
+              hasBackground)
+          ) {
             // Strip the :focus/:focus-visible part to get the base selector
             const baseSelector = sel
-              .replace(/:focus-visible/g, '')
-              .replace(/:focus-within/g, '')
-              .replace(/:focus/g, '')
+              .replace(/:focus-visible/g, "")
+              .replace(/:focus-within/g, "")
+              .replace(/:focus/g, "")
               .trim();
-            rules.push({ baseSelector, rule, hasOutline, hasBoxShadow, outlineExplicitlyNone });
+            rules.push({
+              baseSelector,
+              rule,
+              hasOutline,
+              hasBoxShadow,
+              outlineExplicitlyNone,
+            });
           } else if (outlineExplicitlyNone && !hasBoxShadow) {
             // Explicitly removes focus ring with no replacement
             const baseSelector = sel
-              .replace(/:focus-visible/g, '')
-              .replace(/:focus-within/g, '')
-              .replace(/:focus/g, '')
+              .replace(/:focus-visible/g, "")
+              .replace(/:focus-within/g, "")
+              .replace(/:focus/g, "")
               .trim();
             rules.push({ baseSelector, rule, removes: true });
           }
         }
       }
     }
-  } catch(e) {}
+  } catch (e) {}
 
   _focusRuleCache = rules;
   return rules;
@@ -180,7 +232,7 @@ function elementHasFocusRingViaCSS(el) {
           hasPositiveRule = true;
         }
       }
-    } catch(e) {
+    } catch (e) {
       // Invalid selector — skip
     }
   }
@@ -193,7 +245,7 @@ function elementHasFocusRingViaCSS(el) {
 
   // No CSS rules found — check if browser default outline would show
   // Native elements (button, input, a, select) get browser defaults
-  const nativeElements = ['button', 'input', 'select', 'textarea', 'a'];
+  const nativeElements = ["button", "input", "select", "textarea", "a"];
   if (nativeElements.includes(el.tagName.toLowerCase())) {
     // Check if outline:none is set globally via inline style or a * rule
     const style = window.getComputedStyle(el);
@@ -215,53 +267,70 @@ async function getTabOrder() {
   // Invalidate CSS rule cache for fresh scan
   _focusRuleCache = null;
 
-  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
-    .filter(el => {
-      const ti = parseInt(el.getAttribute('tabindex') ?? '0', 10);
+  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE)).filter(
+    (el) => {
+      const ti = parseInt(el.getAttribute("tabindex") ?? "0", 10);
       if (ti < 0) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
       const style = window.getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      if (style.display === "none" || style.visibility === "hidden")
+        return false;
       return true;
-    });
+    },
+  );
 
   const withPos = allFocusable
-    .filter(el => parseInt(el.getAttribute('tabindex') || '0', 10) > 0)
-    .sort((a, b) => parseInt(a.getAttribute('tabindex'), 10) - parseInt(b.getAttribute('tabindex'), 10));
-  const natural = allFocusable.filter(el => !(parseInt(el.getAttribute('tabindex') || '0', 10) > 0));
+    .filter((el) => parseInt(el.getAttribute("tabindex") || "0", 10) > 0)
+    .sort(
+      (a, b) =>
+        parseInt(a.getAttribute("tabindex"), 10) -
+        parseInt(b.getAttribute("tabindex"), 10),
+    );
+  const natural = allFocusable.filter(
+    (el) => !(parseInt(el.getAttribute("tabindex") || "0", 10) > 0),
+  );
   const ordered = [...withPos, ...natural];
 
   const results = ordered.map((el, i) => {
     const rect = el.getBoundingClientRect();
-    const tabindex = el.getAttribute('tabindex');
+    const tabindex = el.getAttribute("tabindex");
     const hasPositiveTabindex = tabindex !== null && parseInt(tabindex, 10) > 0;
     const isAriaHiddenFocusable = el.closest('[aria-hidden="true"]') !== null;
     const hasFocusRing = elementHasFocusRingViaCSS(el);
 
     const tag = el.tagName.toLowerCase();
-    const id  = el.id ? `#${el.id}` : '';
-    const cls = el.className && typeof el.className === 'string'
-      ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.')
-      : '';
+    const id = el.id ? `#${el.id}` : "";
+    const cls =
+      el.className && typeof el.className === "string"
+        ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".")
+        : "";
     const text = (
-      el.getAttribute('aria-label') ||
-      el.getAttribute('alt') ||
-      el.getAttribute('placeholder') ||
-      el.getAttribute('title') ||
-      el.textContent || ''
-    ).trim().slice(0, 30);
-    const label = `${tag}${id || cls}${text ? `: "${text}"` : ''}`;
+      el.getAttribute("aria-label") ||
+      el.getAttribute("alt") ||
+      el.getAttribute("placeholder") ||
+      el.getAttribute("title") ||
+      el.textContent ||
+      ""
+    )
+      .trim()
+      .slice(0, 30);
+    const label = `${tag}${id || cls}${text ? `: "${text}"` : ""}`;
 
     return {
       index: i + 1,
       tag,
       label,
-      tabindex: tabindex || '0',
+      tabindex: tabindex || "0",
       hasPositiveTabindex,
       isAriaHiddenFocusable,
       hasFocusRing,
-      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+      rect: {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
     };
   });
 
@@ -273,20 +342,27 @@ async function showAllTabOrder() {
   const stops = await getTabOrder();
 
   // Re-query ordered elements for positioning (getTabOrder already blurred them)
-  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
-    .filter(el => {
-      const ti = parseInt(el.getAttribute('tabindex') ?? '0', 10);
+  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE)).filter(
+    (el) => {
+      const ti = parseInt(el.getAttribute("tabindex") ?? "0", 10);
       if (ti < 0) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
       const style = window.getComputedStyle(el);
-      return style.display !== 'none' && style.visibility !== 'hidden';
-    });
+      return style.display !== "none" && style.visibility !== "hidden";
+    },
+  );
 
   const withPos = allFocusable
-    .filter(e => parseInt(e.getAttribute('tabindex') || '0', 10) > 0)
-    .sort((a, b) => parseInt(a.getAttribute('tabindex'), 10) - parseInt(b.getAttribute('tabindex'), 10));
-  const natural = allFocusable.filter(e => !(parseInt(e.getAttribute('tabindex') || '0', 10) > 0));
+    .filter((e) => parseInt(e.getAttribute("tabindex") || "0", 10) > 0)
+    .sort(
+      (a, b) =>
+        parseInt(a.getAttribute("tabindex"), 10) -
+        parseInt(b.getAttribute("tabindex"), 10),
+    );
+  const natural = allFocusable.filter(
+    (e) => !(parseInt(e.getAttribute("tabindex") || "0", 10) > 0),
+  );
   const ordered = [...withPos, ...natural];
 
   stops.forEach((stop, i) => {
@@ -296,57 +372,59 @@ async function showAllTabOrder() {
     // Get rect — element may be off-screen so use getBoundingClientRect
     // then add scroll offset to get document-relative position
     const rect = domEl.getBoundingClientRect();
-    const top  = rect.top  + window.scrollY;
+    const top = rect.top + window.scrollY;
     const left = rect.left + window.scrollX;
 
     // Skip elements with zero size (hidden)
     if (rect.width === 0 && rect.height === 0) return;
 
     // Colour by issue type
-    let color = '#4f8ef7'; // blue — normal
-    if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red (bug)
-    else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber (avoid this)
-    else if (!stop.hasFocusRing)       color = '#C2410C'; // dark red (no focus ring)
+    let color = "#4f8ef7"; // blue — normal
+    if (stop.isAriaHiddenFocusable)
+      color = "#E24B4A"; // red (bug)
+    else if (stop.hasPositiveTabindex)
+      color = "#EF9F27"; // amber (avoid this)
+    else if (!stop.hasFocusRing) color = "#C2410C"; // dark red (no focus ring)
 
     // Element outline — absolute so it stays anchored on scroll
-    const outline = document.createElement('div');
-    outline.className = '__al_hl__';
+    const outline = document.createElement("div");
+    outline.className = "__al_hl__";
     Object.assign(outline.style, {
-      position: 'absolute',
-      top:  top  + 'px',
-      left: left + 'px',
-      width:  rect.width  + 'px',
-      height: rect.height + 'px',
+      position: "absolute",
+      top: top + "px",
+      left: left + "px",
+      width: rect.width + "px",
+      height: rect.height + "px",
       outline: `2px solid ${color}`,
-      outlineOffset: '2px',
+      outlineOffset: "2px",
       background: `${color}18`,
-      borderRadius: '2px',
-      pointerEvents: 'none',
-      zIndex: '2147483646',
+      borderRadius: "2px",
+      pointerEvents: "none",
+      zIndex: "2147483646",
     });
 
     // Number badge — absolute, positioned above element
-    const badge = document.createElement('div');
-    badge.className = '__al_hl__';
+    const badge = document.createElement("div");
+    badge.className = "__al_hl__";
     Object.assign(badge.style, {
-      position: 'absolute',
-      top:  (top  - 10) + 'px',
-      left: (left - 10) + 'px',
-      width: '20px',
-      height: '20px',
+      position: "absolute",
+      top: top - 10 + "px",
+      left: left - 10 + "px",
+      width: "20px",
+      height: "20px",
       background: color,
-      color: '#fff',
-      fontSize: '10px',
-      fontFamily: 'monospace',
-      fontWeight: '700',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: '50%',
-      pointerEvents: 'none',
-      zIndex: '2147483647',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-      lineHeight: '1',
+      color: "#fff",
+      fontSize: "10px",
+      fontFamily: "monospace",
+      fontWeight: "700",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: "50%",
+      pointerEvents: "none",
+      zIndex: "2147483647",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+      lineHeight: "1",
     });
     badge.textContent = stop.index;
 
@@ -358,21 +436,29 @@ async function showAllTabOrder() {
 }
 
 function scrollToStop(stopIndex) {
-  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
-    .filter(el => {
-      const ti = parseInt(el.getAttribute('tabindex') ?? '0', 10);
+  const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE)).filter(
+    (el) => {
+      const ti = parseInt(el.getAttribute("tabindex") ?? "0", 10);
       if (ti < 0) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
       const style = window.getComputedStyle(el);
-      return style.display !== 'none' && style.visibility !== 'hidden';
-    });
-  const withPos = allFocusable.filter(e => parseInt(e.getAttribute('tabindex') || '0', 10) > 0)
-    .sort((a, b) => parseInt(a.getAttribute('tabindex'), 10) - parseInt(b.getAttribute('tabindex'), 10));
-  const natural = allFocusable.filter(e => !(parseInt(e.getAttribute('tabindex') || '0', 10) > 0));
+      return style.display !== "none" && style.visibility !== "hidden";
+    },
+  );
+  const withPos = allFocusable
+    .filter((e) => parseInt(e.getAttribute("tabindex") || "0", 10) > 0)
+    .sort(
+      (a, b) =>
+        parseInt(a.getAttribute("tabindex"), 10) -
+        parseInt(b.getAttribute("tabindex"), 10),
+    );
+  const natural = allFocusable.filter(
+    (e) => !(parseInt(e.getAttribute("tabindex") || "0", 10) > 0),
+  );
   const ordered = [...withPos, ...natural];
   const el = ordered[stopIndex - 1];
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function startFocusMode() {
@@ -384,11 +470,19 @@ function startFocusMode() {
   const hint = document.createElement("div");
   hint.id = "__al_focus_hint__";
   Object.assign(hint.style, {
-    position: "fixed", top: "0", left: "0", right: "0",
-    background: "#1a3a6b", color: "#ffffff",  // dark navy — white text 9.5:1 contrast
-    fontSize: "13px", fontFamily: "monospace",
-    padding: "8px 16px", zIndex: "2147483647",
-    display: "flex", alignItems: "center", justifyContent: "space-between",
+    position: "fixed",
+    top: "0",
+    left: "0",
+    right: "0",
+    background: "#1a3a6b",
+    color: "#ffffff", // dark navy — white text 9.5:1 contrast
+    fontSize: "13px",
+    fontFamily: "monospace",
+    padding: "8px 16px",
+    zIndex: "2147483647",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
     pointerEvents: "none",
     borderBottom: "2px solid #4f8ef7",
   });
@@ -408,21 +502,27 @@ function startFocusMode() {
     const outline = style.outline;
     const outlineWidth = parseFloat(style.outlineWidth) || 0;
     const boxShadow = style.boxShadow;
-    const hasFocusRing = outlineWidth > 0 || (boxShadow && boxShadow !== "none");
+    const hasFocusRing =
+      outlineWidth > 0 || (boxShadow && boxShadow !== "none");
 
     const color = hasFocusRing ? "#1D9E75" : "#E24B4A";
     const overlay = createOverlay(rect, color, 0.1);
 
     // Stop number badge
-    overlay.appendChild(makeBadge(`#${focusStopCount}`, color, { top: "-22px", left: "0" }));
+    overlay.appendChild(
+      makeBadge(`#${focusStopCount}`, color, { top: "-22px", left: "0" }),
+    );
 
     // Focus ring status badge
     const status = hasFocusRing ? "Focus ring ✓" : "No focus ring ✗";
-    overlay.appendChild(makeBadge(status, color, { bottom: "-22px", left: "0" }));
+    overlay.appendChild(
+      makeBadge(status, color, { bottom: "-22px", left: "0" }),
+    );
 
     document.documentElement.appendChild(overlay);
     const counter = document.getElementById("__al_focus_counter__");
-    if (counter) counter.textContent = `Stop ${focusStopCount}: ${el.tagName.toLowerCase()}${el.id ? "#"+el.id : ""}`;
+    if (counter)
+      counter.textContent = `Stop ${focusStopCount}: ${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}`;
 
     // Report back to panel
     chrome.runtime.sendMessage({
@@ -450,7 +550,10 @@ function stopFocusMode() {
   document.removeEventListener("keydown", focusKeyHandler, true);
   document.getElementById("__al_focus_hint__")?.remove();
   clearHighlights();
-  chrome.runtime.sendMessage({ type: "FOCUS_MODE_STOPPED", totalStops: focusStopCount });
+  chrome.runtime.sendMessage({
+    type: "FOCUS_MODE_STOPPED",
+    totalStops: focusStopCount,
+  });
 }
 
 // ── Zoom / reflow test ────────────────────────────────────────────────────────
@@ -471,11 +574,14 @@ async function runZoomTest() {
     meta.content = "width=320";
 
     // Wait for reflow
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 600));
 
     // Run scan at narrow viewport
     const narrowResults = await axe.run(document, {
-      runOnly: { type: "tag", values: ["wcag2a","wcag2aa","wcag21aa","wcag22aa"] },
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"],
+      },
     });
 
     // Restore viewport
@@ -485,10 +591,10 @@ async function runZoomTest() {
       meta.remove();
     }
 
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300));
 
     return { success: true, violations: narrowResults.violations };
-  } catch(err) {
+  } catch (err) {
     // Always restore viewport even on error
     if (originalMeta) originalMeta.content = originalContent;
     return { success: false, error: err.message };
@@ -535,31 +641,51 @@ function disableHighContrast() {
 // ── Dynamic error detection ───────────────────────────────────────────────────
 
 const ERROR_PATTERNS = [
-  /error/i, /invalid/i, /needd/i, /fail/i, /warning/i, /alert/i,
-  /notice/i, /message/i, /notification/i, /toast/i, /banner/i,
+  /error/i,
+  /invalid/i,
+  /needd/i,
+  /fail/i,
+  /warning/i,
+  /alert/i,
+  /notice/i,
+  /message/i,
+  /notification/i,
+  /toast/i,
+  /banner/i,
 ];
 
 // Patterns that suggest content was deliberately injected for the user to see
 const DYNAMIC_CONTENT_PATTERNS = [
-  /deal/i, /offer/i, /discount/i, /promo/i, /credit/i, /save/i,
-  /new/i, /update/i, /available/i, /expires/i,
+  /deal/i,
+  /offer/i,
+  /discount/i,
+  /promo/i,
+  /credit/i,
+  /save/i,
+  /new/i,
+  /update/i,
+  /available/i,
+  /expires/i,
 ];
 
 function looksLikeDynamicUserContent(el) {
-  const text = (el.textContent?.trim() || "");
-  const cls  = (el.className && typeof el.className === 'string' ? el.className : "");
-  const role = (el.getAttribute("role") || "");
+  const text = el.textContent?.trim() || "";
+  const cls =
+    el.className && typeof el.className === "string" ? el.className : "";
+  const role = el.getAttribute("role") || "";
 
   if (text.length < 5) return false;
 
   // Strong signal: class or role explicitly suggests this is a message/error/alert
-  if (ERROR_PATTERNS.some(p => p.test(cls) || p.test(role))) return true;
+  if (ERROR_PATTERNS.some((p) => p.test(cls) || p.test(role))) return true;
 
   // Strong signal: element has role that implies it's a user-facing message
-  if (['alert','status','log','marquee','timer'].includes(role)) return true;
+  if (["alert", "status", "log", "marquee", "timer"].includes(role))
+    return true;
 
   // Strong signal: aria attributes suggest it's meant to be announced
-  if (el.getAttribute('aria-atomic') || el.getAttribute('aria-relevant')) return true;
+  if (el.getAttribute("aria-atomic") || el.getAttribute("aria-relevant"))
+    return true;
 
   // For everything else, don't flag it — static content doesn't need aria-live
   return false;
@@ -569,15 +695,18 @@ function checkDynamicError(el) {
   if (!looksLikeDynamicUserContent(el)) return null;
 
   const hasAriaLive = el.getAttribute("aria-live");
-  const hasRole     = el.getAttribute("role");
-  const hasId       = !!el.id;
-  const hasAriaDescribedBy = hasId && !!document.querySelector(`[aria-describedby="${el.id}"]`);
+  const hasRole = el.getAttribute("role");
+  const hasId = !!el.id;
+  const hasAriaDescribedBy =
+    hasId && !!document.querySelector(`[aria-describedby="${el.id}"]`);
 
   // Already properly marked up — not an issue
   if (hasAriaLive || hasRole === "alert" || hasRole === "status") return null;
 
   const issues = [];
-  issues.push("Missing aria-live or role=alert. Screen readers won't know this appeared");
+  issues.push(
+    "Missing aria-live or role=alert. Screen readers won't know this appeared",
+  );
 
   if (hasId && !hasAriaDescribedBy) {
     issues.push("Has an ID but no input references it via aria-describedby");
@@ -585,29 +714,31 @@ function checkDynamicError(el) {
     issues.push("No ID. Cannot be linked to a form input via aria-describedby");
   }
 
-  const elCls = (el.className && typeof el.className === 'string') ? el.className : '';
-  const elTag = el.tagName?.toLowerCase() || '';
-  const elText = (el.textContent || '').trim();
+  const elCls =
+    el.className && typeof el.className === "string" ? el.className : "";
+  const elTag = el.tagName?.toLowerCase() || "";
+  const elText = (el.textContent || "").trim();
   const elTextShort = elText.slice(0, 60);
 
   // Categorize meaningfully
-  let category = 'General content';
-  if (ERROR_PATTERNS.some(p => p.test(elCls))) category = 'Error message';
-  else if (/toast|snack|notif/i.test(elCls)) category = 'Notification';
-  else if (/banner|promo|deal|offer|credit/i.test(elCls)) category = 'Marketing content';
-  else if (/modal|dialog|popup/i.test(elCls)) category = 'Modal content';
-  else if (elTag === 'strong' || elTag === 'b') category = 'Highlighted text';
-  else if (elTag === 'p') category = 'Paragraph text';
-  else if (elTag === 'li') category = 'List item';
-  else if (elTag === 'span') category = 'Inline text';
-  else if (elTag === 'div') category = 'Content block';
+  let category = "General content";
+  if (ERROR_PATTERNS.some((p) => p.test(elCls))) category = "Error message";
+  else if (/toast|snack|notif/i.test(elCls)) category = "Notification";
+  else if (/banner|promo|deal|offer|credit/i.test(elCls))
+    category = "Marketing content";
+  else if (/modal|dialog|popup/i.test(elCls)) category = "Modal content";
+  else if (elTag === "strong" || elTag === "b") category = "Highlighted text";
+  else if (elTag === "p") category = "Paragraph text";
+  else if (elTag === "li") category = "List item";
+  else if (elTag === "span") category = "Inline text";
+  else if (elTag === "div") category = "Content block";
 
-  const description = category + ' missing ARIA live region';
+  const description = category + " missing ARIA live region";
 
   // Dedup key = category + first 40 chars of text
   // This groups truly identical content while keeping different text as separate entries
-  const textKey = elText.slice(0, 40).replace(/\s+/g, ' ').trim();
-  const dedupKey = category + '|' + textKey;
+  const textKey = elText.slice(0, 40).replace(/\s+/g, " ").trim();
+  const dedupKey = category + "|" + textKey;
 
   return {
     id: "dynamic-" + Date.now(),
@@ -626,34 +757,36 @@ function checkDynamicError(el) {
 function deduplicateDynamicIssues(issues) {
   // Group by dedupKey — same pattern of issues = one entry with a count
   const groups = {};
-  issues.forEach(issue => {
+  issues.forEach((issue) => {
     const key = issue.dedupKey || issue.issues.join("|");
     if (!groups[key]) {
       groups[key] = { ...issue, count: 1, examples: [issue.html] };
     } else {
       groups[key].count++;
-      if (groups[key].examples.length < 3) groups[key].examples.push(issue.html);
+      if (groups[key].examples.length < 3)
+        groups[key].examples.push(issue.html);
     }
   });
   return Object.values(groups);
 }
 
 function startMutationObserver() {
+  // Watch for new DOM nodes added by JavaScript after page load.
   if (mutationObserver) mutationObserver.disconnect();
   dynamicIssues = [];
 
   // Only watch for elements ADDED after page load via JavaScript.
   // Static content doesn't need aria-live — only content that changes does.
   mutationObserver = new MutationObserver((mutations) => {
-    mutations.forEach(m => {
-      m.addedNodes.forEach(node => {
+    mutations.forEach((m) => {
+      m.addedNodes.forEach((node) => {
         if (node.nodeType !== 1) return;
         // Only check elements that look like user-facing messages
         const issue = checkDynamicError(node);
         if (issue) dynamicIssues.push(issue);
         // Also check children of the added node
         if (node.querySelectorAll) {
-          node.querySelectorAll('*').forEach(child => {
+          node.querySelectorAll("*").forEach((child) => {
             const childIssue = checkDynamicError(child);
             if (childIssue) dynamicIssues.push(childIssue);
           });
@@ -684,11 +817,19 @@ function startPicker() {
   const hint = document.createElement("div");
   hint.id = "__al_picker_hint__";
   Object.assign(hint.style, {
-    position: "fixed", top: "12px", left: "50%", transform: "translateX(-50%)",
-    background: "rgba(15,17,23,0.92)", color: "#e8eaf0",
-    fontSize: "12px", fontFamily: "monospace",
-    padding: "6px 14px", borderRadius: "6px",
-    zIndex: "2147483647", pointerEvents: "none", whiteSpace: "nowrap",
+    position: "fixed",
+    top: "12px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(15,17,23,0.92)",
+    color: "#e8eaf0",
+    fontSize: "12px",
+    fontFamily: "monospace",
+    padding: "6px 14px",
+    borderRadius: "6px",
+    zIndex: "2147483647",
+    pointerEvents: "none",
+    whiteSpace: "nowrap",
   });
   hint.textContent = "Click any element to check contrast";
   document.body.appendChild(hint);
@@ -739,11 +880,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === "SHOW_TAB_ORDER") {
-    showAllTabOrder().then(stops => {
-      sendResponse({ success: true, stops });
-    }).catch(() => {
-      sendResponse({ success: false });
-    });
+    showAllTabOrder()
+      .then((stops) => {
+        sendResponse({ success: true, stops });
+      })
+      .catch(() => {
+        sendResponse({ success: false });
+      });
     return true;
   }
   if (message.type === "SCROLL_TO_STOP") {
@@ -773,21 +916,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ disabled: true });
     return true;
   }
-  if (message.type === 'RUN_CONTENT_ANALYSIS') {
+  if (message.type === "RUN_CONTENT_ANALYSIS") {
     try {
-      const linkResults  = analyseLinkText();
+      const linkResults = analyseLinkText();
       const readingLevel = getReadingLevel();
       const motionIssues = detectMotion();
       sendResponse({ success: true, linkResults, readingLevel, motionIssues });
-    } catch(e) {
+    } catch (e) {
       sendResponse({ success: false, error: e.message });
     }
     return true;
   }
-  if (message.type === 'SCAN_CONTRAST') {
+  if (message.type === "SCAN_CONTRAST") {
     try {
       sendResponse({ success: true, results: scanContrast() });
-    } catch(e) {
+    } catch (e) {
       sendResponse({ success: false, error: e.message });
     }
     return true;
@@ -797,21 +940,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       let el = null;
       if (message.selector) el = document.querySelector(message.selector);
       if (!el && message.text) {
-        const all = document.querySelectorAll('a,button,p,h1,h2,h3,h4,h5,h6,span,li,td');
+        const all = document.querySelectorAll(
+          "a,button,p,h1,h2,h3,h4,h5,h6,span,li,td",
+        );
         for (const node of all) {
-          if (node.textContent?.trim().startsWith(message.text.trim())) { el = node; break; }
+          if (node.textContent?.trim().startsWith(message.text.trim())) {
+            el = node;
+            break;
+          }
         }
       }
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
-        const orig = { outline: el.style.outline, outlineOffset: el.style.outlineOffset, transition: el.style.transition };
-        el.style.transition = 'outline 0.15s ease';
-        el.style.outline = '3px solid #4f8ef7';
-        el.style.outlineOffset = '4px';
+        const orig = {
+          outline: el.style.outline,
+          outlineOffset: el.style.outlineOffset,
+          transition: el.style.transition,
+        };
+        el.style.transition = "outline 0.15s ease";
+        el.style.outline = "3px solid #4f8ef7";
+        el.style.outlineOffset = "4px";
         let count = 0;
         const pulse = setInterval(() => {
           count++;
-          el.style.outline = count % 2 === 0 ? '3px solid #4f8ef7' : '3px solid #ef9f27';
+          el.style.outline =
+            count % 2 === 0 ? "3px solid #4f8ef7" : "3px solid #ef9f27";
           if (count >= 4) {
             clearInterval(pulse);
             setTimeout(() => {
@@ -825,7 +978,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } else {
         sendResponse({ success: false });
       }
-    } catch(e) {
+    } catch (e) {
       sendResponse({ success: false });
     }
     return true;
@@ -835,48 +988,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ── Link text analyser ────────────────────────────────────────────────────────
 
 const AMBIGUOUS_PATTERNS = [
-  /^click here$/i, /^here$/i, /^this$/i, /^read more$/i,
-  /^more$/i, /^learn more$/i, /^details$/i, /^info$/i,
-  /^information$/i, /^link$/i, /^page$/i, /^continue$/i,
-  /^go$/i, /^view$/i, /^see more$/i, /^show more$/i,
+  /^click here$/i,
+  /^here$/i,
+  /^this$/i,
+  /^read more$/i,
+  /^more$/i,
+  /^learn more$/i,
+  /^details$/i,
+  /^info$/i,
+  /^information$/i,
+  /^link$/i,
+  /^page$/i,
+  /^continue$/i,
+  /^go$/i,
+  /^view$/i,
+  /^see more$/i,
+  /^show more$/i,
 ];
 
 function analyseLinkText() {
-  const links = Array.from(document.querySelectorAll('a[href]'));
+  const links = Array.from(document.querySelectorAll("a[href]"));
   const issues = [];
 
   links.forEach((link, idx) => {
     const text = (
-      link.getAttribute('aria-label') ||
+      link.getAttribute("aria-label") ||
       link.textContent ||
-      link.getAttribute('title') || ''
+      link.getAttribute("title") ||
+      ""
     ).trim();
 
     // Tag every link with a unique marker so we can find it reliably later
-    const marker = 'al-' + idx;
-    link.setAttribute('data-al-link', marker);
+    const marker = "al-" + idx;
+    link.setAttribute("data-al-link", marker);
     const selector = '[data-al-link="' + marker + '"]';
 
     if (!text) {
       issues.push({
-        type: 'empty',
-        text: '(no text)',
+        type: "empty",
+        text: "(no text)",
         html: link.outerHTML.slice(0, 150),
         href: link.href,
         selector,
-        message: 'Link has no accessible text — screen readers will read the URL out loud instead',
+        message:
+          "Link has no accessible text — screen readers will read the URL out loud instead",
       });
       return;
     }
 
-    if (AMBIGUOUS_PATTERNS.some(p => p.test(text))) {
+    if (AMBIGUOUS_PATTERNS.some((p) => p.test(text))) {
       issues.push({
-        type: 'ambiguous',
+        type: "ambiguous",
         text,
         html: link.outerHTML.slice(0, 150),
         href: link.href,
         selector,
-        message: '"' + text + '" is ambiguous out of context. Screen reader users navigating by link list cannot determine the destination.',
+        message:
+          '"' +
+          text +
+          '" is ambiguous out of context. Screen reader users navigating by link list cannot determine the destination.',
       });
     }
   });
@@ -888,12 +1058,26 @@ function analyseLinkText() {
 
 function getReadingLevel() {
   // Gather text from main content areas, skip nav/header/footer
-  const skipTags = new Set(['SCRIPT','STYLE','NAV','HEADER','FOOTER','ASIDE','NOSCRIPT']);
-  const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+  const skipTags = new Set([
+    "SCRIPT",
+    "STYLE",
+    "NAV",
+    "HEADER",
+    "FOOTER",
+    "ASIDE",
+    "NOSCRIPT",
+  ]);
+  const main =
+    document.querySelector("main") ||
+    document.querySelector('[role="main"]') ||
+    document.body;
 
-  let text = '';
+  let text = "";
   const walk = (node) => {
-    if (node.nodeType === 3) { text += node.textContent + ' '; return; }
+    if (node.nodeType === 3) {
+      text += node.textContent + " ";
+      return;
+    }
     if (node.nodeType !== 1) return;
     if (skipTags.has(node.tagName)) return;
     node.childNodes.forEach(walk);
@@ -901,33 +1085,61 @@ function getReadingLevel() {
   walk(main);
 
   // Clean up
-  text = text.replace(/\s+/g, ' ').trim();
-  if (text.length < 100) return { score: null, grade: null, message: 'Not enough text content to analyse.' };
+  text = text.replace(/\s+/g, " ").trim();
+  if (text.length < 100)
+    return {
+      score: null,
+      grade: null,
+      message: "Not enough text content to analyse.",
+    };
 
   // Count sentences, words, syllables
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 3).length || 1;
-  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const sentences =
+    text.split(/[.!?]+/).filter((s) => s.trim().length > 3).length || 1;
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
   const wordCount = words.length || 1;
 
   // Syllable estimation
   const syllables = words.reduce((total, word) => {
-    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+    const w = word.toLowerCase().replace(/[^a-z]/g, "");
     if (!w) return total;
     let count = w.match(/[aeiouy]+/g)?.length || 1;
-    if (w.endsWith('e') && count > 1) count--;
+    if (w.endsWith("e") && count > 1) count--;
     return total + Math.max(1, count);
   }, 0);
 
   // Flesch-Kincaid Grade Level
-  const fkgl = 0.39 * (wordCount / sentences) + 11.8 * (syllables / wordCount) - 15.59;
+  const fkgl =
+    0.39 * (wordCount / sentences) + 11.8 * (syllables / wordCount) - 15.59;
   const grade = Math.max(1, Math.round(fkgl));
 
   let label, color, explanation;
-  if (grade <= 6)  { label = 'Very easy';  color = '#16a34a'; explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
-  else if (grade <= 8)  { label = 'Easy';  color = '#65a30d'; explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
-  else if (grade <= 10) { label = 'Moderate'; color = '#d97706'; explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
-  else if (grade <= 12) { label = 'Difficult'; color = '#ea580c'; explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
-  else                  { label = 'Very difficult'; color = '#dc2626'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
+  if (grade <= 6) {
+    label = "Very easy";
+    color = "#16a34a";
+    explanation =
+      "Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.";
+  } else if (grade <= 8) {
+    label = "Easy";
+    color = "#65a30d";
+    explanation =
+      "Middle school level. Good readability. Most adults will understand this easily.";
+  } else if (grade <= 10) {
+    label = "Moderate";
+    color = "#d97706";
+    explanation =
+      "High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.";
+  } else if (grade <= 12) {
+    label = "Difficult";
+    color = "#ea580c";
+    explanation =
+      "Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.";
+  } else {
+    label = "Very difficult";
+    color = "#dc2626";
+    explanation =
+      "University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.";
+  }
 
   return {
     grade,
@@ -944,25 +1156,26 @@ function getReadingLevel() {
 
 function detectMotion() {
   const issues = [];
-  const all = Array.from(document.querySelectorAll('*'));
+  const all = Array.from(document.querySelectorAll("*"));
 
-  all.forEach(el => {
+  all.forEach((el) => {
     const style = window.getComputedStyle(el);
     const animName = style.animationName;
     const animDuration = parseFloat(style.animationDuration) || 0;
     const animIterCount = style.animationIterationCount;
     const transDuration = parseFloat(style.transitionDuration) || 0;
 
-    const hasAnimation = animName && animName !== 'none' && animDuration > 0;
+    const hasAnimation = animName && animName !== "none" && animDuration > 0;
     const hasLongTransition = transDuration > 1;
 
     if (hasAnimation) {
-      const isInfinite = animIterCount === 'infinite';
+      const isInfinite = animIterCount === "infinite";
       const isLong = animDuration > 2;
 
       if (isInfinite || isLong) {
         // Check if there's a pause/stop control nearby
-        const hasPauseControl = el.closest('[aria-label*="pause"]') ||
+        const hasPauseControl =
+          el.closest('[aria-label*="pause"]') ||
           el.closest('[aria-label*="stop"]') ||
           el.querySelector('[aria-label*="pause"]') ||
           el.querySelector('[aria-label*="stop"]');
@@ -971,11 +1184,11 @@ function detectMotion() {
         if (rect.width === 0 || rect.height === 0) return;
 
         issues.push({
-          type: isInfinite ? 'infinite' : 'long',
+          type: isInfinite ? "infinite" : "long",
           tag: el.tagName.toLowerCase(),
-          id: el.id ? `#${el.id}` : '',
+          id: el.id ? `#${el.id}` : "",
           animName,
-          duration: isInfinite ? '∞' : animDuration + 's',
+          duration: isInfinite ? "∞" : animDuration + "s",
           hasPauseControl: !!hasPauseControl,
           html: el.outerHTML.slice(0, 120),
           message: isInfinite
@@ -988,12 +1201,14 @@ function detectMotion() {
 
   // Deduplicate by animName
   const seen = new Set();
-  return issues.filter(i => {
-    const key = i.animName + i.tag;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 20); // cap at 20
+  return issues
+    .filter((i) => {
+      const key = i.animName + i.tag;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 20); // cap at 20
 }
 
 // ── Message handlers ──────────────────────────────────────────────────────────
@@ -1008,7 +1223,7 @@ function parseRgbStr(str) {
 }
 
 function luminance([r, g, b]) {
-  const c = [r, g, b].map(v => {
+  const c = [r, g, b].map((v) => {
     const s = v / 255;
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   });
@@ -1016,45 +1231,51 @@ function luminance([r, g, b]) {
 }
 
 function contrastRatio(rgb1, rgb2) {
-  const l1 = luminance(rgb1), l2 = luminance(rgb2);
-  const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+  const l1 = luminance(rgb1),
+    l2 = luminance(rgb2);
+  const lighter = Math.max(l1, l2),
+    darker = Math.min(l1, l2);
   return (lighter + 0.05) / (darker + 0.05);
 }
 
 function rgbToHex([r, g, b]) {
-  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
 function getEffectiveBg(el) {
   let node = el;
   while (node && node !== document.documentElement) {
     const bg = window.getComputedStyle(node).backgroundColor;
-    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
     node = node.parentElement;
   }
-  return 'rgb(255,255,255)';
+  return "rgb(255,255,255)";
 }
 
 function getElementType(el) {
   const tag = el.tagName.toLowerCase();
-  if (tag === 'button' || el.getAttribute('role') === 'button') return 'button';
-  if (tag === 'a') return 'link';
-  if (['input','select','textarea'].includes(tag)) return 'input';
-  if (['h1','h2','h3','h4','h5','h6'].includes(tag)) return 'heading';
-  return 'text';
+  if (tag === "button" || el.getAttribute("role") === "button") return "button";
+  if (tag === "a") return "link";
+  if (["input", "select", "textarea"].includes(tag)) return "input";
+  if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(tag)) return "heading";
+  return "text";
 }
 
 function scanContrast() {
-  const results = { summary: { total: 0, failures: 0, warnings: 0 }, groups: {} };
-  const SELECTORS = 'p, span, a, button, h1, h2, h3, h4, h5, h6, label, li, td, th, input, select, div[role="button"]';
+  const results = {
+    summary: { total: 0, failures: 0, warnings: 0 },
+    groups: {},
+  };
+  const SELECTORS =
+    'p, span, a, button, h1, h2, h3, h4, h5, h6, label, li, td, th, input, select, div[role="button"]';
   const els = Array.from(document.querySelectorAll(SELECTORS));
   const seen = new Set();
 
-  els.forEach(el => {
+  els.forEach((el) => {
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
     const style = window.getComputedStyle(el);
-    if (style.display === 'none' || style.visibility === 'hidden') return;
+    if (style.display === "none" || style.visibility === "hidden") return;
 
     const fgStr = style.color;
     const bgStr = getEffectiveBg(el);
@@ -1062,17 +1283,18 @@ function scanContrast() {
     const bgRgb = parseRgbStr(bgStr);
     if (!fgRgb || !bgRgb) return;
 
-    const key = fgStr + '|' + bgStr;
+    const key = fgStr + "|" + bgStr;
     if (seen.has(key)) return;
     seen.add(key);
 
     const ratio = contrastRatio(fgRgb, bgRgb);
     const fontSize = parseFloat(style.fontSize) || 16;
     const fontWeight = parseInt(style.fontWeight) || 400;
-    const isLargeText = fontSize >= 24 || (fontSize >= 18.67 && fontWeight >= 700);
+    const isLargeText =
+      fontSize >= 24 || (fontSize >= 18.67 && fontWeight >= 700);
     const aaNeedd = isLargeText ? 3.0 : 4.5;
     const aaaNeedd = isLargeText ? 4.5 : 7.0;
-    const passesAA  = ratio >= aaNeedd;
+    const passesAA = ratio >= aaNeedd;
     const passesAAA = ratio >= aaaNeedd;
 
     results.summary.total++;
@@ -1084,10 +1306,10 @@ function scanContrast() {
 
     // Always tag the element with a unique marker for reliable jump-to
     const cscanIdx = results.summary.total;
-    el.setAttribute('data-al-cscan', String(cscanIdx));
+    el.setAttribute("data-al-cscan", String(cscanIdx));
     const selector = '[data-al-cscan="' + cscanIdx + '"]';
 
-    const textSnippet = (el.textContent || '').trim().slice(0, 40);
+    const textSnippet = (el.textContent || "").trim().slice(0, 40);
 
     results.groups[type].push({
       ratio: Math.round(ratio * 100) / 100,
@@ -1104,7 +1326,7 @@ function scanContrast() {
   });
 
   // Sort each group: failures first, then warnings, then passes
-  Object.keys(results.groups).forEach(type => {
+  Object.keys(results.groups).forEach((type) => {
     results.groups[type].sort((a, b) => {
       if (!a.passesAA && b.passesAA) return -1;
       if (a.passesAA && !b.passesAA) return 1;
@@ -1116,5 +1338,3 @@ function scanContrast() {
 
   return results;
 }
-
-

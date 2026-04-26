@@ -3,9 +3,9 @@
 //   - why:    plain-English explanation of the real user impact
 //   - fix:    concrete code example (before/after where possible)
 //   - links:  curated external resources [{label, url}]
+// The panel reads this map to explain each violation in simple words.
 
 const context = {
-
   // ── Images & media ────────────────────────────────────────────────────────
 
   "image-alt": {
@@ -19,9 +19,15 @@ const context = {
 <!-- Decorative image: use empty alt so screen readers skip it -->
 <img src="divider.png" alt="">`,
     links: [
-      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
-      { label: "Alt text decision tree", url: "https://www.w3.org/WAI/tutorials/images/decision-tree/" },
-    ]
+      {
+        label: "WCAG 1.1.1 — Non-text content",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content",
+      },
+      {
+        label: "Alt text decision tree",
+        url: "https://www.w3.org/WAI/tutorials/images/decision-tree/",
+      },
+    ],
   },
 
   "image-redundant-alt": {
@@ -32,8 +38,11 @@ const context = {
 <!-- After: decorative since the text says it all -->
 <img src="icon.png" alt=""> Download PDF`,
     links: [
-      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
-    ]
+      {
+        label: "WCAG 1.1.1 — Non-text content",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content",
+      },
+    ],
   },
 
   "input-image-alt": {
@@ -44,8 +53,11 @@ const context = {
 <!-- After -->
 <input type="image" src="submit-btn.png" alt="Submit order">`,
     links: [
-      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
-    ]
+      {
+        label: "WCAG 1.1.1 — Non-text content",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content",
+      },
+    ],
   },
 
   // ── Colour contrast ───────────────────────────────────────────────────────
@@ -63,10 +75,19 @@ background: #ffffff;
 /* Tip: use the Contrast tab in this extension
    to check any colour combination instantly */`,
     links: [
-      { label: "WCAG 1.4.3 — Contrast (Minimum)", url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum" },
-      { label: "WebAIM contrast checker", url: "https://webaim.org/resources/contrastchecker/" },
-      { label: "Who can use — colour contrast simulator", url: "https://www.whocanuse.com/" },
-    ]
+      {
+        label: "WCAG 1.4.3 — Contrast (Minimum)",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum",
+      },
+      {
+        label: "WebAIM contrast checker",
+        url: "https://webaim.org/resources/contrastchecker/",
+      },
+      {
+        label: "Who can use — colour contrast simulator",
+        url: "https://www.whocanuse.com/",
+      },
+    ],
   },
 
   "color-contrast-enhanced": {
@@ -74,8 +95,11 @@ background: #ffffff;
     fix: `/* AAA requires 7:1 for normal text */
 /* Use the Contrast tab to find a passing colour */`,
     links: [
-      { label: "WCAG 1.4.6 — Contrast (Enhanced)", url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced" },
-    ]
+      {
+        label: "WCAG 1.4.6 — Contrast (Enhanced)",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced",
+      },
+    ],
   },
 
   "non-text-contrast": {
@@ -89,13 +113,16 @@ border: 1px solid #767676; /* 4.5:1 — passes */
 /* For icons used without text */
 color: #767676; /* ensure 3:1 against background */`,
     links: [
-      { label: "WCAG 1.4.11 — Non-text Contrast", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast" },
-    ]
+      {
+        label: "WCAG 1.4.11 — Non-text Contrast",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-contrast",
+      },
+    ],
   },
 
   // ── Forms ────────────────────────────────────────────────────────────────
 
-  "label": {
+  label: {
     why: "When a form input has no label, screen reader users hear 'edit text' with no context about what to type. Sighted users use placeholder text as a hint, but it disappears on input and has poor contrast — it's not a substitute for a label.",
     fix: `<!-- Before: no label -->
 <input type="email" placeholder="Email address">
@@ -107,9 +134,15 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- Or: aria-label if visual label isn't desired -->
 <input type="email" aria-label="Email address" placeholder="you@example.com">`,
     links: [
-      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
-      { label: "WCAG 3.3.2 — Labels or Instructions", url: "https://www.w3.org/WAI/WCAG21/Understanding/labels-or-instructions" },
-    ]
+      {
+        label: "WCAG 1.3.1 — Info and Relationships",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships",
+      },
+      {
+        label: "WCAG 3.3.2 — Labels or Instructions",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/labels-or-instructions",
+      },
+    ],
   },
 
   "select-name": {
@@ -125,8 +158,11 @@ color: #767676; /* ensure 3:1 against background */`,
   <option>January</option>
 </select>`,
     links: [
-      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
-    ]
+      {
+        label: "WCAG 1.3.1 — Info and Relationships",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships",
+      },
+    ],
   },
 
   "autocomplete-valid": {
@@ -139,9 +175,15 @@ color: #767676; /* ensure 3:1 against background */`,
 <input type="email" autocomplete="email">
 <input type="tel" autocomplete="tel">`,
     links: [
-      { label: "WCAG 1.3.5 — Identify Input Purpose", url: "https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose" },
-      { label: "Full autocomplete token list (MDN)", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete" },
-    ]
+      {
+        label: "WCAG 1.3.5 — Identify Input Purpose",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose",
+      },
+      {
+        label: "Full autocomplete token list (MDN)",
+        url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete",
+      },
+    ],
   },
 
   // ── Buttons & links ───────────────────────────────────────────────────────
@@ -163,8 +205,11 @@ color: #767676; /* ensure 3:1 against background */`,
   <span class="sr-only">Delete item</span>
 </button>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-    ]
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+    ],
   },
 
   "link-name": {
@@ -180,8 +225,11 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- If design requires short text, use aria-label -->
 <a href="/blog/post-1" aria-label="Read more about accessibility testing">Read more</a>`,
     links: [
-      { label: "WCAG 2.4.4 — Link Purpose", url: "https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context" },
-    ]
+      {
+        label: "WCAG 2.4.4 — Link Purpose",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/link-purpose-in-context",
+      },
+    ],
   },
 
   // ── Structure & semantics ─────────────────────────────────────────────────
@@ -201,8 +249,11 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- For visual size without semantic meaning, use CSS not heading levels -->
 <p class="visually-large">This looks big but isn't a heading</p>`,
     links: [
-      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
-    ]
+      {
+        label: "WCAG 1.3.1 — Info and Relationships",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships",
+      },
+    ],
   },
 
   "landmark-one-main": {
@@ -220,12 +271,18 @@ color: #767676; /* ensure 3:1 against background */`,
 </main>
 <footer>...</footer>`,
     links: [
-      { label: "WCAG 2.4.1 — Bypass Blocks", url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks" },
-      { label: "ARIA Landmarks — W3C", url: "https://www.w3.org/TR/wai-aria-practices/examples/landmarks/" },
-    ]
+      {
+        label: "WCAG 2.4.1 — Bypass Blocks",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks",
+      },
+      {
+        label: "ARIA Landmarks — W3C",
+        url: "https://www.w3.org/TR/wai-aria-practices/examples/landmarks/",
+      },
+    ],
   },
 
-  "region": {
+  region: {
     why: "Landmark regions (main, nav, header, footer, aside) act as a page map for screen reader users. Content outside any landmark is in a 'dead zone' that's hard to navigate to and may be skipped entirely.",
     fix: `<!-- Before: content with no landmark -->
 <div class="sidebar">Related articles...</div>
@@ -235,11 +292,14 @@ color: #767676; /* ensure 3:1 against background */`,
   Related articles...
 </aside>`,
     links: [
-      { label: "ARIA Landmark Roles", url: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/" },
-    ]
+      {
+        label: "ARIA Landmark Roles",
+        url: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/",
+      },
+    ],
   },
 
-  "bypass": {
+  bypass: {
     why: "Keyboard users must Tab through every navigation link on every page load unless a skip link exists. On a site with 20 nav items, that's 20 extra Tab presses before reaching the content — every single page.",
     fix: `<!-- Add as the very first element in <body> -->
 <a href="#main-content" class="skip-link">
@@ -261,9 +321,15 @@ color: #767676; /* ensure 3:1 against background */`,
 }
 </style>`,
     links: [
-      { label: "WCAG 2.4.1 — Bypass Blocks", url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks" },
-      { label: "WebAIM — Skip Navigation Links", url: "https://webaim.org/techniques/skipnav/" },
-    ]
+      {
+        label: "WCAG 2.4.1 — Bypass Blocks",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks",
+      },
+      {
+        label: "WebAIM — Skip Navigation Links",
+        url: "https://webaim.org/techniques/skipnav/",
+      },
+    ],
   },
 
   // ── ARIA ──────────────────────────────────────────────────────────────────
@@ -280,9 +346,15 @@ color: #767676; /* ensure 3:1 against background */`,
 <input type="checkbox" id="optA" checked>
 <label for="optA">Option A</label>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-      { label: "ARIA in HTML — allowed attributes", url: "https://www.w3.org/TR/html-aria/" },
-    ]
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+      {
+        label: "ARIA in HTML — allowed attributes",
+        url: "https://www.w3.org/TR/html-aria/",
+      },
+    ],
   },
 
   "aria-hidden-focus": {
@@ -302,8 +374,11 @@ color: #767676; /* ensure 3:1 against background */`,
   <button>Visible button</button>
 </div>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-    ]
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+    ],
   },
 
   "aria-required-attr": {
@@ -321,9 +396,15 @@ color: #767676; /* ensure 3:1 against background */`,
   tabindex="0"
 >Volume: 50%</div>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-      { label: "ARIA Required Attributes", url: "https://www.w3.org/TR/wai-aria-1.2/#requiredState" },
-    ]
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+      {
+        label: "ARIA Required Attributes",
+        url: "https://www.w3.org/TR/wai-aria-1.2/#requiredState",
+      },
+    ],
   },
 
   "aria-roles": {
@@ -337,8 +418,11 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- Better: use native HTML -->
 <button>Submit</button>`,
     links: [
-      { label: "WAI-ARIA Roles", url: "https://www.w3.org/TR/wai-aria-1.2/#role_definitions" },
-    ]
+      {
+        label: "WAI-ARIA Roles",
+        url: "https://www.w3.org/TR/wai-aria-1.2/#role_definitions",
+      },
+    ],
   },
 
   "aria-valid-attr-value": {
@@ -354,8 +438,11 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- In React: use boolean, JSX handles the string conversion -->
 <button aria-expanded={isOpen}>Menu</button>`,
     links: [
-      { label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
-    ]
+      {
+        label: "WCAG 4.1.2",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value",
+      },
+    ],
   },
 
   // ── Keyboard & focus ──────────────────────────────────────────────────────
@@ -377,11 +464,14 @@ color: #767676; /* ensure 3:1 against background */`,
   Long content...
 </div>`,
     links: [
-      { label: "WCAG 2.1.1 — Keyboard", url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard" },
-    ]
+      {
+        label: "WCAG 2.1.1 — Keyboard",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard",
+      },
+    ],
   },
 
-  "tabindex": {
+  tabindex: {
     why: "Positive tabindex values (tabindex='2', tabindex='5') create a custom tab order that overrides the natural DOM order. This almost always creates a confusing, unpredictable tab sequence. Use tabindex='0' to add elements to the natural tab order, or tabindex='-1' to make them programmatically focusable only.",
     fix: `<!-- Before: positive tabindex breaks natural order -->
 <button tabindex="3">First visually</button>
@@ -399,9 +489,15 @@ color: #767676; /* ensure 3:1 against background */`,
 <!-- tabindex="-1": focusable by JS only, not by Tab key -->
 <div tabindex="-1" id="modal-heading">Modal title</div>`,
     links: [
-      { label: "WCAG 2.4.3", url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order" },
-      { label: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex" },
-    ]
+      {
+        label: "WCAG 2.4.3",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/focus-order",
+      },
+      {
+        label: "MDN",
+        url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex",
+      },
+    ],
   },
 
   "focus-trap": {
@@ -423,9 +519,15 @@ function Modal({ isOpen, onClose }) {
   ) : null;
 }`,
     links: [
-      { label: "WCAG 2.1.2 — No Keyboard Trap", url: "https://www.w3.org/WAI/WCAG21/Understanding/no-keyboard-trap" },
-      { label: "ARIA Dialog Pattern", url: "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/" },
-    ]
+      {
+        label: "WCAG 2.1.2 — No Keyboard Trap",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/no-keyboard-trap",
+      },
+      {
+        label: "ARIA Dialog Pattern",
+        url: "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/",
+      },
+    ],
   },
 
   // ── Page & document ───────────────────────────────────────────────────────
@@ -445,8 +547,11 @@ import { Helmet } from 'react-helmet';
 
 <Helmet><title>Shopping cart — Acme Store</title></Helmet>`,
     links: [
-      { label: "WCAG 2.4.2 — Page Titled", url: "https://www.w3.org/WAI/WCAG21/Understanding/page-titled" },
-    ]
+      {
+        label: "WCAG 2.4.2 — Page Titled",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/page-titled",
+      },
+    ],
   },
 
   "html-has-lang": {
@@ -460,8 +565,11 @@ import { Helmet } from 'react-helmet';
 <!-- For multilingual content, set lang on the specific element -->
 <p lang="fr">Bonjour le monde</p>`,
     links: [
-      { label: "WCAG 3.1.1 — Language of Page", url: "https://www.w3.org/WAI/WCAG21/Understanding/language-of-page" },
-    ]
+      {
+        label: "WCAG 3.1.1 — Language of Page",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/language-of-page",
+      },
+    ],
   },
 
   "html-lang-valid": {
@@ -476,14 +584,20 @@ import { Helmet } from 'react-helmet';
 <html lang="fr">          <!-- French -->
 <html lang="zh-Hans">     <!-- Simplified Chinese -->`,
     links: [
-      { label: "WCAG 3.1.1 — Language of Page", url: "https://www.w3.org/WAI/WCAG21/Understanding/language-of-page" },
-      { label: "BCP 47 language tags", url: "https://www.iana.org/assignments/language-subtag-registry/" },
-    ]
+      {
+        label: "WCAG 3.1.1 — Language of Page",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/language-of-page",
+      },
+      {
+        label: "BCP 47 language tags",
+        url: "https://www.iana.org/assignments/language-subtag-registry/",
+      },
+    ],
   },
 
   // ── Lists & tables ────────────────────────────────────────────────────────
 
-  "list": {
+  list: {
     why: "Screen readers announce list semantics ('list, 5 items'). This tells users they're in a structured group and lets them navigate item by item. Broken list markup loses this context — users just hear a stream of text with no structure.",
     fix: `<!-- Before: invalid list structure -->
 <ul>
@@ -497,8 +611,11 @@ import { Helmet } from 'react-helmet';
   <li>Item two</li>
 </ul>`,
     links: [
-      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
-    ]
+      {
+        label: "WCAG 1.3.1 — Info and Relationships",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships",
+      },
+    ],
   },
 
   "td-headers-attr": {
@@ -521,9 +638,15 @@ import { Helmet } from 'react-helmet';
   </tr>
 </table>`,
     links: [
-      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
-      { label: "W3C Table Concepts", url: "https://www.w3.org/WAI/tutorials/tables/" },
-    ]
+      {
+        label: "WCAG 1.3.1 — Info and Relationships",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships",
+      },
+      {
+        label: "W3C Table Concepts",
+        url: "https://www.w3.org/WAI/tutorials/tables/",
+      },
+    ],
   },
 
   // ── IDs ───────────────────────────────────────────────────────────────────
@@ -547,9 +670,15 @@ import { useId } from 'react';
 const id = useId();
 <input id={id} /><label htmlFor={id}>Email</label>`,
     links: [
-      { label: "WCAG 4.1.1 — Parsing", url: "https://www.w3.org/WAI/WCAG21/Understanding/parsing" },
-      { label: "React useId hook", url: "https://react.dev/reference/react/useId" },
-    ]
+      {
+        label: "WCAG 4.1.1 — Parsing",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/parsing",
+      },
+      {
+        label: "React useId hook",
+        url: "https://react.dev/reference/react/useId",
+      },
+    ],
   },
 
   "duplicate-id-aria": {
@@ -564,8 +693,11 @@ const id = useId();
 <div id="datepicker-title">Choose a date</div>
 <input aria-labelledby="datepicker-title" type="date">`,
     links: [
-      { label: "WCAG 4.1.1 — Parsing", url: "https://www.w3.org/WAI/WCAG21/Understanding/parsing" },
-    ]
+      {
+        label: "WCAG 4.1.1 — Parsing",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/parsing",
+      },
+    ],
   },
 
   // ── Target size (WCAG 2.2) ────────────────────────────────────────────────
@@ -593,9 +725,15 @@ const id = useId();
   inset: -12px;  /* extends tap area by 12px on all sides */
 }`,
     links: [
-      { label: "WCAG 2.5.8 — Target Size (Minimum)", url: "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum" },
-      { label: "Apple HIG — Touch Targets", url: "https://developer.apple.com/design/human-interface-guidelines/accessibility" },
-    ]
+      {
+        label: "WCAG 2.5.8 — Target Size (Minimum)",
+        url: "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum",
+      },
+      {
+        label: "Apple HIG — Touch Targets",
+        url: "https://developer.apple.com/design/human-interface-guidelines/accessibility",
+      },
+    ],
   },
 
   // ── Meta & viewport ───────────────────────────────────────────────────────
@@ -609,10 +747,12 @@ const id = useId();
 <!-- After: allow user scaling -->
 <meta name="viewport" content="width=device-width, initial-scale=1">`,
     links: [
-      { label: "WCAG 1.4.4 — Resize Text", url: "https://www.w3.org/WAI/WCAG21/Understanding/resize-text" },
-    ]
+      {
+        label: "WCAG 1.4.4 — Resize Text",
+        url: "https://www.w3.org/WAI/WCAG21/Understanding/resize-text",
+      },
+    ],
   },
-
 };
 
 // Fallback for rules without custom context
@@ -623,6 +763,7 @@ const fallback = {
 };
 
 export function getViolationContext(ruleId) {
+  // If a rule is not mapped yet, use the generic fallback text.
   return context[ruleId] || fallback;
 }
 

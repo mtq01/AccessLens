@@ -4,10 +4,11 @@ import ContrastPanel from "./ContrastPanel";
 import ChecklistPanel from "./ChecklistPanel";
 import { Icon } from "./icons";
 
+// Allowed auto-scan intervals for Dev mode.
 const INTERVALS = [
-  { label: "10s",    value: 10 },
-  { label: "30s",    value: 30 },
-  { label: "60s",    value: 60 },
+  { label: "10s", value: 10 },
+  { label: "30s", value: 30 },
+  { label: "60s", value: 60 },
   { label: "Custom", value: "custom" },
 ];
 
@@ -51,8 +52,14 @@ function OnboardingScreen({ onDone }) {
       <div className="onboarding-card">
         <div className="onboarding-logo">
           <svg width="32" height="32" viewBox="0 0 20 20" fill="none">
-            <rect width="20" height="20" rx="5" fill="#4f8ef7"/>
-            <path d="M5 10.5L8.5 14L15 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect width="20" height="20" rx="5" fill="#4f8ef7" />
+            <path
+              d="M5 10.5L8.5 14L15 7"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           <span className="onboarding-brand">AccessLens</span>
         </div>
@@ -77,13 +84,16 @@ function OnboardingScreen({ onDone }) {
 
         <div className="onboarding-actions">
           {step > 0 && (
-            <button className="onboarding-back" onClick={() => setStep(s => s - 1)}>
+            <button
+              className="onboarding-back"
+              onClick={() => setStep((s) => s - 1)}
+            >
               Back
             </button>
           )}
           <button
             className="onboarding-next"
-            onClick={() => isLast ? onDone() : setStep(s => s + 1)}
+            onClick={() => (isLast ? onDone() : setStep((s) => s + 1))}
           >
             {isLast ? "Start scanning" : "Next"}
           </button>
@@ -100,34 +110,52 @@ function OnboardingScreen({ onDone }) {
 }
 
 export default function App() {
-  const [tab, setTab]           = useState("scan");
-  const [ready, setReady]       = useState(false);
-  const [tabId, setTabId]       = useState(null);
+  // Main app-level state for tabs, theme, and dev mode.
+  const [tab, setTab] = useState("scan");
+  const [ready, setReady] = useState(false);
+  const [tabId, setTabId] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
-    try { return localStorage.getItem("al_theme") !== "light"; } catch { return true; }
+    try {
+      return localStorage.getItem("al_theme") !== "light";
+    } catch {
+      return true;
+    }
   });
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    try { return !localStorage.getItem("al_onboarded"); } catch { return true; }
+    try {
+      return !localStorage.getItem("al_onboarded");
+    } catch {
+      return true;
+    }
   });
 
   function completeOnboarding() {
-    try { localStorage.setItem("al_onboarded", "1"); } catch {}
+    try {
+      localStorage.setItem("al_onboarded", "1");
+    } catch {}
     setShowOnboarding(false);
   }
-  const [devMode, setDevMode]             = useState(false);
-  const [devInterval, setDevInterval]     = useState(30);
-  const [countdown, setCountdown]         = useState(null);
+  const [devMode, setDevMode] = useState(false);
+  const [devInterval, setDevInterval] = useState(30);
+  const [countdown, setCountdown] = useState(null);
   const [showIntervalPicker, setShowIntervalPicker] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("");
-  const [showDevInfo, setShowDevInfo]     = useState(false);
+  const [showDevInfo, setShowDevInfo] = useState(false);
   const pickerRef = useRef(null);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
-    try { localStorage.setItem("al_theme", darkMode ? "dark" : "light"); } catch {}
+    // Keep theme in both DOM attribute and localStorage.
+    document.documentElement.setAttribute(
+      "data-theme",
+      darkMode ? "dark" : "light",
+    );
+    try {
+      localStorage.setItem("al_theme", darkMode ? "dark" : "light");
+    } catch {}
   }, [darkMode]);
 
   useEffect(() => {
+    // Ask background script which browser tab we should scan.
     let attempts = 0;
     function poll() {
       chrome.runtime.sendMessage({ type: "GET_TAB_ID" }, (response) => {
@@ -135,8 +163,10 @@ export default function App() {
           if (attempts++ < 20) setTimeout(poll, 150);
           return;
         }
-        if (response?.tabId) { setTabId(response.tabId); setReady(true); }
-        else if (attempts++ < 20) setTimeout(poll, 150);
+        if (response?.tabId) {
+          setTabId(response.tabId);
+          setReady(true);
+        } else if (attempts++ < 20) setTimeout(poll, 150);
       });
     }
     poll();
@@ -164,16 +194,20 @@ export default function App() {
 
   // Countdown ticker
   useEffect(() => {
-    if (!devMode) { setCountdown(null); return; }
+    if (!devMode) {
+      setCountdown(null);
+      return;
+    }
     setCountdown(devInterval);
     const ticker = setInterval(() => {
-      setCountdown(prev => prev <= 1 ? devInterval : prev - 1);
+      setCountdown((prev) => (prev <= 1 ? devInterval : prev - 1));
     }, 1000);
     return () => clearInterval(ticker);
   }, [devMode, devInterval]);
 
   function toggleDevMode() {
-    setDevMode(p => {
+    // Turn live scanning on/off and clear badge when stopping.
+    setDevMode((p) => {
       if (p) chrome.runtime.sendMessage({ type: "SET_BADGE", text: "" });
       return !p;
     });
@@ -201,12 +235,13 @@ export default function App() {
   }
 
   const TABS = [
-    { id: "scan",      label: "Scan",     icon: "search" },
-    { id: "contrast",  label: "Contrast", icon: "contrast" },
-    { id: "checklist", label: "Manual",   icon: "checklist" },
+    { id: "scan", label: "Scan", icon: "search" },
+    { id: "contrast", label: "Contrast", icon: "contrast" },
+    { id: "checklist", label: "Manual", icon: "checklist" },
   ];
 
-  const progressPct = countdown !== null ? ((devInterval - countdown) / devInterval) * 100 : 0;
+  const progressPct =
+    countdown !== null ? ((devInterval - countdown) / devInterval) * 100 : 0;
 
   return (
     <div className="app">
@@ -214,16 +249,34 @@ export default function App() {
 
       <header className="header">
         <div className="logo">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="logo-svg">
-            <rect width="20" height="20" rx="5" fill="#4f8ef7"/>
-            <path d="M5 10.5L8.5 14L15 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            className="logo-svg"
+          >
+            <rect width="20" height="20" rx="5" fill="#4f8ef7" />
+            <path
+              d="M5 10.5L8.5 14L15 7"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
-          <span className="logo-text">Access<span className="logo-accent">Lens</span></span>
+          <span className="logo-text">
+            Access<span className="logo-accent">Lens</span>
+          </span>
         </div>
 
         <nav className="tabs">
-          {TABS.map(t => (
-            <button key={t.id} className={`tab ${tab===t.id?"tab--active":""}`} onClick={()=>setTab(t.id)}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`tab ${tab === t.id ? "tab--active" : ""}`}
+              onClick={() => setTab(t.id)}
+            >
               <Icon name={t.icon} size={14} />
               {t.label}
             </button>
@@ -231,13 +284,22 @@ export default function App() {
         </nav>
 
         <div className="header-actions">
-          <button className="header-icon-btn" onClick={()=>setDarkMode(p=>!p)}
-            title={darkMode?"Switch to light mode":"Switch to dark mode"}
-            aria-label={darkMode?"Switch to light mode":"Switch to dark mode"}>
+          <button
+            className="header-icon-btn"
+            onClick={() => setDarkMode((p) => !p)}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={
+              darkMode ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
             <Icon name={darkMode ? "light_mode" : "dark_mode"} size={16} />
           </button>
-          <button className="header-icon-btn" onClick={openFeedback}
-            title="Send feedback" aria-label="Send feedback">
+          <button
+            className="header-icon-btn"
+            onClick={openFeedback}
+            title="Send feedback"
+            aria-label="Send feedback"
+          >
             <Icon name="feedback" size={16} />
           </button>
         </div>
@@ -246,18 +308,29 @@ export default function App() {
       {/* Dev mode progress bar */}
       {devMode && (
         <div className="dev-progress-track">
-          <div className="dev-progress-fill" style={{width: progressPct+"%"}}/>
+          <div
+            className="dev-progress-fill"
+            style={{ width: progressPct + "%" }}
+          />
         </div>
       )}
 
       <main className="main">
         {!ready ? (
           <div className="empty-state">
-            <div className="spinner" style={{width:18,height:18,margin:"0 auto 8px"}}/>
+            <div
+              className="spinner"
+              style={{ width: 18, height: 18, margin: "0 auto 8px" }}
+            />
             <p>Connecting to page…</p>
           </div>
         ) : tab === "scan" ? (
-          <ScanPanel tabId={tabId} devMode={devMode} devInterval={devInterval} countdown={countdown} />
+          <ScanPanel
+            tabId={tabId}
+            devMode={devMode}
+            devInterval={devInterval}
+            countdown={countdown}
+          />
         ) : tab === "contrast" ? (
           <ContrastPanel tabId={tabId} />
         ) : (
@@ -273,28 +346,40 @@ export default function App() {
           {showIntervalPicker && (
             <div className="dev-interval-picker dev-interval-picker--up">
               <div className="dev-interval-label">Auto-scan interval</div>
-              {INTERVALS.map(iv => (
+              {INTERVALS.map((iv) =>
                 iv.value === "custom" ? (
                   <div key="custom" className="dev-interval-custom">
                     <input
-                      type="number" min="5" max="3600" placeholder="seconds"
-                      value={customSeconds} onChange={e => setCustomSeconds(e.target.value)}
+                      type="number"
+                      min="5"
+                      max="3600"
+                      placeholder="seconds"
+                      value={customSeconds}
+                      onChange={(e) => setCustomSeconds(e.target.value)}
                       className="dev-custom-input"
-                      onKeyDown={e => e.key === "Enter" && applyCustom()}
+                      onKeyDown={(e) => e.key === "Enter" && applyCustom()}
                     />
-                    <button className="dev-custom-apply" onClick={applyCustom}>Apply</button>
+                    <button className="dev-custom-apply" onClick={applyCustom}>
+                      Apply
+                    </button>
                   </div>
                 ) : (
                   <button
                     key={iv.value}
-                    className={`dev-interval-option ${devInterval===iv.value?"dev-interval-option--active":""}`}
+                    className={`dev-interval-option ${devInterval === iv.value ? "dev-interval-option--active" : ""}`}
                     onClick={() => selectInterval(iv.value)}
                   >
                     {iv.label}
-                    {devInterval===iv.value && <Icon name="check" size={13} style={{marginLeft:"auto"}}/>}
+                    {devInterval === iv.value && (
+                      <Icon
+                        name="check"
+                        size={13}
+                        style={{ marginLeft: "auto" }}
+                      />
+                    )}
                   </button>
-                )
-              ))}
+                ),
+              )}
             </div>
           )}
 
@@ -303,22 +388,27 @@ export default function App() {
             <div className="dev-info-tooltip">
               <div className="dev-info-title">Dev mode</div>
               <p className="dev-info-text">
-                Auto-scans the page on a timer. See issues appear and disappear as you code, without clicking Run Scan each time.
+                Auto-scans the page on a timer. See issues appear and disappear
+                as you code, without clicking Run Scan each time.
               </p>
               <p className="dev-info-text">
-                The extension badge updates with your score after each scan. Use it while running a local dev server to catch issues the moment they're introduced.
+                The extension badge updates with your score after each scan. Use
+                it while running a local dev server to catch issues the moment
+                they're introduced.
               </p>
-              <div className="dev-info-tip">Try 30 seconds during active development.</div>
+              <div className="dev-info-tip">
+                Try 30 seconds during active development.
+              </div>
             </div>
           )}
 
           <div className="dev-btn-group">
             <button
-              className={`dev-mode-btn ${devMode?"dev-mode-btn--active":""}`}
+              className={`dev-mode-btn ${devMode ? "dev-mode-btn--active" : ""}`}
               onClick={toggleDevMode}
               title={devMode ? "Stop live scanning" : "Start live scanning"}
             >
-              <span className={`dev-dot ${devMode?"dev-dot--active":""}`}/>
+              <span className={`dev-dot ${devMode ? "dev-dot--active" : ""}`} />
               Dev
               {devMode && countdown !== null && (
                 <span className="dev-countdown">{countdown}s</span>
@@ -326,7 +416,7 @@ export default function App() {
             </button>
             <button
               className="dev-interval-btn"
-              onClick={() => setShowIntervalPicker(p=>!p)}
+              onClick={() => setShowIntervalPicker((p) => !p)}
               title="Set scan interval"
               aria-label="Set scan interval"
             >
@@ -334,7 +424,7 @@ export default function App() {
             </button>
             <button
               className="dev-info-btn"
-              onClick={() => setShowDevInfo(p=>!p)}
+              onClick={() => setShowDevInfo((p) => !p)}
               title="What is dev mode?"
               aria-label="What is dev mode?"
             >
