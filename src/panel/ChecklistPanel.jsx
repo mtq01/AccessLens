@@ -195,12 +195,13 @@ function Chevron({ open }) {
 
 export default function ChecklistPanel() {
   const total = CHECKLIST_DATA.reduce((s, sec) => s + sec.items.length, 0);
+  const allItemIds = new Set(CHECKLIST_DATA.flatMap((sec) => sec.items.map((i) => i.id)));
   const [checked, setChecked] = useState(loadChecked);
   const [openSecs, setOpenSecs] = useState({ kb: true, sr: false, vis: false });
   const [openGuide, setOpenGuide] = useState({});
 
-  const done = Object.values(checked).filter(Boolean).length;
-  const pct = Math.round((done / total) * 100);
+  const done = Object.entries(checked).filter(([id, val]) => allItemIds.has(id) && val).length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
   function toggleItem(itemId) {
     setChecked((prev) => {
@@ -223,12 +224,12 @@ export default function ChecklistPanel() {
             marginBottom: 9,
           }}
         >
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: C.text }}>
+          <span style={{ fontSize: "0.875rem", fontWeight: 700, color: C.text }}>
             {done} of {total} complete
           </span>
           <span
             style={{
-              fontSize: 22,
+              fontSize: "1.375rem",
               fontWeight: 800,
               letterSpacing: "-0.04em",
               color: pct === 100 ? C.green : pct > 0 ? C.amber : C.textMuted,
@@ -306,7 +307,7 @@ export default function ChecklistPanel() {
                 <span
                   style={{
                     flex: 1,
-                    fontSize: 13.5,
+                    fontSize: "0.875rem",
                     fontWeight: 700,
                     color: C.text,
                     textAlign: "left",
@@ -315,7 +316,7 @@ export default function ChecklistPanel() {
                   {title}
                 </span>
                 <span
-                  style={{ fontSize: 12, color: C.textMuted, fontWeight: 700 }}
+                  style={{ fontSize: "0.8125rem", color: C.textMuted, fontWeight: 700 }}
                 >
                   {secDone}/{items.length}
                 </span>
@@ -383,7 +384,7 @@ export default function ChecklistPanel() {
                         <div style={{ flex: 1 }}>
                           <div
                             style={{
-                              fontSize: 14.5,
+                              fontSize: "0.9375rem",
                               fontWeight: 500,
                               color: isChecked ? C.textMuted : C.text,
                               lineHeight: 1.5,
@@ -405,7 +406,7 @@ export default function ChecklistPanel() {
                           >
                             <span
                               style={{
-                                fontSize: 11.5,
+                                fontSize: "0.8125rem",
                                 color: C.textMuted,
                                 fontFamily: "var(--mono)",
                                 fontWeight: 600,
@@ -424,7 +425,7 @@ export default function ChecklistPanel() {
                               style={{
                                 background: "none",
                                 border: "none",
-                                fontSize: 13.5,
+                                fontSize: "0.875rem",
                                 color: C.blue,
                                 fontWeight: 800,
                                 padding: 0,
@@ -462,7 +463,7 @@ export default function ChecklistPanel() {
                             >
                               <span
                                 style={{
-                                  fontSize: 13,
+                                  fontSize: "0.875rem",
                                   fontWeight: 800,
                                   color: C.blue,
                                   minWidth: 18,
@@ -473,7 +474,7 @@ export default function ChecklistPanel() {
                               </span>
                               <span
                                 style={{
-                                  fontSize: 12.5,
+                                  fontSize: "0.8125rem",
                                   color: C.textMid,
                                   lineHeight: 1.55,
                                 }}

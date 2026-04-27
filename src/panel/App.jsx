@@ -4,13 +4,6 @@ import ContrastPanel from "./ContrastPanel";
 import ChecklistPanel from "./ChecklistPanel";
 import { Icon } from "./icons";
 
-const INTERVALS = [
-  { label: "10s", value: 10 },
-  { label: "30s", value: 30 },
-  { label: "60s", value: 60 },
-  { label: "Custom", value: "custom" },
-];
-
 const ONBOARDING_STEPS = [
   {
     icon: "search",
@@ -116,21 +109,6 @@ function OnboardingScreen({ onDone }) {
   );
 }
 
-const TAB_SUBTITLES = {
-  scan: {
-    emoji: "🔍",
-    text: "",
-  },
-  contrast: {
-    emoji: "🎨",
-    text: "Checks if your text is easy to see against its background",
-  },
-  checklist: {
-    emoji: "✅",
-    text: "Things only you can check — no robot can do these",
-  },
-};
-
 const TABS = [
   { id: "scan", label: "Scan" },
   { id: "contrast", label: "Colors" },
@@ -156,10 +134,6 @@ export default function App() {
     setShowOnboarding(false);
   }
 
-  const [devMode, setDevMode] = useState(false);
-  const [devInterval, setDevInterval] = useState(30);
-  const [countdown, setCountdown] = useState(null);
-
   useEffect(() => {
     let attempts = 0;
     function poll() {
@@ -177,50 +151,14 @@ export default function App() {
     poll();
   }, []);
 
-  useEffect(() => {
-    const listener = (msg) => {
-      if (msg.type === "TAB_CHANGED") setDevMode(false);
-    };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
-  }, []);
-
-  useEffect(() => {
-    if (!devMode) {
-      setCountdown(null);
-      return;
-    }
-    setCountdown(devInterval);
-    const ticker = setInterval(() => {
-      setCountdown((prev) => (prev <= 1 ? devInterval : prev - 1));
-    }, 1000);
-    return () => clearInterval(ticker);
-  }, [devMode, devInterval]);
-
-  function toggleDevMode() {
-    setDevMode((p) => {
-      if (p) chrome.runtime.sendMessage({ type: "SET_BADGE", text: "" });
-      return !p;
-    });
-  }
-
-  function selectInterval(value) {
-    setDevInterval(value);
-    if (devMode) setCountdown(value);
-  }
-
   function openFeedback() {
     chrome.tabs.create({ url: "https://forms.gle/placeholder-feedback-form" });
   }
-
-  const progressPct =
-    countdown !== null ? ((devInterval - countdown) / devInterval) * 100 : 0;
 
   return (
     <div className="app">
       {showOnboarding && <OnboardingScreen onDone={completeOnboarding} />}
 
-      {/* Top header: logo + badge + actions */}
       <header className="header">
         <div className="logo">
           <svg
@@ -260,7 +198,6 @@ export default function App() {
         </button>
       </header>
 
-      {/* Tab nav — sits below header */}
       <nav className="tabs">
         {TABS.map((t) => (
           <button
@@ -273,16 +210,6 @@ export default function App() {
         ))}
       </nav>
 
-      {/* Dev mode progress bar */}
-      {devMode && (
-        <div className="dev-progress-track">
-          <div
-            className="dev-progress-fill"
-            style={{ width: progressPct + "%" }}
-          />
-        </div>
-      )}
-
       <main className="main">
         {!ready ? (
           <div className="empty-state">
@@ -293,14 +220,7 @@ export default function App() {
             <p>Connecting to page…</p>
           </div>
         ) : tab === "scan" ? (
-          <ScanPanel
-            tabId={tabId}
-            devMode={devMode}
-            devInterval={devInterval}
-            countdown={countdown}
-            onToggleDevMode={toggleDevMode}
-            onSelectInterval={selectInterval}
-          />
+          <ScanPanel tabId={tabId} onOpenChecklist={() => setTab("checklist")} />
         ) : tab === "contrast" ? (
           <ContrastPanel tabId={tabId} />
         ) : (
@@ -312,7 +232,7 @@ export default function App() {
         <span className="footer-dot" aria-hidden="true" />
         <span>WCAG 2.2 AA</span>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: "11.5px", color: "var(--text-muted)" }}>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
           AccessLens v2
         </span>
       </footer>

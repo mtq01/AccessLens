@@ -5,38 +5,6 @@ import ExportModal from "./ExportModal";
 
 // Main scan tab: run checks, show issues, and open export.
 
-// ── Scan history ──────────────────────────────────────────────────────────────
-
-const HISTORY_KEY = "accesslens_history";
-const MAX_HISTORY = 5;
-
-function loadHistory(domain) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(HISTORY_KEY, (result) => {
-      const all = result[HISTORY_KEY] || {};
-      resolve(all[domain] || []);
-    });
-  });
-}
-
-function saveHistory(domain, entry) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(HISTORY_KEY, (result) => {
-      const all = result[HISTORY_KEY] || {};
-      const prev = all[domain] || [];
-      all[domain] = [entry, ...prev].slice(0, MAX_HISTORY);
-      chrome.storage.local.set({ [HISTORY_KEY]: all }, resolve);
-    });
-  });
-}
-
-function getDomain(url) {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url || "unknown";
-  }
-}
 const IMPACT_ORDER = ["critical", "serious", "moderate", "minor"];
 const IMPACT_META = {
   critical: { label: "Critical", color: "var(--red)",        bg: "var(--red-bg)"   },
@@ -44,6 +12,73 @@ const IMPACT_META = {
   moderate: { label: "Moderate", color: "var(--blue)",       bg: "var(--blue-bg)"  },
   minor:    { label: "Minor",    color: "var(--text-muted)", bg: "var(--bg3)"      },
 };
+
+const PLAIN_ENGLISH = {
+  "image-alt":                    "Images missing alt text",
+  "input-image-alt":              "Image buttons missing alt text",
+  "area-alt":                     "Image map areas missing alt text",
+  "object-alt":                   "Embedded objects missing alt text",
+  "video-caption":                "Videos missing captions",
+  "audio-caption":                "Audio missing captions",
+  label:                          "Form inputs without labels",
+  "label-content-name-mismatch":  "Label text doesn't match accessible name",
+  "select-name":                  "Dropdown menus without labels",
+  "autocomplete-valid":           "Autocomplete attributes are incorrect",
+  "link-name":                    "Links without a readable name",
+  "button-name":                  "Buttons without a name",
+  "identical-links-same-purpose": "Links with the same text go to different places",
+  "aria-input-field-name":        "ARIA input fields without a name",
+  "aria-toggle-field-name":       "ARIA toggle fields without a name",
+  "aria-command-name":            "ARIA buttons without a name",
+  keyboard:                       "Elements not usable by keyboard",
+  "focus-trap":                   "Keyboard focus is trapped",
+  tabindex:                       "Incorrect tabindex values",
+  "scrollable-region-focusable":  "Scrollable area not keyboard accessible",
+  "link-in-text-block":           "Links only tell apart by color",
+  "focus-visible":                "Focus indicator not visible",
+  "focus-order-semantics":        "Focus order doesn't make sense",
+  "target-size":                  "Tap targets too small",
+  "target-size-2":                "Tap targets too small",
+  bypass:                         "No way to skip repeated content",
+  "skip-link":                    "Skip link doesn't work",
+  "html-has-lang":                "Page is missing a language",
+  "html-lang-valid":              "Page language is invalid",
+  "valid-lang":                   "Language attribute is invalid",
+  "duplicate-id":                 "Duplicate element IDs",
+  "duplicate-id-active":          "Duplicate IDs on interactive elements",
+  "duplicate-id-aria":            "Duplicate IDs referenced by ARIA",
+  "aria-allowed-attr":            "ARIA attributes not allowed on this element",
+  "aria-required-attr":           "ARIA attributes missing required values",
+  "aria-required-children":       "ARIA element missing required child elements",
+  "aria-required-parent":         "ARIA element missing required parent",
+  "aria-roles":                   "Invalid ARIA roles",
+  "aria-valid-attr":              "Invalid ARIA attributes",
+  "aria-valid-attr-value":        "Invalid ARIA attribute values",
+  "aria-hidden-body":             "Page body is hidden from screen readers",
+  "aria-hidden-focus":            "Hidden elements receiving keyboard focus",
+  "document-title":               "Page is missing a title",
+  "heading-order":                "Headings are in the wrong order",
+  region:                         "Content outside landmark regions",
+  "landmark-one-main":            "Page is missing a main landmark",
+  list:                           "List elements used incorrectly",
+  listitem:                       "List items outside a list",
+  "definition-list":              "Definition list used incorrectly",
+  dlitem:                         "Definition list items used incorrectly",
+  "th-has-data-cells":            "Table headers without matching data cells",
+  "td-headers-attr":              "Table cells with invalid header references",
+  "scope-attr-valid":             "Table scope attributes are invalid",
+  "frame-title":                  "Iframes missing a title",
+  reflow:                         "Content doesn't reflow at small sizes",
+  "text-spacing":                 "Content breaks with custom text spacing",
+  "meta-viewport":                "Zoom is blocked on mobile",
+  "color-contrast":               "Text with low color contrast",
+  "color-contrast-enhanced":      "Text with low color contrast (AAA)",
+  "non-text-contrast":            "UI elements with low contrast",
+};
+
+function getPlainDescription(v) {
+  return PLAIN_ENGLISH[v.id] || v.description;
+}
 
 const RULE_TO_TYPE = {
   "image-alt": "Images",
@@ -116,22 +151,6 @@ function getViolationType(v) {
   return RULE_TO_TYPE[v.id] || "Other";
 }
 
-function getRelativeTime(dateStr) {
-  if (!dateStr) return "";
-  try {
-    const date = new Date(dateStr);
-    const diff = Date.now() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-  } catch {
-    return dateStr;
-  }
-}
 
 function ViolationChevron({ open }) {
   return (
@@ -610,14 +629,7 @@ function ViolationDetail({ violation }) {
   );
 }
 
-export default function ScanPanel({
-  tabId,
-  devMode,
-  devInterval,
-  countdown,
-  onToggleDevMode,
-  onSelectInterval,
-}) {
+export default function ScanPanel({ tabId, onOpenChecklist }) {
   // UI state for scan results and helper tools.
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -626,6 +638,7 @@ export default function ScanPanel({
   const [passes, setPasses] = useState([]);
   const [activeSelector, setActiveSelector] = useState(null);
   const [expanded, setExpanded] = useState({});
+  const [activeNodeIndex, setActiveNodeIndex] = useState({});
   const [impactFilter, setImpactFilter] = useState("all");
   const [jumped, setJumped] = useState(null);
   const [focusMode, setFocusMode] = useState(false);
@@ -637,9 +650,8 @@ export default function ScanPanel({
 
   const [showExport, setShowExport] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
-  const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [delta, setDelta] = useState(null); // {added, fixed}
+
+  const pageHostname = (() => { try { return new URL(pageUrl).hostname; } catch { return ""; } })();
 
   // Get the current page URL for the report
   useEffect(() => {
@@ -650,13 +662,6 @@ export default function ScanPanel({
     }
   }, [tabId]);
 
-  // Pre-load history for the idle state once we know the domain
-  useEffect(() => {
-    if (pageUrl) {
-      loadHistory(getDomain(pageUrl)).then(setHistory);
-    }
-  }, [pageUrl]);
-
   // Listen for tab switches
   useEffect(() => {
     const listener = (msg) => {
@@ -665,7 +670,6 @@ export default function ScanPanel({
         setViolations([]);
         setPasses([]);
         setDynamicIssues([]);
-        setDelta(null);
         setActiveSelector(null);
         setExpanded({});
         setZoomStatus("idle");
@@ -693,9 +697,8 @@ export default function ScanPanel({
     setDynamicIssues([]);
     setActiveSelector(null);
     setExpanded({});
-    setDelta(null);
 
-    chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
+    chrome.runtime.sendMessage({ type: "RUN_SCAN" }, (response) => {
       if (chrome.runtime.lastError || !response?.success) {
         const err = response?.error || chrome.runtime.lastError?.message || "";
         setErrorMsg(
@@ -712,132 +715,39 @@ export default function ScanPanel({
       setPasses(response.passes || []);
       setDynamicIssues(response.dynamicIssues || []);
       setStatus("done");
-
-      // Save history + compute delta
-      const domain = getDomain(pageUrl);
-      const prev = await loadHistory(domain);
-      if (prev.length > 0) {
-        const prevIds = new Set(prev[0].violationIds || []);
-        const currIds = new Set(sorted.map((v) => v.id));
-        const added = [...currIds].filter((id) => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter((id) => !currIds.has(id)).length;
-        if (added > 0 || fixed > 0) setDelta({ added, fixed });
-      }
-
-      const entry = {
-        date: new Date().toLocaleString(),
-        total: sorted.length,
-        critical: sorted.filter((v) => v.impact === "critical").length,
-        serious: sorted.filter((v) => v.impact === "serious").length,
-        passes: (response.passes || []).length,
-        instances: sorted.reduce((s, v) => s + v.nodes.length, 0),
-        violationIds: sorted.map((v) => v.id),
-      };
-      await saveHistory(domain, entry);
-      const updated = await loadHistory(domain);
-      setHistory(updated);
     });
   }
 
-  const [lastAutoScan, setLastAutoScan] = useState(null);
-
-  // Auto-scan when countdown resets to devInterval (meaning it just ticked over)
-  useEffect(() => {
-    if (!devMode || countdown === null) return;
-    // Fire when countdown equals devInterval (just reset) but not on first mount
-    if (countdown === devInterval && lastAutoScan !== null) {
-      triggerAutoScan();
-    }
-  }, [countdown, devMode]);
-
-  // First auto-scan when dev mode turns on
-  useEffect(() => {
-    if (devMode) {
-      setLastAutoScan(Date.now());
-      triggerAutoScan();
-    } else {
-      chrome.runtime.sendMessage({ type: "SET_BADGE", text: "" });
-    }
-  }, [devMode]);
-
-  function triggerAutoScan() {
-    // Silent background scan used by Dev mode timer.
-    setLastAutoScan(Date.now());
-    // Silent scan — update results without full loading state reset
-    chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
-      if (chrome.runtime.lastError || !response?.success) return;
-      const sorted = [...response.violations].sort(
-        (a, b) =>
-          IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact),
-      );
-
-      // Compute delta vs current violations
-      setViolations((prev) => {
-        const prevIds = new Set(prev.map((v) => v.id));
-        const currIds = new Set(sorted.map((v) => v.id));
-        const added = [...currIds].filter((id) => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter((id) => !currIds.has(id)).length;
-        return sorted;
-      });
-      setPasses(response.passes || []);
-      setStatus("done");
-
-      // Update extension badge with critical/serious count
-      const critical = sorted.filter(
-        (v) => v.impact === "critical" || v.impact === "serious",
-      ).length;
-      if (critical > 0) {
-        chrome.runtime.sendMessage({
-          type: "SET_BADGE",
-          text: String(critical),
-          color: "#E24B4A",
-        });
-      } else if (sorted.length > 0) {
-        chrome.runtime.sendMessage({
-          type: "SET_BADGE",
-          text: String(sorted.length),
-          color: "#EF9F27",
-        });
-      } else {
-        chrome.runtime.sendMessage({
-          type: "SET_BADGE",
-          text: "✓",
-          color: "#22c97a",
-        });
-      }
-
-      // Save to history
-      const domain = getDomain(pageUrl);
-      const entry = {
-        date: new Date().toLocaleString(),
-        total: sorted.length,
-        critical: sorted.filter((v) => v.impact === "critical").length,
-        serious: sorted.filter((v) => v.impact === "serious").length,
-        passes: (response.passes || []).length,
-        instances: sorted.reduce((s, v) => s + v.nodes.length, 0),
-        violationIds: sorted.map((v) => v.id),
-      };
-      await saveHistory(domain, entry);
-      const updated = await loadHistory(domain);
-      setHistory(updated);
+  function highlightNode(v, index) {
+    const selector = v.nodes?.[index]?.target?.[0];
+    if (!selector) return;
+    setActiveSelector(selector);
+    chrome.runtime.sendMessage({
+      type: "HIGHLIGHT_ELEMENT",
+      selector,
+      showDimensions: v.id?.includes("target-size"),
     });
   }
 
   function handleViolationClick(v) {
-    const selector = v.nodes?.[0]?.target?.[0];
-    if (!selector) return;
-    const isTargetSize = v.id?.includes("target-size");
-    if (activeSelector === selector) {
+    const isOpen = expanded[v.id];
+    if (isOpen) {
       setActiveSelector(null);
       chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
     } else {
-      setActiveSelector(selector);
-      chrome.runtime.sendMessage({
-        type: "HIGHLIGHT_ELEMENT",
-        selector,
-        showDimensions: isTargetSize,
-      });
+      setActiveNodeIndex((p) => ({ ...p, [v.id]: 0 }));
+      highlightNode(v, 0);
     }
+  }
+
+  function cycleNode(v, dir, e) {
+    e.stopPropagation();
+    setActiveNodeIndex((prev) => {
+      const current = prev[v.id] ?? 0;
+      const next = (current + dir + v.nodes.length) % v.nodes.length;
+      highlightNode(v, next);
+      return { ...prev, [v.id]: next };
+    });
   }
 
   function toggleExpanded(id) {
@@ -925,10 +835,17 @@ export default function ScanPanel({
   const likelyKeyboard = violations.filter((v) =>
     ["bypass", "link-name", "keyboard", "focus-visible"].includes(v.id),
   ).length;
-  const summaryUrgent = criticalCount > 0;
-  const summaryText = summaryUrgent
-    ? `${likelyScreenReader} issue${likelyScreenReader === 1 ? "" : "s"} blocking screen readers · ${likelyKeyboard} keyboard problem${likelyKeyboard === 1 ? "" : "s"}`
-    : `No critical blockers - ${violations.length} lower-priority issue${violations.length === 1 ? "" : "s"} found`;
+  const summaryLevel = criticalCount > 0 ? "critical" : violations.length > 0 ? "minor" : "clear";
+  const summaryText = summaryLevel === "critical"
+    ? `${criticalCount} critical · ${seriousCount} serious`
+    : summaryLevel === "minor"
+      ? `${violations.length} minor issue${violations.length === 1 ? "" : "s"} · nothing critical`
+      : "All clear — no issues found";
+  const summaryColors = {
+    critical: { bg: "var(--red-bg)",   border: "var(--red-border)",   text: "var(--red)",   icon: "⚠️" },
+    minor:    { bg: "var(--amber-bg)", border: "var(--amber-border)", text: "var(--amber)", icon: "⚠️" },
+    clear:    { bg: "var(--green-bg)", border: "var(--green-border)", text: "var(--green)", icon: "✅" },
+  }[summaryLevel];
 
   return (
     <div className="scan-panel">
@@ -960,19 +877,19 @@ export default function ScanPanel({
           <div
             style={{
               padding: "12px var(--px)",
-              background: summaryUrgent ? "var(--red-bg)" : "var(--green-bg)",
-              borderBottom: `1px solid ${summaryUrgent ? "var(--red-border)" : "var(--green-border)"}`,
+              background: summaryColors.bg,
+              borderBottom: `1px solid ${summaryColors.border}`,
               display: "flex",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <span style={{ fontSize: 16 }}>{summaryUrgent ? "⚠️" : "✅"}</span>
+            <span style={{ fontSize: "1rem" }}>{summaryColors.icon}</span>
             <span
               style={{
-                fontSize: 14.5,
+                fontSize: "0.9375rem",
                 fontWeight: 700,
-                color: summaryUrgent ? "var(--red)" : "var(--green)",
+                color: summaryColors.text,
                 lineHeight: 1.4,
               }}
             >
@@ -982,10 +899,8 @@ export default function ScanPanel({
               className="btn-rerun"
               style={{
                 marginLeft: "auto",
-                borderColor: summaryUrgent
-                  ? "var(--red-border)"
-                  : "var(--green-border)",
-                color: summaryUrgent ? "var(--red)" : "var(--green)",
+                borderColor: summaryColors.border,
+                color: summaryColors.text,
               }}
               onClick={runScan}
             >
@@ -1071,112 +986,7 @@ export default function ScanPanel({
             >
               Export
             </button>
-            <button
-              className={`summary-history-btn ${showHistory ? "summary-history-btn--active" : ""}`}
-              onClick={() => setShowHistory((p) => !p)}
-              title="Scan history"
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                alignSelf: "auto",
-                padding: "6px 9px",
-              }}
-            >
-              <Icon name="history" size={16} />
-            </button>
           </div>
-
-          {delta && (
-            <div className="delta-bar">
-              {delta.added > 0 && (
-                <span className="delta-added">↑ {delta.added} new</span>
-              )}
-              {delta.fixed > 0 && (
-                <span className="delta-fixed">↓ {delta.fixed} fixed</span>
-              )}
-              <span className="delta-label">since last scan</span>
-            </div>
-          )}
-
-          {/* History panel */}
-          {showHistory && history.length > 0 && (
-            <div className="history-panel">
-              <div className="history-title">
-                Past scans for {getDomain(pageUrl)}
-              </div>
-              {history.map((h, i) => {
-                const critical = h.critical || 0;
-                const serious = h.serious || 0;
-                const statusColor =
-                  critical > 0
-                    ? "#E24B4A"
-                    : serious > 0
-                      ? "#EF9F27"
-                      : h.total === 0
-                        ? "#16a34a"
-                        : "#4f8ef7";
-                const statusLabel =
-                  critical > 0
-                    ? "Fix now"
-                    : serious > 0
-                      ? "Needs work"
-                      : h.total === 0
-                        ? "No violations"
-                        : "Minor issues";
-                return (
-                  <div
-                    key={i}
-                    className={`history-row ${i === 0 ? "history-row--current" : ""}`}
-                  >
-                    <span
-                      className="history-grade"
-                      style={{
-                        color: statusColor,
-                        fontSize: 11,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {statusLabel}
-                    </span>
-                    <div className="history-info">
-                      <span className="history-date">
-                        {h.date}
-                        {i === 0 ? " (newest)" : ""}
-                      </span>
-                      <span className="history-stats">
-                        {critical > 0 && (
-                          <span style={{ color: "#E24B4A" }}>
-                            {critical} critical{" "}
-                          </span>
-                        )}
-                        {serious > 0 && (
-                          <span style={{ color: "#EF9F27" }}>
-                            {serious} serious{" "}
-                          </span>
-                        )}
-                        <span style={{ color: "var(--text3)" }}>
-                          {h.total} problems
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {showHistory && history.length === 0 && (
-            <div className="history-panel">
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--text3)",
-                  padding: "8px 0",
-                }}
-              >
-                No past scans for this site yet.
-              </p>
-            </div>
-          )}
         </>
       )}
 
@@ -1219,13 +1029,16 @@ export default function ScanPanel({
         </div>
       )}
 
+      {/* Scanning progress bar */}
+      {status === "scanning" && (
+        <div className="scan-progress-bar">
+          <div className="scan-progress-bar__fill" />
+        </div>
+      )}
+
       {/* Scanning */}
       {status === "scanning" && (
         <div className="empty-state">
-          <span
-            className="spinner"
-            style={{ width: 20, height: 20, margin: "0 auto 8px" }}
-          />
           <p>Scanning with axe-core...</p>
           <p className="empty-hint">
             Checking your page for accessibility issues.
@@ -1236,86 +1049,25 @@ export default function ScanPanel({
       {/* Idle */}
       {status === "idle" && !focusMode && (
         <div className="scan-idle">
-          {history.length > 0 && (
-            <div className="history-card">
-              <div className="history-card__header">
-                <div>
-                  <div className="history-card__ago">
-                    Last scan · {getRelativeTime(history[0]?.date)}
-                  </div>
-                  <div className="history-card__url">{getDomain(pageUrl)}</div>
-                </div>
-                <button
-                  className="history-card-view"
-                  onClick={() => setShowHistory((p) => !p)}
-                >
-                  {showHistory ? "Hide" : "View"}
-                </button>
+          <div className="idle-explainer">
+              <div className="idle-explainer__plus">+</div>
+              <div className="idle-explainer__title">Ready to check this page</div>
+              <p className="idle-explainer__body">
+                Click <strong>Run scan</strong>. We will look for things that make the page hard to use for some people.
+              </p>
+              <div className="idle-explainer__checklist">
+                <div className="idle-explainer__checklist-title">What we check:</div>
+                <ul className="idle-explainer__list">
+                  <li>Missing labels on buttons and forms</li>
+                  <li>Pictures with no description</li>
+                  <li>Links that say "click here"</li>
+                  <li>Headings in the wrong order</li>
+                  <li>Many other rules from WCAG</li>
+                </ul>
               </div>
-              <div className="history-card__pills">
-                <div className="summary-pill">
-                  <span
-                    className="summary-pill__count"
-                    style={{ color: "var(--red)" }}
-                  >
-                    {history[0]?.critical || 0}
-                  </span>
-                  <span className="summary-pill__label">Critical</span>
-                </div>
-                <div className="summary-pill">
-                  <span
-                    className="summary-pill__count"
-                    style={{ color: "var(--amber)" }}
-                  >
-                    {history[0]?.serious || 0}
-                  </span>
-                  <span className="summary-pill__label">Serious</span>
-                </div>
-                <div className="summary-pill">
-                  <span
-                    className="summary-pill__count"
-                    style={{ color: "var(--green)" }}
-                  >
-                    {history[0]?.passes || 0}
-                  </span>
-                  <span className="summary-pill__label">Passed</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className={`dev-card ${devMode ? "dev-card--active" : ""}`}>
-            <div className="dev-card__header">
-              <div>
-                <div className="dev-card__title">Live scanning</div>
-                <div className="dev-card__subtitle">
-                  Auto-scan while you build
-                </div>
-              </div>
-              <button
-                className={`dev-toggle ${devMode ? "dev-toggle--active" : ""}`}
-                onClick={onToggleDevMode}
-              >
-                <span className="dev-toggle__dot" />
-                {devMode ? `Live · ${countdown}s` : "Off"}
-              </button>
-            </div>
-            {devMode && (
-              <div className="dev-intervals">
-                <div className="dev-intervals__label">Scan every</div>
-                <div className="dev-intervals__row">
-                  {[10, 30, 60].map((seconds) => (
-                    <button
-                      key={seconds}
-                      className={`dev-interval-pill ${devInterval === seconds ? "dev-interval-pill--active" : ""}`}
-                      onClick={() => onSelectInterval(seconds)}
-                    >
-                      {seconds}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              <p className="idle-explainer__footer">
+                After scanning, use <strong>Focus</strong> to test the keyboard, <strong>Zoom</strong> to test 400% size, or <strong>HC</strong> for high contrast.
+              </p>
           </div>
 
           <button className="btn-scan-cta" onClick={runScan}>
@@ -1416,11 +1168,16 @@ export default function ScanPanel({
               />
             </svg>
           </div>
-          <p>No violations found. Nice work.</p>
+          <p>No violations found. Nice work!</p>
+          <p className="empty-hint" style={{ marginTop: 8 }}>
+            No tool catches everything — try the{" "}
+            <button className="link-btn" onClick={onOpenChecklist}>Checklist</button>{" "}
+            for a manual review.
+          </p>
         </div>
       )}
 
-      {/* ── Violations tab ── */}
+      {/* ── Violations list ── */}
       {status === "done" && violations.length > 0 && (
         <>
           {/* Filter pills */}
@@ -1446,6 +1203,13 @@ export default function ScanPanel({
             </div>
           ) : (
             <div className="violations-list">
+              <div className="issues-header">
+                <div>
+                  <span className="issues-header__title">Open Issues</span>
+                  {pageHostname && <span className="issues-header__url">{pageHostname}</span>}
+                </div>
+                <span className="issues-header__count">{filteredViolations.length} result{filteredViolations.length !== 1 ? "s" : ""}</span>
+              </div>
               {filteredViolations.map((v) => {
                 const isOpen = expanded[v.id];
                 const isJumped = jumped === v.id;
@@ -1453,49 +1217,37 @@ export default function ScanPanel({
                 const sc = v.tags
                   ?.filter((t) => /^\d+\.\d+\.\d+$/.test(t))
                   .join(", ");
+                const nodeIdx = activeNodeIndex[v.id] ?? 0;
                 return (
                   <div
                     key={v.id}
                     className={`violation-card${isOpen ? " violation-card--open" : ""}${isJumped ? " violation-card--jumped" : ""}`}
-                    onClick={() => toggleExpanded(v.id)}
+                    onClick={() => { toggleExpanded(v.id); handleViolationClick(v); }}
                   >
-                    <div className="violation-card__inner">
-                      <div
-                        className="violation-card__accent"
-                        style={{ background: impMeta.color }}
-                      />
+                    <div className="violation-card__main">
+                      <span className="violation-dot" style={{ background: impMeta.color }} />
                       <div className="violation-card__body">
-                        <div className="violation-card__row1">
-                          <span
-                            className="violation-badge"
-                            style={{ color: impMeta.color, background: impMeta.bg }}
-                          >
-                            {impMeta.label}
-                          </span>
-                          <span className="violation-card__title">
-                            {v.description}
-                          </span>
-                          <span className="violation-count">{v.nodes.length}×</span>
-                          {isOpen && (
-                            <button
-                              className={`btn-jump${isJumped ? " btn-jump--jumped" : ""}`}
-                              onClick={(e) => handleJump(v, e)}
-                            >
-                              {isJumped ? "✓ Jumped" : "Jump →"}
-                            </button>
-                          )}
-                          <ViolationChevron open={isOpen} />
+                        <div className="violation-card__title">{getPlainDescription(v)}</div>
+                        <div className="violation-card__meta">
+                          <span style={{ color: impMeta.color, fontWeight: 700 }}>{impMeta.label}</span>
+                          {" · "}{v.nodes.length} element{v.nodes.length !== 1 ? "s" : ""}
+                          {sc ? ` · WCAG ${sc}` : ""}
                         </div>
-                        <div className="violation-card__row2">
-                          {getViolationType(v)}{sc ? ` · WCAG ${sc}` : ""}
-                        </div>
-                        {isOpen && (
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <ViolationDetail violation={v} />
-                          </div>
-                        )}
                       </div>
+                      <ViolationChevron open={isOpen} />
                     </div>
+                    {isOpen && v.nodes.length > 1 && (
+                      <div className="node-navigator" onClick={(e) => e.stopPropagation()}>
+                        <button className="node-nav-btn" onClick={(e) => cycleNode(v, -1, e)}>←</button>
+                        <span className="node-nav-label">Element {nodeIdx + 1} of {v.nodes.length}</span>
+                        <button className="node-nav-btn" onClick={(e) => cycleNode(v, 1, e)}>→</button>
+                      </div>
+                    )}
+                    {isOpen && (
+                      <div className="violation-card__detail" onClick={(e) => e.stopPropagation()}>
+                        <ViolationDetail violation={v} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

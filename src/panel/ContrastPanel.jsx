@@ -204,7 +204,7 @@ function PassBadge({ pass }) {
         gap: 3,
         padding: "3px 8px",
         borderRadius: 20,
-        fontSize: 11,
+        fontSize: "0.8125rem",
         fontWeight: 700,
         background: pass ? C.greenBg : C.redBg,
         color: pass ? C.green : C.red,
@@ -227,10 +227,10 @@ function Pill({ count, label, color, bg }) {
         gap: 7,
       }}
     >
-      <span style={{ fontSize: 19, fontWeight: 800, color, lineHeight: 1 }}>
+      <span style={{ fontSize: "1.1875rem", fontWeight: 800, color, lineHeight: 1 }}>
         {count}
       </span>
-      <span style={{ fontSize: 11.5, fontWeight: 700, color }}>{label}</span>
+      <span style={{ fontSize: "0.8125rem", fontWeight: 700, color }}>{label}</span>
     </div>
   );
 }
@@ -355,7 +355,7 @@ export default function ContrastPanel() {
                 background: mode === k ? "#fff" : C.surface,
                 borderRadius: 9,
                 padding: "9px 12px",
-                fontSize: 13.5,
+                fontSize: "0.875rem",
                 fontWeight: mode === k ? 800 : 600,
                 color: mode === k ? C.text : C.textMuted,
                 transition: "all .15s",
@@ -369,7 +369,7 @@ export default function ContrastPanel() {
         </div>
         <div
           style={{
-            fontSize: 13.5,
+            fontSize: "0.875rem",
             color: C.textMuted,
             marginTop: 8,
             fontWeight: 600,
@@ -407,7 +407,7 @@ export default function ContrastPanel() {
               <div style={{ textAlign: "center" }}>
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: "1rem",
                     fontWeight: 800,
                     color: C.text,
                     marginBottom: 5,
@@ -418,7 +418,7 @@ export default function ContrastPanel() {
                 </div>
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: "0.875rem",
                     color: C.textMuted,
                     lineHeight: 1.6,
                     maxWidth: 240,
@@ -436,7 +436,7 @@ export default function ContrastPanel() {
                   border: "none",
                   borderRadius: 10,
                   padding: "11px 28px",
-                  fontSize: 13.5,
+                  fontSize: "0.875rem",
                   fontWeight: 700,
                   boxShadow: "0 4px 12px rgba(22,101,52,0.3)",
                   fontFamily: "var(--font)",
@@ -451,7 +451,7 @@ export default function ContrastPanel() {
             <div style={{ padding: "48px 22px", textAlign: "center" }}>
               <div
                 style={{
-                  fontSize: 13.5,
+                  fontSize: "0.875rem",
                   color: C.textMuted,
                   marginBottom: 12,
                   fontWeight: 500,
@@ -534,7 +534,7 @@ export default function ContrastPanel() {
                     color: C.textMid,
                     borderRadius: 7,
                     padding: "4px 10px",
-                    fontSize: 12,
+                    fontSize: "0.8125rem",
                     fontWeight: 600,
                     fontFamily: "var(--font)",
                   }}
@@ -573,7 +573,7 @@ export default function ContrastPanel() {
                           contrastFilter === filter.id ? C.text : C.textMuted,
                         borderRadius: 7,
                         padding: "6px 10px",
-                        fontSize: 12,
+                        fontSize: "0.8125rem",
                         fontWeight: contrastFilter === filter.id ? 800 : 700,
                         fontFamily: "var(--font)",
                         boxShadow:
@@ -588,7 +588,7 @@ export default function ContrastPanel() {
                 </div>
                 <div
                   style={{
-                    fontSize: 12.5,
+                    fontSize: "0.8125rem",
                     color: C.textMuted,
                     fontWeight: 600,
                   }}
@@ -605,7 +605,7 @@ export default function ContrastPanel() {
                     borderRadius: 11,
                     padding: "18px 16px",
                     color: C.textMuted,
-                    fontSize: 13,
+                    fontSize: "0.875rem",
                     lineHeight: 1.6,
                   }}
                 >
@@ -654,7 +654,7 @@ export default function ContrastPanel() {
                         >
                           <span
                             style={{
-                              fontSize: 14,
+                              fontSize: "0.875rem",
                               fontWeight: 800,
                               color: C.text,
                             }}
@@ -663,7 +663,7 @@ export default function ContrastPanel() {
                           </span>
                           <span
                             style={{
-                              fontSize: 11,
+                              fontSize: "0.8125rem",
                               fontWeight: 700,
                               color: C.textMuted,
                               background: C.bg,
@@ -677,7 +677,7 @@ export default function ContrastPanel() {
                         </div>
                         <span
                           style={{
-                            fontSize: 18,
+                            fontSize: "1.125rem",
                             color: C.textMuted,
                             transform: isOpen ? "rotate(180deg)" : "none",
                             transition: "transform .16s",
@@ -733,7 +733,7 @@ export default function ContrastPanel() {
                                   <span
                                     style={{
                                       color: row.fg,
-                                      fontSize: 11.5,
+                                      fontSize: "0.8125rem",
                                       fontWeight: 800,
                                     }}
                                   >
@@ -752,7 +752,7 @@ export default function ContrastPanel() {
                                   >
                                     <span
                                       style={{
-                                        fontSize: 13.5,
+                                        fontSize: "0.875rem",
                                         fontWeight: 700,
                                         color: C.text,
                                       }}
@@ -762,7 +762,7 @@ export default function ContrastPanel() {
                                     {row.isLargeText && (
                                       <span
                                         style={{
-                                          fontSize: 11,
+                                          fontSize: "0.8125rem",
                                           fontWeight: 800,
                                           color: C.blue,
                                           background: C.blueBg,
@@ -776,7 +776,7 @@ export default function ContrastPanel() {
                                     )}
                                     <span
                                       style={{
-                                        fontSize: 11,
+                                        fontSize: "0.8125rem",
                                         fontWeight: 700,
                                         color: C.textMuted,
                                         textTransform: "uppercase",
@@ -788,7 +788,7 @@ export default function ContrastPanel() {
                                   </div>
                                   <div
                                     style={{
-                                      fontSize: 12,
+                                      fontSize: "0.8125rem",
                                       color: C.textMuted,
                                       lineHeight: 1.5,
                                       whiteSpace: "pre-wrap",
@@ -816,7 +816,7 @@ export default function ContrastPanel() {
                                       : "default",
                                     opacity: row.selector ? 1 : 0.3,
                                     color: C.textMuted,
-                                    fontSize: 13,
+                                    fontSize: "0.875rem",
                                     fontFamily: "var(--font)",
                                     flexShrink: 0,
                                   }}
@@ -836,7 +836,7 @@ export default function ContrastPanel() {
                               >
                                 <span
                                   style={{
-                                    fontSize: 15,
+                                    fontSize: "0.9375rem",
                                     fontWeight: 800,
                                     color: row.ratio >= 4.5 ? C.green : C.red,
                                   }}
@@ -897,7 +897,7 @@ export default function ContrastPanel() {
               <div style={{ textAlign: "center" }}>
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: "1rem",
                     fontWeight: 800,
                     color: C.text,
                     marginBottom: 5,
@@ -908,7 +908,7 @@ export default function ContrastPanel() {
                 </div>
                 <div
                   style={{
-                    fontSize: 14.5,
+                    fontSize: "0.9375rem",
                     color: C.textMuted,
                     maxWidth: 240,
                     lineHeight: 1.65,
@@ -926,7 +926,7 @@ export default function ContrastPanel() {
                   border: "none",
                   borderRadius: 10,
                   padding: "11px 28px",
-                  fontSize: 13.5,
+                  fontSize: "0.875rem",
                   fontWeight: 700,
                   boxShadow: "0 4px 12px rgba(29,78,216,0.25)",
                   fontFamily: "var(--font)",
@@ -954,7 +954,7 @@ export default function ContrastPanel() {
               >
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: "0.8125rem",
                     fontWeight: 700,
                     color: C.textMuted,
                     textTransform: "uppercase",
@@ -964,7 +964,7 @@ export default function ContrastPanel() {
                 >
                   Selected element
                 </div>
-                <code style={{ fontSize: 13, color: C.text }}>
+                <code style={{ fontSize: "0.875rem", color: C.text }}>
                   {pickedData.selector}
                 </code>
               </div>
@@ -1004,7 +1004,7 @@ export default function ContrastPanel() {
                     <div>
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "0.8125rem",
                           color: C.textMuted,
                           fontWeight: 600,
                         }}
@@ -1012,7 +1012,7 @@ export default function ContrastPanel() {
                         {l}
                       </div>
                       <code
-                        style={{ fontSize: 12, color: C.text, fontWeight: 700 }}
+                        style={{ fontSize: "0.8125rem", color: C.text, fontWeight: 700 }}
                       >
                         {h}
                       </code>
@@ -1030,7 +1030,7 @@ export default function ContrastPanel() {
               >
                 <div
                   style={{
-                    fontSize: 34,
+                    fontSize: "2.125rem",
                     fontWeight: 800,
                     color: (pickedRatio || 0) >= 4.5 ? C.green : C.red,
                     lineHeight: 1,
@@ -1042,7 +1042,7 @@ export default function ContrastPanel() {
                 </div>
                 <div
                   style={{
-                    fontSize: 12.5,
+                    fontSize: "0.8125rem",
                     color: C.textMuted,
                     marginBottom: 12,
                     fontWeight: 500,
@@ -1069,7 +1069,7 @@ export default function ContrastPanel() {
                       marginTop: 6,
                     }}
                   >
-                    <span style={{ fontSize: 12, color: C.textMid }}>
+                    <span style={{ fontSize: "0.8125rem", color: C.textMid }}>
                       {l} {r}
                     </span>
                     <PassBadge pass={p} />
@@ -1087,7 +1087,7 @@ export default function ContrastPanel() {
                   color: C.textMid,
                   borderRadius: 9,
                   padding: 9,
-                  fontSize: 13,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                   fontFamily: "var(--font)",
                 }}
@@ -1128,7 +1128,7 @@ export default function ContrastPanel() {
               >
                 <label
                   style={{
-                    fontSize: 13.5,
+                    fontSize: "0.875rem",
                     fontWeight: 700,
                     color: C.textMuted,
                     display: "block",
@@ -1181,7 +1181,7 @@ export default function ContrastPanel() {
                       border: `1.5px solid ${C.border}`,
                       borderRadius: 7,
                       padding: "6px 8px",
-                      fontSize: 13,
+                      fontSize: "0.875rem",
                       fontFamily: "var(--mono)",
                       color: C.text,
                       background: "#fff",
@@ -1206,10 +1206,10 @@ export default function ContrastPanel() {
                   gap: 6,
                 }}
               >
-                <span style={{ color: fg, fontSize: 15, fontWeight: 500 }}>
+                <span style={{ color: fg, fontSize: "0.9375rem", fontWeight: 500 }}>
                   Normal text - 16px
                 </span>
-                <span style={{ color: fg, fontSize: 22, fontWeight: 700 }}>
+                <span style={{ color: fg, fontSize: "1.375rem", fontWeight: 700 }}>
                   Large text heading
                 </span>
               </div>
@@ -1223,7 +1223,7 @@ export default function ContrastPanel() {
               >
                 <div
                   style={{
-                    fontSize: 36,
+                    fontSize: "2.25rem",
                     fontWeight: 800,
                     letterSpacing: "-0.04em",
                     color: manualRatio >= 4.5 ? C.green : C.red,
@@ -1250,7 +1250,7 @@ export default function ContrastPanel() {
                         alignItems: "center",
                       }}
                     >
-                      <span style={{ fontSize: 12.5, color: C.textMid }}>
+                      <span style={{ fontSize: "0.8125rem", color: C.textMid }}>
                         {l}
                       </span>
                       <PassBadge pass={p} />
