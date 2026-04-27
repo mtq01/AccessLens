@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(node -e ' *)",
-      "Bash(node convert-fonts.js)"
+      "Bash(node convert-fonts.js)",
+      "Bash(awk 'NR>=855 && NR<=870' src/content/index.js)",
+      "Bash(awk 'NR>=1250 && NR<=1291')",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Read(//tmp/**)",
+      "Bash(node -e \"const axe = require\\('axe-core'\\); const rules = axe.getRules\\(\\); console.log\\(rules.map\\(r=>r.ruleId\\).filter\\(id=>id.includes\\('contrast'\\)\\)\\)\")"
     ]
   }
 }

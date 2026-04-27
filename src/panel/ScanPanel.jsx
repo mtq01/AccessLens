@@ -700,10 +700,8 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
 
     chrome.runtime.sendMessage({ type: "RUN_SCAN" }, (response) => {
       if (chrome.runtime.lastError || !response?.success) {
-        const err = response?.error || chrome.runtime.lastError?.message || "";
-        setErrorMsg(
-          err === "chrome_restricted" ? "chrome_restricted" : "inject_failed",
-        );
+        const err = response?.error || chrome.runtime.lastError?.message || "unknown";
+        setErrorMsg(err);
         setStatus("error");
         return;
       }
@@ -1003,6 +1001,23 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
                 Open a normal website first, then click the AccessLens icon.
               </p>
             </>
+          ) : errorMsg === "no_tab" ? (
+            <>
+              <div className="error-icon">
+                <Icon name="warning_amber" size={28} />
+              </div>
+              <p>Scan failed</p>
+              <p className="empty-hint">
+                The page may have navigated or reloaded. Try scanning again.
+              </p>
+              <button
+                className="btn-scan"
+                style={{ marginTop: 14, maxWidth: 180, background: "var(--red)" }}
+                onClick={runScan}
+              >
+                ↺ Try again
+              </button>
+            </>
           ) : (
             <>
               <div className="error-icon">
@@ -1010,16 +1025,11 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
               </div>
               <p>Scan failed</p>
               <p className="empty-hint">
-                This can happen if the tab changed. Close this panel, go to the
-                page you want, then open AccessLens again.
+                Something went wrong. Reload the page and try again.
               </p>
               <button
                 className="btn-scan"
-                style={{
-                  marginTop: 14,
-                  maxWidth: 180,
-                  background: "var(--red)",
-                }}
+                style={{ marginTop: 14, maxWidth: 180, background: "var(--red)" }}
                 onClick={runScan}
               >
                 ↺ Try again

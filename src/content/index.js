@@ -70,11 +70,6 @@ async function runScan() {
         type: "tag",
         values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"],
       },
-      rules: {
-        "color-contrast": { enabled: false },
-        "color-contrast-enhanced": { enabled: false },
-        "non-text-contrast": { enabled: false },
-      },
     });
     return {
       success: true,

@@ -3,9 +3,19 @@
 var panelWindowId = null;
 var trackedTabId = null;
 
+// Persist trackedTabId to session storage so it survives SW restarts.
+function persistTabId(id) {
+  if (id !== null && id !== undefined) {
+    chrome.storage.session.set({ al_tab_id: id });
+  } else {
+    chrome.storage.session.remove("al_tab_id");
+  }
+}
+
 // ── Open panel on icon click ──────────────────────────────────────────────────
 chrome.action.onClicked.addListener(function (tab) {
   trackedTabId = tab.id;
+  persistTabId(tab.id);
 
   if (panelWindowId !== null) {
     chrome.windows.update(panelWindowId, { focused: true });
@@ -35,6 +45,7 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
     if (chrome.runtime.lastError) return;
     if (activeInfo.windowId !== panelWin.id) {
       trackedTabId = activeInfo.tabId;
+      persistTabId(activeInfo.tabId);
       // Notify panel that the tracked tab changed
       chrome.tabs.query({ windowId: panelWin.id }, function (tabs) {
         if (tabs && tabs[0]) {
@@ -53,31 +64,22 @@ chrome.windows.onRemoved.addListener(function (windowId) {
   if (windowId === panelWindowId) {
     panelWindowId = null;
     trackedTabId = null;
+    persistTabId(null);
   }
 });
 
-// ── Send to content script with auto-inject fallback ─────────────────────────
-function sendToTab(message, sendResponse) {
-  if (trackedTabId === null || trackedTabId === undefined) {
-    if (sendResponse) sendResponse({ success: false, error: "No tab tracked" });
-    return;
-  }
-
-  var tabId = parseInt(trackedTabId, 10);
-  if (isNaN(tabId)) {
-    if (sendResponse) sendResponse({ success: false, error: "Invalid tab ID" });
+// ── Core tab messaging (shared by sendToTab and the session-storage fallback) ──
+function dispatchToTab(tabId, message, sendResponse) {
+  var id = parseInt(tabId, 10);
+  if (isNaN(id)) {
+    if (sendResponse) sendResponse({ success: false, error: "no_tab" });
     return;
   }
 
   // First check if tab is accessible
-  chrome.tabs.get(tabId, function (tab) {
+  chrome.tabs.get(id, function (tab) {
     if (chrome.runtime.lastError || !tab) {
-      if (sendResponse)
-        sendResponse({
-          success: false,
-          error:
-            "Tab not found — click the extension icon on the page you want to scan",
-        });
+      if (sendResponse) sendResponse({ success: false, error: "no_tab" });
       return;
     }
 
@@ -93,11 +95,11 @@ function sendToTab(message, sendResponse) {
       return;
     }
 
-    chrome.tabs.sendMessage(tabId, message, function (response) {
+    chrome.tabs.sendMessage(id, message, function (response) {
       if (chrome.runtime.lastError) {
         // Content script not ready — inject then retry
         chrome.scripting.executeScript(
-          { target: { tabId: tabId }, files: ["content.js"] },
+          { target: { tabId: id }, files: ["content.js"] },
           function () {
             if (chrome.runtime.lastError) {
               if (sendResponse)
@@ -108,7 +110,7 @@ function sendToTab(message, sendResponse) {
               return;
             }
             setTimeout(function () {
-              chrome.tabs.sendMessage(tabId, message, function (r) {
+              chrome.tabs.sendMessage(id, message, function (r) {
                 if (chrome.runtime.lastError) {
                   if (sendResponse)
                     sendResponse({
@@ -129,6 +131,25 @@ function sendToTab(message, sendResponse) {
   });
 }
 
+// ── Send to content script with SW-restart recovery ───────────────────────────
+function sendToTab(message, sendResponse) {
+  if (trackedTabId !== null && trackedTabId !== undefined) {
+    dispatchToTab(trackedTabId, message, sendResponse);
+    return;
+  }
+
+  // trackedTabId is null — SW may have restarted. Try session storage.
+  chrome.storage.session.get("al_tab_id", function (result) {
+    var recovered = result.al_tab_id;
+    if (recovered) {
+      trackedTabId = recovered; // restore in-memory for subsequent calls
+      dispatchToTab(recovered, message, sendResponse);
+    } else {
+      if (sendResponse) sendResponse({ success: false, error: "no_tab" });
+    }
+  });
+}
+
 // ── Forward messages from content script to panel ─────────────────────────────
 function forwardToPanel(message) {
   if (panelWindowId === null) return;
@@ -142,7 +163,15 @@ function forwardToPanel(message) {
 // ── Message router ────────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (message.type === "GET_TAB_ID") {
-    sendResponse({ tabId: trackedTabId });
+    // If in-memory state was lost, return from session storage
+    if (trackedTabId !== null) {
+      sendResponse({ tabId: trackedTabId });
+      return true;
+    }
+    chrome.storage.session.get("al_tab_id", function (result) {
+      if (result.al_tab_id) trackedTabId = result.al_tab_id;
+      sendResponse({ tabId: trackedTabId });
+    });
     return true;
   }
 
