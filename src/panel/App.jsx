@@ -127,10 +127,11 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <span className="app-footer-meta">● WCAG 2.2 AA</span>
-        <button className="app-footer-btn" onClick={openFeedback}>
-          Send feedback
-        </button>
+        <span className="app-footer-meta">
+          <span className="app-footer-dot" aria-hidden="true" />
+          WCAG 2.2 AA
+        </span>
+        <span className="app-footer-version">AccessLens v2</span>
       </footer>
     </div>
   );
