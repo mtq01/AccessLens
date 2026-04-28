@@ -1,61 +1,212 @@
+/*
+ * ============================================================================
+ * AccessLens — Main Stylesheet
+ * ============================================================================
+ *
+ * HOW THIS FILE IS ORGANISED
+ * ──────────────────────────
+ *  1. Google Fonts import
+ *  2. CSS Custom Properties (design tokens — Colors, spacing, fonts)
+ *  3. Reset & base HTML styles
+ *  4. App shell (outer wrapper, layout)
+ *  5. Header (logo + tab navigation)
+ *  6. Main content area
+ *  7. Footer
+ *  8. Shared buttons (btn-scan, tool-btn, btn-stop, btn-rerun, btn-export)
+ *  9. Shared spinner (loading animation)
+ * 10. Scan panel — idle state
+ * 11. Scan panel — summary strip (issue counts)
+ * 12. Scan panel — subtab bar (Issues / Focus / Visuals / Dynamic / Content)
+ * 13. Scan panel — filter bar (severity filter chips)
+ * 14. Scan panel — empty states
+ * 15. Scan panel — violation cards (the issue list)
+ * 16. Scan panel — violation detail (Why / How to fix / Elements tabs)
+ * 17. Scan panel — element rows (individual affected elements inside a violation)
+ * 18. Scan panel — history panel
+ * 19. Focus panel — tool cards (home state)
+ * 20. Focus panel — keyboard test (live focus mode)
+ * 21. Focus panel — tab order map
+ * 22. Visuals panel — zoom test + high contrast checklist
+ * 23. Dynamic tab
+ * 24. Content tab (reading level card)
+ * 25. Tab explainers (placeholder screens for empty tabs)
+ * 26. Contrast panel — mode toggle
+ * 27. Contrast panel — eyedropper / picker mode
+ * 28. Contrast panel — manual colour checker
+ * 29. Contrast panel — page scan results
+ * 30. Checklist panel
+ * 31. Export modal
+ * 32. Onboarding overlay
+ * 33. Keyboard focus indicators (WCAG 2.4.7)
+ *
+ * ============================================================================
+ */
+
+
+/* ============================================================================
+   1. GOOGLE FONTS
+   Loads two typefaces from Google Fonts:
+   • Open Sans  — the main UI font (body text, labels, buttons)
+   • JetBrains Mono — for code, selectors, hex values, counts
+   The 'display=swap' parameter means the browser shows a fallback font
+   immediately and swaps in the custom font once it loads.
+   ============================================================================ */
+
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ============================================================================
+   2. CSS CUSTOM PROPERTIES (design tokens)
+   All Colors, spacing, and fonts are defined here as variables.
+   Using var(--token-name) throughout the stylesheet means you can change
+   the entire visual theme by editing just this one section.
+
+   COLORS — light mode only (no dark mode)
+   • --bg through --bg4: white → light grey, used as surface backgrounds
+   • --border / --border2: subtle vs. slightly stronger borders
+   • --text through --text3: primary → muted text
+   • --accent / --accent2: primary blue for buttons, links, active states
+   • --green: used for passed checks, success states
+   • --red: used for critical violations
+   • --amber: used for serious/warning states
+   • --blue-bg: very light tint of blue, used for selected/active backgrounds
+
+   SPACING
+   • --radius, --radius-sm, --radius-lg: border-radius values
+   • --shadow: standard box shadow for elevated surfaces
+
+   TYPOGRAPHY
+   • --font: Open Sans, falls back to system-ui then sans-serif
+   • --mono: JetBrains Mono, falls back to Fira Code then monospace
+   ============================================================================ */
 
 :root {
-  --bg:       #ffffff;
-  --bg2:      #f8f9fb;
-  --bg3:      #f1f3f7;
-  --bg4:      #e8eaef;
-  --border:   rgba(0,0,0,0.08);
-  --border2:  rgba(0,0,0,0.15);
-  --text:     #0f1623;
-  --text2:    #4a5268;
-  --text3:    #5a6070;
-  --accent:   #2563eb;
-  --accent2:  #1d4ed8;
-  --green:    #15803d;
-  --green-bg: rgba(21,128,61,0.08);
-  --red:      #dc2626;
-  --red-bg:   rgba(220,38,38,0.08);
-  --amber:    #b45309;
-  --amber-bg: rgba(180,83,9,0.08);
-  --blue-bg:  rgba(37,99,235,0.08);
-  --radius:   8px;
-  --radius-sm:4px;
-  --radius-lg:12px;
-  --font:     'Open Sans', system-ui, -apple-system, sans-serif;
-  --mono:     'JetBrains Mono', 'Fira Code', monospace;
-  --shadow:   0 4px 24px rgba(0,0,0,0.12);
+
+  /* [SURFACES] — from lightest (white) to slightly darker grey ----------- */
+
+  --bg: #ffffff;                  /* Pure white — main page background */
+  --bg2: #f8f9fb;                 /* Off-white — card and panel backgrounds */
+  --bg3: #f1f3f7;                 /* Light grey — input backgrounds, tags */
+  --bg4: #e8eaef;                 /* Mid-grey — hover states, pills */
+
+  /* [BORDERS] — semi-transparent so they work on any background ---------- */
+
+  --border: #00000014;            /* Subtle — most dividers */
+  --border2: #00000026;           /* Stronger — inputs, modal edges */
+
+  /* [TEXT] — dark navy → medium grey → light grey ---------- */
+
+  --text: #0f1623;                /* Near-black — headings, primary content (18:1 on white ✓ AAA) */
+  --text2: #4a5268;               /* Mid — secondary text, metadata (7.8:1 on white ✓ AA) */
+  --text3: #5a6070;               /* Muted — labels, placeholders (5.7:1 on white ✓ AA) */
+
+  /* [BRAND COLORS] ---------- */
+
+  --accent: #2563eb;              /* Blue — buttons, links, active states (5.2:1 on white ✓ AA) */
+  --accent2: #1d4ed8;             /* Darker blue — button hover state */
+
+  /* [SEMANTIC COLORS] — used for status and severity ---------- */
+
+  --green: #15803d;               /* Success / passed (5.1:1 on white ✓ AA) */
+  --green-bg: #15803d14;          /* Light green tint for success badges */
+  --red: #dc2626;                 /* Error / critical (4.6:1 on white ✓ AA) */
+  --red-bg: #dc262614;            /* Light red tint for error badges */
+  --amber: #b45309;               /* Warning / serious (5.8:1 on white ✓ AA) */
+  --amber-bg: #b4530914;          /* Light amber tint for warning badges */
+  --blue-bg: #2563eb14;           /* Light blue tint for selected states */
+
+  /* [SHAPE] ---------- */
+
+  --radius: 8px;                    /* Default border radius */
+  --radius-sm: 4px;                 /* Small — tags, badges, inline code */
+  --radius-lg: 12px;                /* Large — modals, larger cards */
+
+  /* [TYPOGRAPHY] */
+  --font: 'Open Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* [ELEVATION] */
+  --shadow: 0 4px 24px #0000001f; /* Used on modals and dropdowns */
 }
 
-html, body {
+
+/* ============================================================================
+   3. RESET & BASE HTML STYLES
+   Removes browser default margin/padding, sets box-sizing to border-box
+   (so padding doesn't add to element width), and applies base typography.
+   The 720px width matches the chrome extension popup window dimensions
+   set in src/background/index.js.
+   ============================================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Include padding and border in element width */
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  /* Extension popup width — matches background.js */
   width: 720px;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
+  /* Base font size — all rem/em would scale from this */
   font-size: 16px;
   line-height: 1.55;
+  /* Crisper text on macOS */
   -webkit-font-smoothing: antialiased;
+  /* Prevent horizontal scroll on 720px body */
   overflow-x: hidden;
 }
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+/* Custom scrollbar styling — webkit only (Chrome/Safari) */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg4);
+  border-radius: 4px;
+}
+
+
+/* ============================================================================
+   4. APP SHELL
+   The outer wrapper for the entire extension popup.
+   Uses flexbox column layout so the header and footer stay at top/bottom
+   while the main content area fills the remaining space.
+   ============================================================================ */
 
 .app {
   display: flex;
+  /* Stack header → main → footer vertically */
   flex-direction: column;
   min-height: 100vh;
   background: var(--bg);
 }
 
-/* ── Header ── */
+
+/* ============================================================================
+   5. HEADER
+   Contains: AccessLens logo (left) + tab navigation (right)
+   The header is sticky — it stays at the top when the user scrolls.
+   backdrop-filter blurs content behind it for a polished effect.
+   ============================================================================ */
+
 .header {
+  /* Stays at top of viewport when scrolling */
   position: sticky;
   top: 0;
+  /* Sits above all panel content */
   z-index: 100;
   display: flex;
   align-items: center;
@@ -64,37 +215,50 @@ html, body {
   height: 48px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  /* Blurs panel content showing through */
   backdrop-filter: blur(12px);
 }
 
+/* Logo — flex row containing the SVG icon and "AccessLens" text */
 .logo {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Don't let it shrink if nav takes up space */
   flex-shrink: 0;
 }
 
-.logo-svg { border-radius: 5px; }
+.logo-svg {
+  /* Rounds the corners of the SVG rect */
+  border-radius: 5px;
+}
 
 .logo-text {
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
+  /* Slightly tighter for a refined look */
   letter-spacing: -0.01em;
   font-family: var(--font);
 }
 
-.logo-accent { color: var(--accent); }
+/* The "Lens" part of AccessLens — rendered in blue */
+.logo-accent {
+  color: var(--accent);
+}
 
+/* Tab pill container — the "Scan / Colors / Focus / Checklist" nav */
 .tabs {
   display: flex;
   gap: 1px;
   background: var(--bg3);
+  /* Grey background visible between pills */
   padding: 3px;
   border-radius: 8px;
   border: 1px solid var(--border);
 }
 
+/* Individual tab button */
 .tab {
   display: flex;
   align-items: center;
@@ -106,23 +270,46 @@ html, body {
   border: none;
   background: transparent;
   color: var(--text3);
+  /* Muted when inactive */
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
-.tab:hover { color: var(--text2); }
+.tab:hover {
+  color: var(--text2);
+  /* Slightly brighter on hover */
+}
 
+/* Active tab — white pill with subtle shadow, appears "lifted" */
 .tab--active {
   background: var(--bg);
   color: var(--text);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1), inset 0 0 0 1px var(--border2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 0 0 1px var(--border2);
 }
 
-.main { flex: 1; overflow-y: auto; }
 
-/* ── Footer ── */
+/* ============================================================================
+   6. MAIN CONTENT AREA
+   The scrollable zone between header and footer.
+   flex: 1 means it grows to fill all available vertical space.
+   Each panel (ScanPanel, ContrastPanel, ChecklistPanel) renders inside here.
+   ============================================================================ */
+
+.main {
+  flex: 1;
+  /* Grow to fill remaining height between header and footer */
+  overflow-y: auto;
+}
+
+
+/* ============================================================================
+   7. FOOTER
+   Sticky bottom bar showing WCAG version and the feedback link.
+   Uses monospace font to match the technical/developer aesthetic.
+   ============================================================================ */
+
 .app-footer {
   display: flex;
   align-items: center;
@@ -132,11 +319,26 @@ html, body {
   font-size: 16px;
   color: var(--text3);
   font-family: var(--mono);
+  /* Monospace gives it a "status bar" feel */
   background: var(--bg);
   flex-shrink: 0;
+  /* Never shrink — always visible */
 }
 
-/* ── Buttons ── */
+
+/* ============================================================================
+   8. SHARED BUTTONS
+   These button styles are used across multiple panels.
+
+   .btn-scan    — large primary CTA ("Run scan", "Turn on high contrast" etc.)
+   .tool-btn    — secondary action buttons in a row ("Re-scan", "Export" etc.)
+   .btn-stop    — danger/cancel (red, used for "Stop" in focus mode)
+   .btn-rerun   — ghost button for repeating an action ("Run again")
+   .btn-export  — ghost button specifically for the export action
+   .btn-cancel  — ghost button for cancelling a picker or modal
+   ============================================================================ */
+
+/* Primary full-width action button */
 .btn-scan {
   width: 100%;
   padding: 10px 16px;
@@ -154,23 +356,33 @@ html, body {
   gap: 8px;
   transition: all 0.15s;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.25);
+  /* Soft blue glow */
 }
-.btn-scan:hover { background: var(--accent2); }
-.btn-scan:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
-.spinner {
-  width: 13px; height: 13px;
-  border: 2px solid rgba(255,255,255,0.25);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.65s linear infinite;
-  flex-shrink: 0;
+.btn-scan:hover {
+  background: var(--accent2);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-.tool-row { display: flex; gap: 6px; margin-bottom: 10px; }
-.tool-row .btn-scan { flex: 2; padding: 9px 10px; font-size: 16px; }
+.btn-scan:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Secondary tool buttons — used in a flex row next to btn-scan */
+.tool-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.tool-row .btn-scan {
+  flex: 2;
+  /* Takes 2/3 of the row */
+  padding: 9px 10px;
+  font-size: 16px;
+}
 
 .tool-btn {
   flex: 1;
@@ -186,14 +398,147 @@ html, body {
   transition: all 0.15s;
   white-space: nowrap;
 }
-.tool-btn:hover { color: var(--text); border-color: var(--border2); }
-.tool-btn--active { background: var(--blue-bg); border-color: var(--accent); color: var(--accent); }
-.tool-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* ── Scan panel ── */
-.scan-panel { padding: 14px 18px; }
+.tool-btn:hover {
+  color: var(--text);
+  border-color: var(--border2);
+}
 
-/* ── Summary ── */
+.tool-btn--active {
+  background: var(--blue-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Stop / cancel — red destructive button used in focus mode */
+.btn-stop {
+  padding: 4px 10px;
+  background: var(--red-bg);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--red);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btn-stop:hover {
+  background: rgba(220, 38, 38, 0.15);
+}
+
+/* Ghost button for repeating a test (e.g. "Run again" after zoom test) */
+.btn-rerun {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btn-rerun:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Ghost button for the export action (shown in the scan panel) */
+.btn-export {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.btn-export:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--blue-bg);
+}
+
+/* Cancel button — used in picker mode and modals */
+.btn-cancel {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btn-cancel:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+
+/* ============================================================================
+   9. SPINNER
+   Used inside buttons and empty states while async operations run.
+   The border creates a circle with one coloured arc (border-top-color)
+   that spins via the `spin` keyframe animation.
+   ============================================================================ */
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  /* Faint full circle */
+  border-top-color: #fff;
+  /* Bright arc = the "spinner" */
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ============================================================================
+   10. SCAN PANEL — IDLE STATE
+   The wrapper for all scan panel content.
+   padding: 14px 18px adds breathing room inside the main area.
+   ============================================================================ */
+
+.scan-panel {
+  padding: 14px 18px;
+}
+
+
+/* ============================================================================
+   11. SCAN PANEL — SUMMARY STRIP
+   The three-column strip showing Critical / Serious / Passed counts.
+   Appears at the top of the scan results after a scan completes.
+
+   Layout: flex row, each .summary-stat gets equal width (flex: 1)
+   with a border-right divider between them.
+   ============================================================================ */
+
 .summary {
   display: flex;
   background: var(--bg2);
@@ -201,21 +546,57 @@ html, body {
   border-radius: var(--radius);
   margin-bottom: 10px;
   overflow: hidden;
+  /* Clips the first/last stat's border-radius corners */
 }
+
+/* Individual stat cell */
 .summary-stat {
   flex: 1;
+  /* Equal width columns */
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 10px 6px;
   border-right: 1px solid var(--border);
+  /* Divider line between stats */
   gap: 2px;
 }
-.summary-stat:last-child { border-right: none; }
-.summary-num { font-size: 22px; font-weight: 700; line-height: 1; font-family: var(--mono); }
-.summary-label { font-size: 16px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 
-/* ── Subtabs ── */
+.summary-stat:last-child {
+  border-right: none;
+}
+
+/* No divider after last stat */
+
+/* The big number (e.g. "2") */
+.summary-num {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: var(--mono);
+  /* Monospace so digits align predictably */
+}
+
+/* The label below the number (e.g. "CRITICAL") */
+.summary-label {
+  font-size: 16px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  /* Spaced out caps for label legibility */
+  font-weight: 600;
+}
+
+
+/* ============================================================================
+   12. SCAN PANEL — SUBTAB BAR
+   The "Issues / Focus / Visuals / Dynamic / Content" secondary navigation
+   that appears after a scan. Blue active state, dark text on grey inactive.
+
+   This is a pill-group style — buttons sit inside a grey container,
+   and the active one gets a blue fill with white text.
+   ============================================================================ */
+
 .subtabs {
   display: flex;
   gap: 6px;
@@ -225,6 +606,8 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 10px;
 }
+
+/* Individual subtab button */
 .subtab {
   flex: 1;
   padding: 9px 8px;
@@ -232,6 +615,7 @@ html, body {
   border: 1px solid transparent;
   border-radius: 7px;
   color: #000000;
+  /* Black text — high contrast on grey bg (WCAG AAA) */
   font-family: var(--font);
   font-size: 16px;
   font-weight: 600;
@@ -243,14 +627,26 @@ html, body {
   gap: 6px;
   white-space: nowrap;
 }
-.subtab:hover { background: rgba(0,0,0,0.04); }
+
+.subtab:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Active subtab — blue fill, white text (5.2:1 contrast ratio — WCAG AA ✓) */
 .subtab--active {
   background: #2563eb;
   color: #ffffff;
   border-color: #2563eb;
   font-weight: 700;
 }
-.subtab--active:hover { background: #1d4ed8; color: #ffffff; border-color: #1d4ed8; }
+
+.subtab--active:hover {
+  background: #1d4ed8;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+/* Count badge inside a subtab (e.g. "Issues 3") — red for errors */
 .subtab-count {
   font-size: 16px;
   padding: 1px 7px;
@@ -259,16 +655,37 @@ html, body {
   color: var(--red);
   font-weight: 700;
 }
-.subtab--active .subtab-count { background: rgba(255,255,255,0.25); color: #ffffff; }
-.subtab-count--amber { background: var(--amber-bg); color: var(--amber); }
-.subtab--active .subtab-count--amber { background: rgba(255,255,255,0.25); color: #ffffff; }
 
-/* ── Filter bar ── */
+/* When inside an active subtab, flip to white-on-transparent */
+.subtab--active .subtab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Amber variant — used for Dynamic and Visuals tabs */
+.subtab-count--amber {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.subtab--active .subtab-count--amber {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+
+/* ============================================================================
+   13. SCAN PANEL — FILTER BAR
+   The severity filter row: "Severity: All / Critical / Serious / Moderate / Minor"
+   Sits above the violation list. Aligned left using flex-start.
+   ============================================================================ */
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-start;
+  /* Left-align the filter group */
   align-items: center;
   margin-bottom: 10px;
   padding: 8px 10px;
@@ -276,8 +693,26 @@ html, body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-.filter-group { display: flex; align-items: center; gap: 6px; justify-content: flex-start; }
-.filter-label { font-size: 16px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-right: 2px; }
+
+/* The row of chips inside the filter bar */
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+/* "SEVERITY" label before the chips */
+.filter-label {
+  font-size: 16px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+/* Filter chip — individual pill buttons */
 .filter-btn {
   padding: 3px 8px;
   background: transparent;
@@ -290,10 +725,28 @@ html, body {
   cursor: pointer;
   transition: all 0.12s;
 }
-.filter-btn:hover { color: var(--text); border-color: var(--border2); }
-.filter-btn--active { background: var(--blue-bg); border-color: var(--accent); color: var(--accent); }
 
-/* ── Empty states ── */
+.filter-btn:hover {
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+/* Active filter chip — blue tint with blue border */
+.filter-btn--active {
+  background: var(--blue-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+
+/* ============================================================================
+   14. SCAN PANEL — EMPTY STATES
+   Centered placeholder content for three scenarios:
+   1. Before any scan (idle — "Run scan to start")
+   2. While scanning (loading spinner)
+   3. After scan with no violations ("No violations found")
+   ============================================================================ */
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -304,33 +757,79 @@ html, body {
   color: var(--text2);
   line-height: 1.6;
 }
-.empty-icon { color: var(--text3); margin-bottom: 4px; }
-.empty-hint { font-size: 16px; color: var(--text3); }
 
-/* ── Violations ── */
-.violation-groups { display: flex; flex-direction: column; gap: 6px; }
+.empty-icon {
+  color: var(--text3);
+  margin-bottom: 4px;
+}
 
-.violations { display: flex; flex-direction: column; gap: 0; padding: 8px; background: var(--bg2); }
+.empty-hint {
+  font-size: 16px;
+  color: var(--text3);
+}
 
+
+/* ============================================================================
+   15. SCAN PANEL — VIOLATION CARDS
+   Each axe-core violation is rendered as a card with a thick coloured
+   left border encoding severity:
+   • Red    (#E24B4A) = critical
+   • Amber  (#EF9F27) = serious
+   • Blue   (#4f8ef7) = moderate
+   • Grey   (#888780) = minor
+
+   Layout: The card itself is a white rounded box. The header row inside
+   contains the violation title, meta badges, and an expand button.
+   ============================================================================ */
+
+/* Container that holds all violation cards */
+.violations {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px;
+  background: var(--bg2);
+  /* Slight grey tint behind the white cards */
+}
+
+/* Individual violation card */
 .violation {
   background: var(--bg);
   border: 1px solid var(--border);
   border-left-width: 6px;
+  /* Thick left border encodes severity visually */
   border-radius: 10px;
   overflow: hidden;
+  /* Clips inner content to the rounded corners */
   transition: border-color 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   margin-bottom: 8px;
 }
-.violation--critical { border-left-color: #E24B4A; }
-.violation--serious  { border-left-color: #EF9F27; }
-.violation--moderate { border-left-color: #4f8ef7; }
-.violation--minor    { border-left-color: #888780; }
-.violation--active {
-  border-color: rgba(240,82,82,0.4);
-  box-shadow: 0 0 0 1px rgba(240,82,82,0.15);
+
+/* Severity Colors on the left border */
+.violation--critical {
+  border-left-color: #E24B4A;
 }
 
+.violation--serious {
+  border-left-color: #EF9F27;
+}
+
+.violation--moderate {
+  border-left-color: #4f8ef7;
+}
+
+.violation--minor {
+  border-left-color: #888780;
+}
+
+/* When expanded/active — red ring around the whole card */
+.violation--active {
+  border-color: rgba(240, 82, 82, 0.4);
+  box-shadow: 0 0 0 1px rgba(240, 82, 82, 0.15);
+}
+
+/* Clickable header row inside each card */
 .violation-header {
   display: flex;
   align-items: center;
@@ -339,16 +838,83 @@ html, body {
   transition: background 0.12s;
   gap: 8px;
 }
-.violation-header:hover { background: var(--bg2); }
-.impact-bar { display: none; }
-.violation-info { flex: 1; min-width: 0; }
-.violation-title-row { display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.violation-title { font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.4; }
-.violation-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.impact-badge { font-size: 16px; font-weight: 600; text-transform: capitalize; font-family: var(--mono); }
-.wcag-version-badge { font-size: 16px; background: var(--blue-bg); color: var(--accent); padding: 1px 5px; border-radius: 3px; font-weight: 600; font-family: var(--mono); }
-.wcag-badge { font-size: 16px; background: var(--bg4); color: var(--text3); padding: 1px 5px; border-radius: 3px; font-family: var(--mono); }
-.node-count { font-size: 16px; color: var(--text3); font-family: var(--mono); }
+
+.violation-header:hover {
+  background: var(--bg2);
+}
+
+/* Hidden — was a vertical impact bar in an older design, now replaced by border */
+.impact-bar {
+  display: none;
+}
+
+/* Text content area inside the header */
+.violation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Row containing the title + any WCAG 2.2 "new" badge */
+.violation-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.violation-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Row containing impact badge, node count, WCAG reference */
+.violation-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* e.g. "critical" in coloured monospace text */
+.impact-badge {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: capitalize;
+  font-family: var(--mono);
+}
+
+/* e.g. "WCAG 1.1.1" blue pill badge */
+.wcag-version-badge {
+  font-size: 16px;
+  background: var(--blue-bg);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+/* e.g. "wcag2aa" grey pill badge */
+.wcag-badge {
+  font-size: 16px;
+  background: var(--bg4);
+  color: var(--text3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--mono);
+}
+
+/* e.g. "3×" — how many elements are affected */
+.node-count {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+/* The "View / Close" button on the right side of each violation header */
 .expand-btn {
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -366,87 +932,381 @@ html, body {
   font-family: var(--font);
   font-weight: 500;
 }
-.expand-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--blue-bg); }
 
-.violation-detail { padding: 14px 16px 16px; border-top: 1px solid var(--border); background: var(--bg2); }
-.violation-help { font-size: 16px; color: var(--text2); margin-bottom: 8px; line-height: 1.6; }
-.violation-link { font-size: 16px; color: var(--accent); text-decoration: none; display: inline-block; margin-bottom: 8px; }
-.violation-link:hover { text-decoration: underline; }
-.nodes-list { display: flex; flex-direction: column; gap: 4px; }
-.nodes-more { font-size: 16px; color: var(--text3); margin-top: 4px; }
+.expand-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--blue-bg);
+}
 
-/* ── Focus mode ── */
-.focus-mode-panel {
-  background: rgba(37,99,235,0.06);
-  border: 1px solid rgba(37,99,235,0.2);
-  border-radius: var(--radius);
-  padding: 12px;
+
+/* ============================================================================
+   16. SCAN PANEL — VIOLATION DETAIL
+   Shown when a violation card is expanded.
+   Contains three tabs: "Why it matters" / "How to fix" / "Elements (N)"
+
+   .violation-detail  — the expanded container below the header
+   .detail-tabs       — the tab strip
+   .detail-tab        — individual tab button (underline style)
+   .detail-tab--active — active tab gets blue underline + text
+   .detail-body       — content area below the tabs
+   .detail-why        — "Why it matters" paragraph text
+   .detail-links      — list of WCAG documentation links
+   .detail-code       — "How to fix" code block
+   ============================================================================ */
+
+/* Expanded area below the violation header */
+.violation-detail {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+/* A link shown at the bottom of "Why it matters" */
+.violation-link {
+  font-size: 16px;
+  color: var(--accent);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.violation-link:hover {
+  text-decoration: underline;
+}
+
+/* Tab strip — underline style, not pill style */
+.detail-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 10px;
 }
-.focus-mode-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.focus-mode-title { font-size: 16px; font-weight: 600; color: var(--accent); }
 
-.btn-stop {
-  padding: 4px 10px;
-  background: var(--red-bg);
-  border: 1px solid rgba(220,38,38,0.3);
-  color: var(--red);
-  border-radius: var(--radius-sm);
+.detail-tab {
+  flex: 1;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  /* The underline (invisible when inactive) */
+  color: var(--text3);
   font-family: var(--font);
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.12s;
+  margin-bottom: -1px;
+  /* Overlaps the border-bottom of .detail-tabs */
+  text-align: center;
 }
-.btn-stop:hover { background: rgba(220,38,38,0.15); }
 
-.focus-mode-instructions {
-  padding: 12px 14px;
-  background: var(--bg2);
+.detail-tab:hover {
+  color: var(--text2);
+}
+
+/* Active tab — blue underline and blue text */
+.detail-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  /* The visible blue underline */
+}
+
+/* Wrapper around tab content */
+.detail-body {
+  padding: 0;
+}
+
+/* "Why it matters" explanation text */
+.detail-why {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+/* List of documentation links in "Why it matters" */
+.detail-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 5px 8px;
+  background: var(--bg4);
+  border-radius: var(--radius-sm);
+  transition: background 0.12s;
+}
+
+.detail-link:hover {
+  background: var(--blue-bg);
+}
+
+/* "How to fix" code block */
+.detail-code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.detail-code code {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text2);
+  white-space: pre;
+  /* Preserves indentation and line breaks */
+  line-height: 1.7;
+}
+
+
+/* ============================================================================
+   17. SCAN PANEL — ELEMENT ROWS
+   Inside the "Elements (N)" tab of a violation detail.
+   Each element has a collapsed row showing "#1 — Link" with Jump/Details buttons.
+   Clicking "Details" expands the row to show selector, HTML, and failure summary.
+
+   .nodes-list         — container for all element rows
+   .element-row        — individual row (collapsed by default)
+   .element-row--open  — expanded state (blue border + light bg)
+   .element-row-header — the always-visible row (number, type, buttons)
+   .element-row-body   — the expandable detail area
+   .element-row-btn    — small action buttons (Jump / Details)
+   .element-row-btn--jump — blue variant specifically for "Jump to" button
+   .element-row-code   — monospace block for CSS selector or HTML snippet
+   ============================================================================ */
+
+.nodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.element-row {
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
-  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color 0.12s;
 }
-.focus-mode-step { display: flex; align-items: flex-start; gap: 10px; font-size: 16px; color: var(--text); padding: 4px 0; line-height: 1.5; }
-.focus-step-num {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--accent); color: #fff;
-  font-weight: 700; font-size: 16px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.focus-mode-step kbd { background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 5px; font-size: 16px; font-family: var(--mono); }
 
-.focus-current-card {
-  padding: 14px;
+/* When expanded — blue border signals the row is open */
+.element-row--open {
+  border-color: var(--accent);
+  background: var(--bg2);
+}
+
+/* Header row — always visible */
+.element-row-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+/* e.g. "#1" in monospace */
+.element-row-num {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text2);
+  min-width: 28px;
+}
+
+/* e.g. "Link" or "Button" — friendly element type label */
+.element-row-type {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Buttons area on the right side of each element row */
+.element-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Default small button (Details / Hide) */
+.element-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.element-row-btn:hover {
   background: var(--bg);
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 10px;
+  color: var(--text);
+  border-color: var(--text3);
 }
-.focus-current-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.focus-stop-num { font-family: var(--mono); font-size: 16px; font-weight: 700; color: #fff; padding: 3px 8px; border-radius: 4px; }
-.focus-stop-tag { font-family: var(--mono); font-size: 16px; color: var(--text2); }
-.focus-status-row { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 600; }
-.focus-status-note { margin: 8px 0 0; padding: 8px 10px; background: var(--bg2); border-radius: 5px; font-size: 16px; color: var(--text2); line-height: 1.55; }
-.focus-current-empty {
-  padding: 36px 16px;
-  text-align: center;
-  color: var(--text3);
-  border: 2px dashed var(--border2);
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
-.focus-current-empty p { margin: 8px 0 0; font-size: 16px; }
-.focus-current-empty kbd { background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 6px; font-size: 16px; font-family: var(--mono); }
-.focus-stops-list { margin-top: 10px; padding: 10px 12px; background: var(--bg2); border-radius: 6px; border: 1px solid var(--border); }
-.focus-stops-list-title { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 6px; }
-.focus-stop-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 16px; }
-.focus-stop-n { font-family: var(--mono); color: var(--text2); font-weight: 600; min-width: 28px; }
-.focus-stop-el { font-family: var(--mono); color: var(--text); }
 
-/* ── Focus tool grid ── */
-.focus-tab-home { padding: 24px 16px; text-align: center; }
-.focus-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 14px; }
+/* "Jump to ↗" button — blue tint to signal it opens page interaction */
+.element-row-btn--jump {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--blue-bg);
+}
+
+.element-row-btn--jump:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* Expanded detail area */
+.element-row-body {
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.element-row-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Section labels inside the expanded area (e.g. "SELECTOR", "HTML") */
+.element-row-label {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text3);
+}
+
+/* Monospace code block for selector or HTML */
+.element-row-code {
+  display: block;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text);
+  word-break: break-all;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.element-row-text {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+
+/* ============================================================================
+   18. SCAN PANEL — HISTORY PANEL
+   A collapsible panel showing previous scans for the current domain.
+   Appears below the summary strip when the History button is clicked.
+   ============================================================================ */
+
+.history-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.history-title {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-row:last-child {
+  border-bottom: none;
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.history-date {
+  font-size: 16px;
+  color: var(--text2);
+}
+
+.history-stats {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+/* The "Blocked / At risk / Clear" label — coloured via inline style in JSX */
+.history-status {
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 64px;
+}
+
+
+/* ============================================================================
+   19. FOCUS PANEL — TOOL CARDS (home state)
+   The Focus tab before any tool is activated.
+   Shows two cards: "Test with keyboard" and "See the order".
+   Below them is an info note about focus ring limitations.
+
+   .focus-tab-home    — outer padding wrapper
+   .focus-tool-grid   — two-column grid of cards
+   .focus-tool-card   — individual tool card (icon + title + description)
+   .focus-tool-icon   — rounded square icon container
+   .info-callout      — informational note below the cards
+   ============================================================================ */
+
+.focus-tab-home {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+/* Two side-by-side tool cards */
+.focus-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
 .focus-tool-card {
   display: flex;
   flex-direction: column;
@@ -461,319 +1321,2245 @@ html, body {
   font-family: var(--font);
   transition: border-color 0.15s;
 }
-.focus-tool-card:hover { border-color: var(--accent); background: var(--blue-bg); }
-.focus-tool-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--blue-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; }
-.focus-tool-title { font-size: 16px; font-weight: 700; color: var(--text); }
-.focus-tool-desc { font-size: 16px; color: var(--text2); line-height: 1.5; }
-.info-callout { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; background: var(--bg3); border-radius: 6px; font-size: 16px; color: var(--text2); line-height: 1.6; text-align: left; }
-.info-callout svg { flex-shrink: 0; margin-top: 2px; color: var(--text3); }
 
-/* ── Visuals tab ── */
-.visuals-tab { display: flex; flex-direction: column; gap: 16px; padding: 4px 0; }
-.visuals-section { padding: 16px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; }
-.visuals-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.visuals-section-title { font-size: 16px; font-weight: 700; color: var(--text); margin: 0; }
-.visuals-section-desc { font-size: 16px; color: var(--text2); line-height: 1.6; margin: 0 0 10px; }
-.visuals-result { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: var(--bg2); border-radius: 6px; margin-top: 10px; }
-.visuals-result--ok { background: rgba(21,128,61,0.06); border: 1px solid rgba(21,128,61,0.2); }
-.visuals-result strong { color: var(--text); font-size: 16px; }
-
-/* HC checklist */
-.hc-checklist { margin-top: 14px; padding: 14px; background: var(--blue-bg); border: 1.5px solid var(--accent); border-radius: 8px; }
-.hc-checklist-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-.hc-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-.hc-item:last-of-type { border-bottom: none; }
-.hc-item-check-btns { display: flex; gap: 4px; flex-shrink: 0; }
-.hc-btn { font-size: 16px; font-weight: 600; padding: 4px 8px; border-radius: 4px; cursor: pointer; border: 1px solid; font-family: var(--font); }
-.hc-btn.pass { background: var(--green-bg); color: var(--green); border-color: rgba(21,128,61,0.3); }
-.hc-btn.fail { background: var(--red-bg); color: var(--red); border-color: rgba(220,38,38,0.3); }
-.hc-btn.unset { background: transparent; color: var(--text3); border-color: var(--border); }
-.hc-item-body { flex: 1; }
-.hc-item-label { font-size: 16px; color: var(--text); font-weight: 500; margin-bottom: 5px; }
-.hc-note-input { width: 100%; padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 16px; font-family: var(--font); background: var(--bg); color: var(--text); }
-.hc-note-input:focus { outline: none; border-color: var(--accent); }
-.hc-checklist-hint { margin: 10px 0 0; font-size: 16px; color: var(--text2); font-style: italic; line-height: 1.5; }
-
-/* ── Contrast panel ── */
-.contrast-panel { padding: 14px 18px; }
-.mode-toggle { display: flex; background: var(--bg3); padding: 3px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 14px; }
-.mode-btn { flex: 1; padding: 6px; font-family: var(--font); font-size: 16px; font-weight: 500; border: none; background: transparent; color: var(--text3); border-radius: 6px; cursor: pointer; transition: all 0.15s; }
-.mode-btn:hover { color: var(--text2); }
-.mode-btn--active { background: var(--bg); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.1), inset 0 0 0 1px var(--border2); }
-
-.picker-prompt { text-align: center; padding: 24px 0; }
-.picker-prompt p { color: var(--text2); margin-bottom: 16px; line-height: 1.6; font-size: 16px; }
-.picker-waiting { text-align: center; padding: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.crosshair-icon { font-size: 36px; color: var(--accent); line-height: 1; }
-.picker-waiting p { color: var(--text2); font-size: 16px; }
-.btn-cancel { padding: 6px 16px; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius-sm); font-family: var(--font); font-size: 16px; cursor: pointer; transition: all 0.12s; }
-.btn-cancel:hover { border-color: var(--red); color: var(--red); }
-.swatch-row { display: flex; gap: 10px; margin-bottom: 14px; }
-.swatch-item { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.swatch { height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
-.swatch-label { font-size: 16px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
-.swatch-hex { font-size: 16px; color: var(--text2); font-family: var(--mono); }
-
-.colour-inputs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
-.colour-field label { display: block; font-size: 16px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; margin-bottom: 6px; }
-.colour-input-row { display: flex; align-items: center; gap: 8px; }
-.colour-picker-input { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; padding: 2px; background: var(--bg3); }
-.hex-input { flex: 1; padding: 9px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 16px; transition: border-color 0.12s; }
-.hex-input:focus { outline: none; border-color: var(--accent); }
-.preview { padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.preview-normal { font-size: 16px; font-family: var(--font); }
-.preview-large { font-size: 20px; font-weight: 600; font-family: var(--font); }
-
-.ratio-display { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-.ratio-number { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 14px; font-family: var(--mono); }
-.ratio-grid { display: flex; flex-direction: column; gap: 6px; }
-.ratio-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg3); border-radius: var(--radius-sm); }
-.ratio-label { flex: 1; font-size: 16px; color: var(--text2); }
-.ratio-req { font-size: 16px; color: var(--text3); min-width: 48px; text-align: right; font-family: var(--mono); }
-.pass-badge { font-size: 16px; font-weight: 700; padding: 2px 8px; border-radius: 3px; min-width: 36px; text-align: center; font-family: var(--mono); }
-.pass-badge--pass { background: var(--green-bg); color: var(--green); }
-.pass-badge--fail { background: var(--red-bg); color: var(--red); }
-
-.eyedropper-btn { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; flex-shrink: 0; transition: all 0.12s; }
-.eyedropper-btn:hover { background: var(--blue-bg); color: var(--accent); border-color: var(--accent); }
-
-/* Contrast scan */
-.cscan-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: rgba(180,83,9,0.06); border: 2px solid var(--amber); border-radius: var(--radius); margin-bottom: 14px; font-size: 16px; color: var(--text); line-height: 1.6; }
-.cscan-notice strong { color: var(--text); font-weight: 700; }
-
-.cscan-hero { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-.cscan-hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-.cscan-stat-card { display: flex; flex-direction: column; align-items: flex-start; padding: 14px 16px; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; cursor: pointer; font-family: var(--font); text-align: left; transition: all 0.15s; }
-.cscan-stat-card:hover { border-color: var(--accent); }
-.cscan-stat-card--active { background: var(--bg3); }
-.cscan-stat-card--fail.cscan-stat-card--active { border-color: var(--red); }
-.cscan-stat-card--warn.cscan-stat-card--active { border-color: var(--amber); }
-.cscan-stat-card--pass.cscan-stat-card--active { border-color: var(--green); }
-.cscan-stat-num { font-family: var(--mono); font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
-.cscan-stat-card--fail .cscan-stat-num { color: var(--red); }
-.cscan-stat-card--warn .cscan-stat-num { color: var(--amber); }
-.cscan-stat-card--pass .cscan-stat-num { color: var(--green); }
-.cscan-stat-text { font-size: 16px; font-weight: 600; color: var(--text2); }
-.cscan-hero-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.cscan-howto-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: transparent; border: 1px solid var(--border2); border-radius: 6px; color: var(--text2); cursor: pointer; font-family: var(--font); font-size: 16px; font-weight: 500; transition: all 0.12s; }
-.cscan-howto-toggle:hover { background: var(--bg3); color: var(--text); }
-.cscan-explainer { background: var(--blue-bg); border: 1px solid var(--accent); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; font-size: 16px; color: var(--text); line-height: 1.6; }
-.cscan-explainer p { margin: 0 0 8px 0; }
-.cscan-explainer p:last-child { margin-bottom: 0; }
-
-.cscan-pairs-explainer { display: flex; align-items: flex-start; gap: 7px; padding: 8px 11px; background: var(--bg3); border-radius: 6px; font-size: 16px; color: var(--text2); line-height: 1.5; margin-bottom: 12px; }
-
-.btn-rerun { padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius); font-family: var(--font); font-size: 16px; cursor: pointer; transition: all 0.12s; }
-.btn-rerun:hover { border-color: var(--accent); color: var(--accent); }
-
-.cscan-group { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 6px; }
-.cscan-group-header { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg2); border: none; cursor: pointer; font-family: var(--font); transition: background 0.12s; text-align: left; border-bottom: 1px solid var(--border); }
-.cscan-group-header:hover { background: var(--bg3); }
-.cscan-group-label { font-size: 16px; font-weight: 600; color: var(--text); flex: 1; }
-.cscan-group-counts { display: flex; align-items: center; gap: 4px; }
-.cscan-fail-badge { font-size: 16px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: var(--red-bg); color: var(--red); font-family: var(--mono); }
-.cscan-warn-badge { font-size: 16px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: var(--amber-bg); color: var(--amber); font-family: var(--mono); }
-.cscan-total-badge { font-size: 16px; color: var(--text3); font-family: var(--mono); }
-.cscan-item { background: var(--bg); border-radius: 8px; border: 1.5px solid var(--border); margin-bottom: 8px; overflow: hidden; transition: border-color 0.12s; }
-.cscan-item--fail { border-left: 4px solid var(--red); }
-.cscan-item--warn { border-left: 4px solid var(--amber); }
-.cscan-item--pass { border-left: 4px solid var(--green); }
-.cscan-item:last-child { margin-bottom: 0; }
-.cscan-preview-row { display: flex; gap: 12px; align-items: stretch; padding: 12px; }
-.cscan-colour-preview { flex-shrink: 0; width: 120px; min-height: 56px; border-radius: 6px; display: flex; align-items: center; justify-content: center; padding: 8px; border: 1px solid rgba(0,0,0,0.1); text-align: center; line-height: 1.3; }
-.cscan-preview-meta { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-.cscan-preview-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cscan-status-pill { font-size: 16px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-.cscan-hex-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cscan-swatch-mini { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
-.cscan-actions { display: flex; justify-content: flex-start; align-items: center; gap: 8px; padding: 8px 12px 12px; flex-wrap: wrap; }
-.cscan-jump-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 16px; font-weight: 600; font-family: var(--font); border: 1px solid var(--border2); border-radius: 5px; background: var(--bg3); color: var(--text2); cursor: pointer; transition: all 0.12s; white-space: nowrap; }
-.cscan-jump-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--blue-bg); }
-.cscan-verify-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 16px; font-weight: 600; font-family: var(--font); border: 1px solid var(--accent); border-radius: 4px; background: var(--blue-bg); color: var(--accent); cursor: pointer; transition: all 0.12s; white-space: nowrap; }
-.cscan-verify-btn:hover { background: var(--accent); color: #fff; }
-
-/* ── Checklist ── */
-.checklist-panel { padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
-.checklist-header { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
-.checklist-progress-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.checklist-progress-text { font-size: 16px; color: var(--text2); font-weight: 500; }
-.checklist-pct { font-size: 16px; font-weight: 700; font-family: var(--mono); }
-.checklist-bar-track { height: 4px; background: var(--bg4); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-.checklist-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-.checklist-note { font-size: 16px; color: var(--text3); line-height: 1.6; font-style: italic; }
-.checklist-categories { display: flex; flex-direction: column; gap: 6px; }
-.checklist-category { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s; }
-.checklist-category--done { border-color: rgba(21,128,61,0.25); }
-.checklist-cat-header { width: 100%; display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--bg2); border: none; cursor: pointer; font-family: var(--font); text-align: left; transition: background 0.12s; }
-.checklist-cat-header:hover { background: var(--bg3); }
-.checklist-cat-name { font-size: 16px; font-weight: 600; color: var(--text); flex: 1; }
-.checklist-cat-count { font-size: 16px; font-family: var(--mono); }
-.checklist-cat-done { font-size: 16px; color: var(--green); }
-.checklist-items { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-.checklist-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px; background: var(--bg3); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; border: 1px solid transparent; }
-.checklist-item:hover { background: var(--bg4); }
-.checklist-item--checked { background: rgba(21,128,61,0.04); border-color: rgba(21,128,61,0.15); }
-.checklist-checkbox { width: 14px; height: 14px; margin-top: 1px; flex-shrink: 0; accent-color: var(--green); cursor: pointer; }
-.checklist-item-body { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.checklist-item-text { font-size: 16px; color: var(--text2); line-height: 1.6; }
-.checklist-item--checked .checklist-item-text { color: var(--text3); text-decoration: line-through; }
-.checklist-item-wcag { font-size: 16px; color: var(--text3); font-family: var(--mono); background: var(--bg4); padding: 1px 5px; border-radius: 3px; align-self: flex-start; }
-.checklist-reset { padding: 8px; background: transparent; border: 1px solid var(--border); color: var(--text3); border-radius: var(--radius-sm); font-family: var(--font); font-size: 16px; cursor: pointer; transition: all 0.12s; align-self: flex-start; }
-.checklist-reset:hover { border-color: var(--red); color: var(--red); }
-
-/* ── Detail tabs ── */
-.detail-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-.detail-tab { flex: 1; padding: 6px 4px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text3); font-family: var(--font); font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.12s; margin-bottom: -1px; text-align: center; }
-.detail-tab:hover { color: var(--text2); }
-.detail-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
-.detail-body { padding: 0; }
-.detail-why { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 10px; }
-.detail-links { display: flex; flex-direction: column; gap: 4px; }
-.detail-link { display: flex; align-items: center; gap: 6px; font-size: 16px; color: var(--accent); text-decoration: none; padding: 5px 8px; background: var(--bg4); border-radius: var(--radius-sm); transition: background 0.12s; }
-.detail-link:hover { background: var(--blue-bg); }
-.detail-code { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; overflow-x: auto; margin: 0; }
-.detail-code code { font-family: var(--mono); font-size: 16px; color: var(--text2); white-space: pre; line-height: 1.7; }
-
-/* ── Element rows ── */
-.nodes-list { display: flex; flex-direction: column; gap: 6px; }
-.element-row { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.12s; }
-.element-row--open { border-color: var(--accent); background: var(--bg2); }
-.element-row-header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
-.element-row-num { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--text2); min-width: 28px; }
-.element-row-type { flex: 1; font-size: 16px; font-weight: 600; color: var(--text); }
-.element-row-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
-.element-row-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 16px; font-weight: 600; font-family: var(--font); background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; color: var(--text2); cursor: pointer; transition: all 0.12s; white-space: nowrap; }
-.element-row-btn:hover { background: var(--bg); color: var(--text); border-color: var(--text3); }
-.element-row-btn--jump { border-color: var(--accent); color: var(--accent); background: var(--blue-bg); }
-.element-row-btn--jump:hover { background: var(--accent); color: #ffffff; }
-.element-row-body { border-top: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.element-row-section { display: flex; flex-direction: column; gap: 4px; }
-.element-row-label { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); }
-.element-row-code { display: block; padding: 8px 10px; background: var(--bg3); border-radius: 5px; font-family: var(--mono); font-size: 16px; color: var(--text); word-break: break-all; white-space: pre-wrap; line-height: 1.5; }
-.element-row-text { margin: 0; font-size: 16px; color: var(--text); line-height: 1.6; }
-
-/* ── Tab order panel ── */
-.tab-order-panel { border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
-.tab-order-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg2); }
-.tab-order-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tab-order-title { font-size: 16px; font-weight: 600; color: var(--text); }
-.tab-order-count { font-size: 16px; color: var(--text3); font-family: var(--mono); }
-.tab-order-info-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.12s; margin-bottom: 8px; }
-.tab-order-info-toggle:hover { background: var(--bg3); border-color: var(--text3); }
-.tab-order-info-panel { background: var(--blue-bg); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; font-size: 16px; color: var(--text); line-height: 1.6; }
-.tab-order-info-panel p { margin: 0 0 10px 0; }
-.tab-order-info-panel p:last-child { margin-bottom: 0; }
-.tab-order-info-panel kbd { background: var(--bg); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 6px; font-family: var(--mono); font-size: 16px; }
-.tab-order-issues-bar { padding: 10px 14px; margin-bottom: 10px; background: var(--amber-bg); border: 1px solid var(--amber); border-radius: 8px; color: var(--amber); font-size: 16px; font-weight: 600; }
-.tab-order-ok-bar { padding: 10px 14px; margin-bottom: 10px; background: var(--green-bg); border: 1px solid var(--green); border-radius: 8px; color: var(--green); font-size: 16px; font-weight: 600; }
-.tab-order-group { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
-.tab-order-group-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: var(--bg2); border: none; border-bottom: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-size: 16px; font-weight: 700; color: var(--text); transition: background 0.12s; }
-.tab-order-group-header:hover { background: var(--bg3); }
-.tab-order-group-header--issues { color: var(--amber); }
-.tab-order-group-header--ok { color: var(--green); }
-.tab-order-group-title { flex-shrink: 0; }
-.tab-order-group-count { font-family: var(--mono); font-size: 16px; font-weight: 700; padding: 2px 9px; border-radius: 12px; }
-.tab-order-group-count--bad { background: var(--amber-bg); color: var(--amber); }
-.tab-order-group-count--ok { background: var(--green-bg); color: var(--green); }
-.tab-order-rows { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--bg2); }
-.tab-stop-card { background: #ffffff; border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; transition: border-color 0.12s; }
-.tab-stop-card--selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.tab-stop-card-header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
-.tab-stop-num { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 30px; border-radius: 6px; color: #ffffff; font-family: var(--mono); font-size: 16px; font-weight: 700; flex-shrink: 0; padding: 0 6px; }
-.tab-stop-card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.tab-stop-card-label { font-family: var(--mono); font-size: 16px; font-weight: 500; color: #000000; word-break: break-word; line-height: 1.35; }
-.tab-stop-card-type { font-size: 16px; font-weight: 600; line-height: 1.3; }
-.tab-stop-card-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
-.tab-stop-ok-detail { border-top: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--bg2); }
-.tab-stop-ok-section { display: flex; flex-direction: column; gap: 5px; }
-.tab-stop-ok-label { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); }
-.tab-stop-ok-text { margin: 0; font-size: 16px; color: var(--text); line-height: 1.6; }
-.tab-stop-ok-text code, .tab-stop-ok-text kbd { background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; padding: 1px 6px; font-family: var(--mono); font-size: 16px; }
-
-/* ── Export modal ── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-lg); width: 100%; max-width: 420px; box-shadow: 0 8px 40px rgba(0,0,0,0.2); overflow: hidden; }
-.modal--export { max-width: 580px; }
-.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); gap: 14px; }
-.modal-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-.modal-sub { font-size: 16px; color: var(--text3); line-height: 1.5; }
-.modal-close { background: none; border: 1px solid transparent; color: var(--text3); font-size: 16px; cursor: pointer; padding: 5px; border-radius: 6px; line-height: 1; transition: all 0.12s; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; }
-.modal-close:hover { color: var(--text); background: var(--bg4); }
-.modal-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
-.export-sections { display: flex; flex-direction: column; gap: 8px; }
-.export-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.12s; }
-.export-row:hover:not(.export-row--disabled) { border-color: var(--accent); background: var(--blue-bg); }
-.export-row--checked { border-color: var(--accent); background: var(--blue-bg); }
-.export-row--disabled { opacity: 0.45; cursor: not-allowed; }
-.export-checkbox { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; flex-shrink: 0; accent-color: var(--accent); }
-.export-row-icon { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 7px; background: var(--bg3); color: var(--text2); }
-.export-row--checked .export-row-icon { background: var(--blue-bg); color: var(--accent); }
-.export-row-label { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-.export-row-detail { font-size: 16px; color: var(--text3); line-height: 1.4; }
-.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg2); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.modal-counter { font-size: 16px; color: var(--text3); font-weight: 500; }
-.modal-actions { display: flex; gap: 8px; }
-.btn-cancel-modal { padding: 9px 16px; background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: var(--radius); font-family: var(--font); font-size: 16px; cursor: pointer; transition: all 0.12s; }
-.btn-cancel-modal:hover { border-color: var(--border2); color: var(--text); }
-
-/* ── Content / reading card ── */
-.reading-card { padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
-.reading-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 14px 0; gap: 12px; }
-.reading-grade { font-size: 24px; font-weight: 800; font-family: var(--mono); line-height: 1; }
-.reading-label { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-.reading-meta-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.reading-meta { font-size: 16px; color: var(--text3); font-family: var(--mono); }
-.reading-body { padding: 10px 14px 12px; font-size: 16px; color: var(--text2); line-height: 1.7; }
-.content-flag { font-size: 16px; color: var(--amber); padding: 5px 8px; background: var(--amber-bg); border-radius: var(--radius-sm); margin-top: 6px; }
-
-/* ── Dynamic issues ── */
-.dynamic-summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg3); border-radius: var(--radius); margin-bottom: 10px; font-size: 16px; color: var(--text2); }
-.dynamic-summary strong { color: var(--text); }
-
-/* ── Tab explainers ── */
-.tab-explainer { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-.tab-explainer-title { font-size: 16px; font-weight: 600; color: var(--text); }
-.tab-explainer-body { font-size: 16px; color: var(--text2); line-height: 1.7; }
-.tab-explainer-body code { font-family: var(--mono); font-size: 16px; background: var(--bg4); padding: 1px 5px; border-radius: 3px; color: var(--accent); }
-.tab-step { display: flex; align-items: flex-start; gap: 8px; font-size: 16px; color: var(--text2); line-height: 1.5; }
-.tab-step-num { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-.tab-explainer-note { font-size: 16px; color: var(--text3); padding: 8px 10px; background: var(--bg3); border-radius: var(--radius-sm); border-left: 2px solid var(--border2); line-height: 1.5; }
-
-/* ── History panel ── */
-.history-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 8px; }
-.history-title { font-size: 16px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); font-weight: 600; margin-bottom: 8px; }
-.history-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
-.history-row:last-child { border-bottom: none; }
-.history-info { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.history-date { font-size: 16px; color: var(--text2); }
-.history-stats { font-size: 16px; color: var(--text3); font-family: var(--mono); }
-.history-status { font-size: 16px; font-weight: 600; min-width: 64px; }
-
-/* ── Onboarding ── */
-.onboarding-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.onboarding-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0; }
-.onboarding-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 32px; }
-.onboarding-brand { font-size: 16px; font-weight: 700; color: var(--text); }
-.onboarding-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--blue-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-.onboarding-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 10px; line-height: 1.3; }
-.onboarding-body { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 28px; max-width: 300px; }
-.onboarding-dots { display: flex; gap: 6px; margin-bottom: 24px; }
-.onboarding-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border2); border: none; cursor: pointer; padding: 0; transition: all 0.15s; }
-.onboarding-dot--active { background: var(--accent); width: 20px; border-radius: 4px; }
-.onboarding-actions { display: flex; gap: 8px; width: 100%; margin-bottom: 12px; }
-.onboarding-back { flex: 1; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-family: var(--font); font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.12s; }
-.onboarding-back:hover { border-color: var(--border2); color: var(--text); }
-.onboarding-next { flex: 2; padding: 10px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: var(--font); font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.12s; }
-.onboarding-next:hover { opacity: 0.9; }
-.onboarding-skip { background: none; border: none; color: var(--text3); font-family: var(--font); font-size: 16px; cursor: pointer; padding: 4px 8px; }
-.onboarding-skip:hover { color: var(--text2); }
-
-/* ── Focus indicators (WCAG 2.4.7) ── */
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, [role="button"]:focus-visible, [role="tab"]:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+.focus-tool-card:hover {
+  border-color: var(--accent);
+  background: var(--blue-bg);
 }
 
-/* ── Export button ── */
-.btn-export { width: 100%; padding: 8px; margin-bottom: 10px; background: transparent; border: 1px solid var(--border2); color: var(--text2); border-radius: var(--radius); font-family: var(--font); font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-align: center; }
-.btn-export:hover { border-color: var(--accent); color: var(--accent); background: var(--blue-bg); }
+/* Icon square inside each card */
+.focus-tool-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--blue-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-tool-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.focus-tool-desc {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Info box below the cards — explains focus ring limitations */
+.info-callout {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border-radius: 6px;
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.6;
+  text-align: left;
+}
+
+.info-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text3);
+}
+
+
+/* ============================================================================
+   20. FOCUS PANEL — KEYBOARD TEST (live focus mode)
+   Active when the user clicks "Test with keyboard".
+   Shows a live view of whichever element currently has focus,
+   plus a scrollable list of recently visited stops.
+
+   .focus-mode-panel         — the whole live test container (blue tint)
+   .focus-mode-header        — title + Stop button row
+   .focus-mode-instructions  — numbered steps (click page, press Tab, watch)
+   .focus-current-card       — the current focused element display
+   .focus-current-empty      — placeholder when no element focused yet
+   .focus-stops-list         — scrollable log of recent stops
+   ============================================================================ */
+
+.focus-mode-panel {
+  background: rgba(37, 99, 235, 0.06);
+  /* Very light blue tint */
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.focus-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.focus-mode-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Numbered instruction steps */
+.focus-mode-instructions {
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.focus-mode-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 16px;
+  color: var(--text);
+  padding: 4px 0;
+  line-height: 1.5;
+}
+
+.focus-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.focus-mode-step kbd {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 16px;
+  font-family: var(--mono);
+}
+
+/* Live display of the currently focused element */
+.focus-current-card {
+  padding: 14px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.focus-current-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.focus-stop-num {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.focus-stop-tag {
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--text2);
+}
+
+.focus-status-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Additional note shown when focus ring is not detected */
+.focus-status-note {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: var(--bg2);
+  border-radius: 5px;
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.55;
+}
+
+/* Placeholder shown before the user has pressed Tab */
+.focus-current-empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text3);
+  border: 2px dashed var(--border2);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.focus-current-empty p {
+  margin: 8px 0 0;
+  font-size: 16px;
+}
+
+.focus-current-empty kbd {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 16px;
+  font-family: var(--mono);
+}
+
+/* Scrollable log of recent focus stops */
+.focus-stops-list {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.focus-stops-list-title {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+.focus-stop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 16px;
+}
+
+.focus-stop-n {
+  font-family: var(--mono);
+  color: var(--text2);
+  font-weight: 600;
+  min-width: 28px;
+}
+
+.focus-stop-el {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+
+/* ============================================================================
+   21. FOCUS PANEL — TAB ORDER MAP
+   Active when the user clicks "See the order".
+   Shows a numbered list of every keyboard stop, grouped into
+   "Issues to fix" and "Looks fine" sections.
+
+   .tab-order-panel          — outer wrapper
+   .tab-order-header         — title row with stop count and Clear button
+   .tab-order-info-toggle    — collapsible "Tab order map details" button
+   .tab-order-info-panel     — the explanatory text (hidden by default)
+   .tab-order-issues-bar     — amber status bar ("⚠ 3 issues found")
+   .tab-order-ok-bar         — green status bar ("✓ No issues found")
+   .tab-order-group          — either "Issues to fix" or "Looks fine" group
+   .tab-order-group-header   — clickable header for each group
+   .tab-order-rows           — the list of stops inside a group
+   .tab-stop-card            — individual stop row (coloured number + label + buttons)
+   .tab-stop-ok-detail       — expanded detail for a passing stop
+   ============================================================================ */
+
+.tab-order-panel {
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+/* Header showing "Tab order map" title and stop count */
+.tab-order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.tab-order-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab-order-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tab-order-count {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+/* "Tab order map details" collapsible toggle button */
+.tab-order-info-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: 8px;
+}
+
+.tab-order-info-toggle:hover {
+  background: var(--bg3);
+  border-color: var(--text3);
+}
+
+/* The collapsed explanatory text panel */
+.tab-order-info-panel {
+  background: var(--blue-bg);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.tab-order-info-panel p {
+  margin: 0 0 10px 0;
+}
+
+.tab-order-info-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.tab-order-info-panel kbd {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 16px;
+}
+
+/* Status bars — amber for issues found, green for all clear */
+.tab-order-issues-bar {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  color: var(--amber);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tab-order-ok-bar {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background: var(--green-bg);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Group containers ("Issues to fix" / "Looks fine") */
+.tab-order-group {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Clickable group header */
+.tab-order-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  transition: background 0.12s;
+}
+
+.tab-order-group-header:hover {
+  background: var(--bg3);
+}
+
+.tab-order-group-header--issues {
+  color: var(--amber);
+}
+
+/* Amber text for issues group */
+.tab-order-group-header--ok {
+  color: var(--green);
+}
+
+/* Green text for ok group */
+
+.tab-order-group-title {
+  flex-shrink: 0;
+}
+
+/* Count pill in the group header (e.g. "3") */
+.tab-order-group-count {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 12px;
+}
+
+.tab-order-group-count--bad {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.tab-order-group-count--ok {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+/* The list of stop cards inside a group */
+.tab-order-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg2);
+}
+
+/* Individual stop card — white bg, rounded, with coloured number badge */
+.tab-stop-card {
+  background: #ffffff;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.12s;
+}
+
+.tab-stop-card--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.tab-stop-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+/* Coloured numbered badge (colour is set via inline style in JSX) */
+.tab-stop-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 0 6px;
+}
+
+.tab-stop-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The selector text (e.g. "button.nav-toggle") */
+.tab-stop-card-label {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  color: #000000;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+/* The issue type or "Natural tab order" label */
+.tab-stop-card-type {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.tab-stop-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* Expanded "Looks fine" detail — explains why a stop passed */
+.tab-stop-ok-detail {
+  border-top: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg2);
+}
+
+.tab-stop-ok-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tab-stop-ok-label {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text3);
+}
+
+.tab-stop-ok-text {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.tab-stop-ok-text code,
+.tab-stop-ok-text kbd {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 16px;
+}
+
+
+/* ============================================================================
+   22. VISUALS PANEL — ZOOM TEST + HIGH CONTRAST CHECKLIST
+   Two sections inside the Visuals subtab:
+   1. Zoom test — runs axe-core at 320px viewport width
+   2. High contrast checklist — manual verification items with pass/fail buttons
+
+   .visuals-tab          — flex column wrapper for both sections
+   .visuals-section      — individual section card (white border)
+   .visuals-section-header — icon + title row inside a section
+   .visuals-result       — result message after test completes
+   .visuals-result--ok   — green success variant
+   .hc-checklist         — the HC manual checklist container
+   .hc-item              — individual checklist item row
+   .hc-btn               — pass (✓) and fail (✗) toggle buttons
+   .hc-note-input        — text input for failure notes
+   ============================================================================ */
+
+.visuals-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.visuals-section {
+  padding: 16px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+}
+
+.visuals-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.visuals-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.visuals-section-desc {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+
+/* Result message shown after the test completes */
+.visuals-result {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--bg2);
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.visuals-result--ok {
+  background: rgba(21, 128, 61, 0.06);
+  border: 1px solid rgba(21, 128, 61, 0.2);
+}
+
+.visuals-result strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+/* High contrast checklist */
+.hc-checklist {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--blue-bg);
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+}
+
+.hc-checklist-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+/* Individual HC checklist item */
+.hc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.hc-item:last-of-type {
+  border-bottom: none;
+}
+
+.hc-item-check-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Pass (✓) and Fail (✗) buttons — colour changes based on .pass / .fail / .unset class */
+.hc-btn {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid;
+  font-family: var(--font);
+}
+
+.hc-btn.pass {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: rgba(21, 128, 61, 0.3);
+}
+
+.hc-btn.fail {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.hc-btn.unset {
+  background: transparent;
+  color: var(--text3);
+  border-color: var(--border);
+}
+
+.hc-item-body {
+  flex: 1;
+}
+
+.hc-item-label {
+  font-size: 16px;
+  color: var(--text);
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+/* Notes text input — only appears when fail is selected */
+.hc-note-input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hc-note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.hc-checklist-hint {
+  margin: 10px 0 0;
+  font-size: 16px;
+  color: var(--text2);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+
+/* ============================================================================
+   23. DYNAMIC TAB
+   Shows ARIA violations that appear dynamically (e.g. after form submission).
+   When no issues found: shows a tab explainer with numbered steps.
+   When issues found: shows a summary bar and violation cards.
+
+   .dynamic-summary — info strip summarising how many patterns were found
+   ============================================================================ */
+
+.dynamic-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: var(--text2);
+}
+
+.dynamic-summary strong {
+  color: var(--text);
+}
+
+
+/* ============================================================================
+   24. CONTENT TAB — READING LEVEL CARD
+   Shows the Flesch-Kincaid grade and explanation.
+   The card has a header (grade + stats) and body (explanation text).
+   Two sub-tabs: "What this means" and "How to fix".
+
+   .reading-card       — outer card wrapper
+   .reading-header     — grade number + meta stats row
+   .reading-grade      — the large grade number (e.g. "Grade 11")
+   .reading-label      — the level label (e.g. "High school level")
+   .reading-meta-right — right-aligned stats (word count, sentence count)
+   .reading-body       — explanation paragraph
+   .content-flag       — amber warning if grade is above 8
+   ============================================================================ */
+
+.reading-card {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reading-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 14px 0;
+  gap: 12px;
+}
+
+.reading-grade {
+  font-size: 24px;
+  font-weight: 800;
+  font-family: var(--mono);
+  line-height: 1;
+}
+
+.reading-label {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.reading-meta-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.reading-meta {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.reading-body {
+  padding: 10px 14px 12px;
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+/* Warning shown if grade is above 8 (WCAG 3.1.5 target) */
+.content-flag {
+  font-size: 16px;
+  color: var(--amber);
+  padding: 5px 8px;
+  background: var(--amber-bg);
+  border-radius: var(--radius-sm);
+  margin-top: 6px;
+}
+
+
+/* ============================================================================
+   25. TAB EXPLAINERS
+   Placeholder screens shown in empty tabs (before a tool is run).
+   e.g. the Dynamic tab before any forms are submitted, or the
+   Content tab before analysis is run.
+
+   .tab-explainer      — flex column wrapper with padding
+   .tab-explainer-title — section heading
+   .tab-explainer-body — description text
+   .tab-step           — numbered step instruction row
+   .tab-step-num       — circular blue step number
+   .tab-explainer-note — amber/grey note below the steps
+   ============================================================================ */
+
+.tab-explainer {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tab-explainer-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tab-explainer-body {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+
+.tab-explainer-body code {
+  font-family: var(--mono);
+  font-size: 16px;
+  background: var(--bg4);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+.tab-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* Blue numbered circle */
+.tab-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tab-explainer-note {
+  font-size: 16px;
+  color: var(--text3);
+  padding: 8px 10px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--border2);
+  line-height: 1.5;
+}
+
+
+/* ============================================================================
+   26. CONTRAST PANEL — MODE TOGGLE
+   The three-way switcher at the top of the Colors tab:
+   "Page scan" / "Pick element" / "Check Colors"
+   Uses the same pill-group pattern as the main header tabs.
+   ============================================================================ */
+
+.contrast-panel {
+  padding: 14px 18px;
+}
+
+.mode-toggle {
+  display: flex;
+  background: var(--bg3);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 6px;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mode-btn:hover {
+  color: var(--text2);
+}
+
+.mode-btn--active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 0 0 1px var(--border2);
+}
+
+
+/* ============================================================================
+   27. CONTRAST PANEL — EYEDROPPER / PICKER MODE
+   Active when the user clicks "Pick element" and then clicks on the page.
+   Shows a waiting state while the user is picking, then the result.
+
+   .picker-prompt  — initial "click a colour" instructions
+   .picker-waiting — loading/waiting animation with crosshair icon
+   .swatch-row     — two swatches side by side (fg colour / bg colour)
+   .swatch-item    — individual swatch with label and hex value
+   ============================================================================ */
+
+.picker-prompt {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.picker-prompt p {
+  color: var(--text2);
+  margin-bottom: 16px;
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+.picker-waiting {
+  text-align: center;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.crosshair-icon {
+  font-size: 36px;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.picker-waiting p {
+  color: var(--text2);
+  font-size: 16px;
+}
+
+/* Two colour swatches */
+.swatch-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.swatch-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+/* The actual colour rectangle */
+.swatch {
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.swatch-label {
+  font-size: 16px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.swatch-hex {
+  font-size: 16px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+
+
+/* ============================================================================
+   28. CONTRAST PANEL — MANUAL COLOUR CHECKER
+   Active on the "Check Colors" tab — two colour inputs (fg/bg),
+   a live preview, and the contrast ratio result grid.
+
+   .colour-inputs   — container for the two colour inputs
+   .colour-field    — single colour input group (label + input row)
+   .colour-input-row — flex row: colour picker | hex input | eyedropper button
+   .hex-input       — monospace text input for hex codes
+   .eyedropper-btn  — the eyedropper icon button
+   .preview         — live preview of text on the selected background
+   .ratio-display   — shows the contrast ratio and WCAG pass/fail grid
+   .ratio-number    — the large ratio value (e.g. "4.85:1")
+   .ratio-row       — individual WCAG criterion row in the grid
+   .pass-badge      — green "Pass" or red "Fail" badge
+   ============================================================================ */
+
+/* Container for both colour inputs stacked vertically */
+.colour-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.colour-field label {
+  display: block;
+  font-size: 16px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+/* The input row: [colour swatch] [hex text input] [eyedropper] */
+.colour-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Native colour picker input — styled as a small swatch button */
+.colour-picker-input {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 2px;
+  background: var(--bg3);
+}
+
+/* Hex text field */
+.hex-input {
+  flex: 1;
+  padding: 9px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 16px;
+  transition: border-color 0.12s;
+}
+
+.hex-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Eyedropper button — opens native EyeDropper API */
+.eyedropper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s;
+}
+
+.eyedropper-btn:hover {
+  background: var(--blue-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Live text preview showing both normal and large text */
+.preview {
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.preview-normal {
+  font-size: 16px;
+  font-family: var(--font);
+}
+
+.preview-large {
+  font-size: 20px;
+  font-weight: 600;
+  font-family: var(--font);
+}
+
+/* Ratio result panel */
+.ratio-display {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.ratio-number {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+}
+
+/* Grid of WCAG criteria (AA normal / AA large / AAA normal / AAA large) */
+.ratio-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ratio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+}
+
+.ratio-label {
+  flex: 1;
+  font-size: 16px;
+  color: var(--text2);
+}
+
+.ratio-req {
+  font-size: 16px;
+  color: var(--text3);
+  min-width: 48px;
+  text-align: right;
+  font-family: var(--mono);
+}
+
+/* Pass / Fail badge at the right of each criterion row */
+.pass-badge {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  min-width: 36px;
+  text-align: center;
+  font-family: var(--mono);
+}
+
+.pass-badge--pass {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.pass-badge--fail {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+
+/* ============================================================================
+   29. CONTRAST PANEL — PAGE SCAN RESULTS
+   Active on "Page scan" — shows failing/borderline/passing colour pairs
+   grouped by element type (Headings, Buttons, Text, etc.)
+
+   .cscan-notice       — amber warning about automated scan limitations
+   .cscan-hero         — container for the three stat cards
+   .cscan-hero-stats   — 3-column grid of clickable stat cards
+   .cscan-stat-card    — individual stat (Failing / Borderline / Passing)
+   .cscan-howto-toggle — "How this works" collapsible button
+   .cscan-explainer    — the expanded explanation text
+   .cscan-pairs-note   — info note about how pairs are counted
+   .cscan-group        — element type group (e.g. "Buttons — 2 fail")
+   .cscan-group-header — clickable header row for each group
+   .cscan-item         — individual colour pair result row
+   .cscan-colour-preview — the visual colour swatch
+   .cscan-status-pill  — "Failing" / "Borderline" pill badge
+   .cscan-actions      — "Find on page" and "Check" buttons
+   .cscan-jump-btn     — ghost "Find ↗" button
+   .cscan-verify-btn   — blue "Check" button (opens manual checker)
+   ============================================================================ */
+
+/* Amber warning about scan limitations */
+.cscan-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(180, 83, 9, 0.06);
+  border: 2px solid var(--amber);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.cscan-notice strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Hero section with three clickable stat cards */
+.cscan-hero {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.cscan-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Clickable stat card — click to filter the results below */
+.cscan-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.cscan-stat-card:hover {
+  border-color: var(--accent);
+}
+
+.cscan-stat-card--active {
+  background: var(--bg3);
+}
+
+.cscan-stat-card--fail.cscan-stat-card--active {
+  border-color: var(--red);
+}
+
+.cscan-stat-card--warn.cscan-stat-card--active {
+  border-color: var(--amber);
+}
+
+.cscan-stat-card--pass.cscan-stat-card--active {
+  border-color: var(--green);
+}
+
+/* Big number in the stat card */
+.cscan-stat-num {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.cscan-stat-card--fail .cscan-stat-num {
+  color: var(--red);
+}
+
+.cscan-stat-card--warn .cscan-stat-num {
+  color: var(--amber);
+}
+
+.cscan-stat-card--pass .cscan-stat-num {
+  color: var(--green);
+}
+
+.cscan-stat-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.cscan-hero-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+/* "How this works" toggle */
+.cscan-howto-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.12s;
+}
+
+.cscan-howto-toggle:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+/* Collapsible explanation panel */
+.cscan-explainer {
+  background: var(--blue-bg);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.cscan-explainer p {
+  margin: 0 0 8px 0;
+}
+
+.cscan-explainer p:last-child {
+  margin-bottom: 0;
+}
+
+/* Info note about unique pairs */
+.cscan-pairs-explainer {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 11px;
+  background: var(--bg3);
+  border-radius: 6px;
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+/* Element type groups (e.g. "Headings", "Buttons") */
+.cscan-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.cscan-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg2);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.12s;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.cscan-group-header:hover {
+  background: var(--bg3);
+}
+
+.cscan-group-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.cscan-group-counts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cscan-fail-badge {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--red-bg);
+  color: var(--red);
+  font-family: var(--mono);
+}
+
+.cscan-warn-badge {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-family: var(--mono);
+}
+
+.cscan-total-badge {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+/* Individual colour pair result */
+.cscan-item {
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.12s;
+}
+
+.cscan-item--fail {
+  border-left: 4px solid var(--red);
+}
+
+.cscan-item--warn {
+  border-left: 4px solid var(--amber);
+}
+
+.cscan-item--pass {
+  border-left: 4px solid var(--green);
+}
+
+.cscan-item:last-child {
+  margin-bottom: 0;
+}
+
+/* The row with the colour preview swatch and metadata */
+.cscan-preview-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px;
+}
+
+.cscan-colour-preview {
+  flex-shrink: 0;
+  width: 120px;
+  min-height: 56px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.cscan-preview-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cscan-preview-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* "Failing" / "Borderline" status pill */
+.cscan-status-pill {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Hex value row with mini colour swatches */
+.cscan-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cscan-swatch-mini {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+/* Action buttons below each colour pair */
+.cscan-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  flex-wrap: wrap;
+}
+
+/* "Find on page ↗" ghost button */
+.cscan-jump-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.cscan-jump-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--blue-bg);
+}
+
+/* "Check" button — opens manual checker with these Colors pre-loaded */
+.cscan-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--blue-bg);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.cscan-verify-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+
+/* ============================================================================
+   30. CHECKLIST PANEL
+   The manual testing checklist with 22 WCAG items across 3 categories.
+   Each category is a collapsible accordion section.
+   Completed items get a strikethrough and green background.
+   A progress bar and percentage track overall completion.
+
+   .checklist-panel          — outer padding wrapper
+   .checklist-header         — progress bar + percentage + explanatory note
+   .checklist-progress-row   — "X of 22 complete" text + percentage number
+   .checklist-bar-track      — the grey progress bar track
+   .checklist-bar-fill       — the coloured fill (width set via inline style)
+   .checklist-categories     — the list of accordion sections
+   .checklist-category       — individual accordion section
+   .checklist-cat-header     — clickable header (icon + name + count + chevron)
+   .checklist-items          — the items inside an open section
+   .checklist-item           — individual item row (checkbox + text + WCAG ref)
+   .checklist-item--checked  — checked state (green tint + strikethrough)
+   .checklist-item-wcag      — the "WCAG X.X.X" pill badge
+   ============================================================================ */
+
+.checklist-panel {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Progress header card */
+.checklist-header {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+}
+
+.checklist-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.checklist-progress-text {
+  font-size: 16px;
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.checklist-pct {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+/* Progress bar */
+.checklist-bar-track {
+  height: 4px;
+  background: var(--bg4);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.checklist-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.checklist-note {
+  font-size: 16px;
+  color: var(--text3);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* Accordion sections */
+.checklist-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checklist-category {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.checklist-category--done {
+  border-color: rgba(21, 128, 61, 0.25);
+}
+
+/* Subtle green border when all done */
+
+/* Clickable accordion header */
+.checklist-cat-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.checklist-cat-header:hover {
+  background: var(--bg3);
+}
+
+.checklist-cat-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+.checklist-cat-count {
+  font-size: 16px;
+  font-family: var(--mono);
+}
+
+.checklist-cat-done {
+  font-size: 16px;
+  color: var(--green);
+}
+
+/* "X/Y" in green when some are done */
+
+/* Items list inside open section */
+.checklist-items {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+  border: 1px solid transparent;
+}
+
+.checklist-item:hover {
+  background: var(--bg4);
+}
+
+.checklist-item--checked {
+  background: rgba(21, 128, 61, 0.04);
+  border-color: rgba(21, 128, 61, 0.15);
+}
+
+/* Native checkbox */
+.checklist-checkbox {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+
+.checklist-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.checklist-item-text {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+
+.checklist-item--checked .checklist-item-text {
+  color: var(--text3);
+  text-decoration: line-through;
+}
+
+/* WCAG reference badge (e.g. "WCAG 2.1.1") */
+.checklist-item-wcag {
+  font-size: 16px;
+  color: var(--text3);
+  font-family: var(--mono);
+  background: var(--bg4);
+  padding: 1px 5px;
+  border-radius: 3px;
+  align-self: flex-start;
+}
+
+/* Reset button at the bottom */
+.checklist-reset {
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.12s;
+  align-self: flex-start;
+}
+
+.checklist-reset:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+
+/* ============================================================================
+   31. EXPORT MODAL
+   A centred overlay modal triggered by "Export report".
+   The user selects which sections to include, then opens a report preview.
+
+   .modal-overlay    — full-screen dark backdrop
+   .modal            — the white card
+   .modal--export    — wider variant for the export modal specifically
+   .modal-header     — title + subtitle + close button
+   .modal-body       — scrollable section list
+   .export-sections  — flex column of export option rows
+   .export-row       — individual section option (checkbox + icon + title + detail)
+   .export-row--checked   — selected state (blue border + tint)
+   .export-row--disabled  — unavailable section (greyed out)
+   .export-row-icon  — icon thumbnail on the left
+   .modal-footer     — counter + action buttons
+   .modal-counter    — "X of Y sections selected"
+   .modal-actions    — Cancel + Open preview buttons
+   ============================================================================ */
+
+/* Dark overlay behind the modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* The modal card */
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.modal--export {
+  max-width: 580px;
+}
+
+/* Wider for the export modal */
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.modal-sub {
+  font-size: 16px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+/* Close button (×) in top-right */
+.modal-close {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text3);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  color: var(--text);
+  background: var(--bg4);
+}
+
+/* Scrollable body */
+.modal-body {
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.export-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Each section option row */
+.export-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.export-row:hover:not(.export-row--disabled) {
+  border-color: var(--accent);
+  background: var(--blue-bg);
+}
+
+.export-row--checked {
+  border-color: var(--accent);
+  background: var(--blue-bg);
+}
+
+.export-row--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* When no data exists for this section */
+
+.export-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.export-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--bg3);
+  color: var(--text2);
+}
+
+.export-row--checked .export-row-icon {
+  background: var(--blue-bg);
+  color: var(--accent);
+}
+
+.export-row-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.export-row-detail {
+  font-size: 16px;
+  color: var(--text3);
+  line-height: 1.4;
+}
+
+/* Footer with selection counter and action buttons */
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.modal-counter {
+  font-size: 16px;
+  color: var(--text3);
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-cancel-modal {
+  padding: 9px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.btn-cancel-modal:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+
+/* ============================================================================
+   32. ONBOARDING OVERLAY
+   A full-screen overlay shown the first time the extension opens.
+   Steps through 5 slides with dots navigation and Next/Back buttons.
+   Stored in localStorage so it only shows once.
+
+   .onboarding-overlay — full viewport white background
+   .onboarding-card    — centred content card (max 360px)
+   .onboarding-logo    — logo + wordmark at the top
+   .onboarding-icon    — large icon for each slide
+   .onboarding-dots    — navigation dots (active one stretches wider)
+   .onboarding-actions — Back + Next buttons
+   .onboarding-skip    — "Skip intro" text link
+   ============================================================================ */
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+}
+
+.onboarding-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.onboarding-brand {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Large icon square for each slide */
+.onboarding-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--blue-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.onboarding-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.onboarding-body {
+  font-size: 16px;
+  color: var(--text2);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 300px;
+}
+
+/* Navigation dots */
+.onboarding-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.onboarding-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border2);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.onboarding-dot--active {
+  background: var(--accent);
+  width: 20px;
+  border-radius: 4px;
+}
+
+/* Stretches to pill shape when active */
+
+/* Navigation buttons */
+.onboarding-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.onboarding-back {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.onboarding-back:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.onboarding-next {
+  flex: 2;
+  padding: 10px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.onboarding-next:hover {
+  opacity: 0.9;
+}
+
+.onboarding-skip {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.onboarding-skip:hover {
+  color: var(--text2);
+}
+
+
+/* ============================================================================
+   33. KEYBOARD FOCUS INDICATORS (WCAG 2.4.7)
+   Ensures all interactive elements show a visible focus ring when navigated
+   via keyboard. Uses :focus-visible so the ring only appears for keyboard
+   navigation, not mouse clicks.
+
+   The 3px blue outline + 2px offset creates a clearly visible ring that
+   works against both light and dark backgrounds.
+   This is required for WCAG 2.4.7 (Focus Visible) compliance.
+   ============================================================================ */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 3px solid var(--accent);
+  /* Blue ring */
+  outline-offset: 2px;
+  /* Small gap between element edge and ring */
+}
