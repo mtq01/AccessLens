@@ -1,5 +1,5 @@
 import { Icon } from "./icons";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getViolationContext } from "./violationContext";
 import ExportModal from "./ExportModal";
 
@@ -629,7 +629,7 @@ function ViolationDetail({ violation }) {
   );
 }
 
-export default function ScanPanel({ tabId, onOpenChecklist }) {
+export default function ScanPanel({ tabId, onOpenChecklist, view = "scan" }) {
   // UI state for scan results and helper tools.
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -642,6 +642,7 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
   const [impactFilter, setImpactFilter] = useState("all");
   const [jumped, setJumped] = useState(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [focusDropdown, setFocusDropdown] = useState(false);
   const [tabOrderStops, setTabOrderStops] = useState(null); // null=off, []=active
   const [selectedStop, setSelectedStop] = useState(null);
   const [zoomStatus, setZoomStatus] = useState("idle"); // idle|running|done
@@ -650,6 +651,7 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
 
   const [showExport, setShowExport] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
+  const focusDropdownRef = useRef(null);
 
   const pageHostname = (() => { try { return new URL(pageUrl).hostname; } catch { return ""; } })();
 
@@ -676,6 +678,7 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
         setZoomViolations([]);
         setHighContrast(false);
         setFocusMode(false);
+        setFocusDropdown(false);
         setTabOrderStops(null);
         // Update URL for new tab
         if (msg.tabId) {
@@ -689,7 +692,21 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, []);
 
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (!focusDropdownRef.current) return;
+      if (!focusDropdownRef.current.contains(event.target)) {
+        setFocusDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   async function runScan() {
+    // #region agent log
+    fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H1',location:'ScanPanel.jsx:runScan:start',message:'runScan clicked',data:{status,focusMode,hasTabOrderStops:tabOrderStops!==null,selectedStop},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     // Full manual scan started by button click.
     chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
     if (document.activeElement instanceof HTMLElement) {
@@ -704,6 +721,9 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
 
     chrome.runtime.sendMessage({ type: "RUN_SCAN" }, (response) => {
       if (chrome.runtime.lastError || !response?.success) {
+        // #region agent log
+        fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H2',location:'ScanPanel.jsx:runScan:error',message:'runScan failed',data:{chromeError:chrome.runtime.lastError?.message||null,responseError:response?.error||null},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const err = response?.error || chrome.runtime.lastError?.message || "unknown";
         setErrorMsg(err);
         setStatus("error");
@@ -717,6 +737,9 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
       setPasses(response.passes || []);
       setDynamicIssues(response.dynamicIssues || []);
       setStatus("done");
+      // #region agent log
+      fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H3',location:'ScanPanel.jsx:runScan:success',message:'runScan completed',data:{violationCount:sorted.length,focusMode,hasTabOrderStops:tabOrderStops!==null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
     });
   }
 
@@ -767,6 +790,10 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
   }
 
   function startFocusMode() {
+    // #region agent log
+    fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H4',location:'ScanPanel.jsx:startFocusMode',message:'startFocusMode called',data:{status,hasTabOrderStops:tabOrderStops!==null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    setFocusDropdown(false);
     setFocusMode(true);
     setTabOrderStops(null);
     chrome.runtime.sendMessage({ type: "START_FOCUS_MODE" });
@@ -776,9 +803,16 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
   }
 
   function showTabOrder() {
+    // #region agent log
+    fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H5',location:'ScanPanel.jsx:showTabOrder:start',message:'showTabOrder called',data:{status,focusMode,hasTabOrderStops:tabOrderStops!==null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    setFocusDropdown(false);
     setFocusMode(false);
     setTabOrderStops(null);
     chrome.runtime.sendMessage({ type: "SHOW_TAB_ORDER" }, (response) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7817/ingest/35212118-868a-4f72-a15e-51eeec724bfa',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45f8c8'},body:JSON.stringify({sessionId:'45f8c8',runId:'focus-redesign-pre',hypothesisId:'H5',location:'ScanPanel.jsx:showTabOrder:response',message:'showTabOrder response',data:{success:!!response?.success,stopCount:response?.stops?.length||0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (response?.success) setTabOrderStops(response.stops);
     });
   }
@@ -849,18 +883,148 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
     clear:    { bg: "var(--green-bg)", border: "var(--green-border)", text: "var(--green)", icon: "✅" },
   }[summaryLevel];
 
+  if (view === "tools") {
+    return (
+      <div className="scan-panel tools-tab">
+        {tabOrderStops !== null && (
+          <TabOrderPanel
+            stops={tabOrderStops}
+            selectedStop={selectedStop}
+            onStopClick={handleStopClick}
+            onClose={clearTabOrder}
+          />
+        )}
+
+        {focusMode && <FocusModePanel onStop={stopFocusMode} />}
+
+        <div className="tools-tab__head">
+          <h3 className="tools-tab__title">Extra tools</h3>
+          <p className="tools-tab__lede">
+            Keyboard, zoom, and high-contrast checks live here.
+          </p>
+        </div>
+
+        <div className="tools-stack">
+          <section className="tool-surface">
+            <div className="tool-surface__head">
+              <span className="tool-surface__title">Keyboard</span>
+              <span className="tool-surface__meta">
+                {focusMode ? "Step mode active" : tabOrderStops !== null ? "All stops shown" : "Ready"}
+              </span>
+            </div>
+            <div className="focus-menu-wrap" ref={focusDropdownRef}>
+              <button
+                type="button"
+                className={`focus-menu-btn${focusMode || tabOrderStops !== null ? " focus-menu-btn--active" : ""}`}
+                onClick={() => setFocusDropdown((prev) => !prev)}
+              >
+                <span className="focus-menu-btn__icon">⌨</span>
+                <span className="focus-menu-btn__label">Focus tools</span>
+                <span className="focus-menu-btn__chev">▾</span>
+              </button>
+              {focusDropdown && (
+                <div className="focus-menu-dropdown">
+                  <button
+                    type="button"
+                    className="focus-menu-item"
+                    onClick={startFocusMode}
+                  >
+                    <span className="focus-menu-item__icon">⌨</span>
+                    <span>
+                      <span className="focus-menu-item__title">Step through</span>
+                      <span className="focus-menu-item__desc">
+                        Press Tab to step through stops one by one
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="focus-menu-item"
+                    onClick={showTabOrder}
+                  >
+                    <span className="focus-menu-item__icon">⬡</span>
+                    <span>
+                      <span className="focus-menu-item__title">Show all stops</span>
+                      <span className="focus-menu-item__desc">
+                        Number every focusable element at once
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="tool-surface">
+            <div className="tool-surface__head">
+              <span className="tool-surface__title">Visual checks</span>
+            </div>
+            <div className="tools-grid-2">
+              <button
+                className={`tool-card tool-card--compact${zoomStatus !== "idle" ? " tool-card--active" : ""}`}
+                onClick={runZoomTest}
+              >
+                <span className="tool-card__emoji">🔎</span>
+                <span className="tool-card__label">Zoom</span>
+                <span className="tool-card__desc">Test at 400%</span>
+              </button>
+              <button
+                className={`tool-card tool-card--compact${highContrast ? " tool-card--active" : ""}`}
+                onClick={toggleHighContrast}
+              >
+                <span className="tool-card__emoji">◐</span>
+                <span className="tool-card__label">High contrast</span>
+                <span className="tool-card__desc">{highContrast ? "On — click to off" : "Preview HC mode"}</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        {zoomStatus === "running" && (
+          <div className="zoom-inline">
+            <span className="spinner spinner--dark" style={{ width: 16, height: 16, flexShrink: 0 }} />
+            <span>Scanning at 320px width…</span>
+          </div>
+        )}
+        {zoomStatus === "done" && (
+          <div className="zoom-inline-results">
+            <div className="zoom-inline-header">
+              <span className="zoom-inline-title">
+                {zoomViolations.length === 0
+                  ? "✓ No extra issues at 400% zoom"
+                  : `${zoomViolations.length} issue${zoomViolations.length !== 1 ? "s" : ""} only at 400% zoom`}
+              </span>
+              <button className="zoom-inline-close" onClick={() => { setZoomStatus("idle"); setZoomViolations([]); }}>
+                Clear
+              </button>
+            </div>
+            {zoomViolations.map((v) => {
+              const impMeta = IMPACT_META[v.impact] || IMPACT_META.minor;
+              return (
+                <div key={v.id} className="violation-card" onClick={() => handleViolationClick(v)}>
+                  <div className="violation-card__inner">
+                    <div className="violation-card__accent" style={{ background: impMeta.color }} />
+                    <div className="violation-card__body">
+                      <div className="violation-card__row1">
+                        <span className="violation-badge" style={{ color: impMeta.color, background: impMeta.bg }}>
+                          {impMeta.label}
+                        </span>
+                        <span className="violation-card__title">{v.description}</span>
+                      </div>
+                      <div className="violation-card__row2">zoom only</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="scan-panel">
-      {/* Tab order panel */}
-      {tabOrderStops !== null && (
-        <TabOrderPanel
-          stops={tabOrderStops}
-          selectedStop={selectedStop}
-          onStopClick={handleStopClick}
-          onClose={clearTabOrder}
-        />
-      )}
-
       {/* Export modal */}
       {showExport && (
         <ExportModal
@@ -869,9 +1033,6 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
           onClose={() => setShowExport(false)}
         />
       )}
-
-      {/* Focus mode panel */}
-      {focusMode && <FocusModePanel onStop={stopFocusMode} />}
 
       {/* Summary */}
       {status === "done" && !focusMode && (
@@ -1088,76 +1249,6 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
             Run new scan
           </button>
 
-          <div className="idle-tools-section">
-            <div className="idle-tools-label">Extra tools</div>
-            <div className="tools-row">
-              <button
-                className={`tool-card${tabOrderStops !== null ? " tool-card--active" : ""}`}
-                onClick={tabOrderStops !== null ? clearTabOrder : showTabOrder}
-              >
-                <span className="tool-card__emoji">⌨️</span>
-                <span className="tool-card__label">Focus</span>
-                <span className="tool-card__desc">{tabOrderStops !== null ? "On — click to clear" : "See where Tab goes"}</span>
-              </button>
-              <button
-                className={`tool-card${zoomStatus !== "idle" ? " tool-card--active" : ""}`}
-                onClick={runZoomTest}
-              >
-                <span className="tool-card__emoji">🔎</span>
-                <span className="tool-card__label">Zoom</span>
-                <span className="tool-card__desc">Test at 400%</span>
-              </button>
-              <button
-                className={`tool-card${highContrast ? " tool-card--active" : ""}`}
-                onClick={toggleHighContrast}
-              >
-                <span className="tool-card__emoji">◐</span>
-                <span className="tool-card__label">HC</span>
-                <span className="tool-card__desc">{highContrast ? "On — click to off" : "High contrast view"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Zoom results — inline below tools */}
-          {zoomStatus === "running" && (
-            <div className="zoom-inline">
-              <span className="spinner spinner--dark" style={{ width: 16, height: 16, flexShrink: 0 }} />
-              <span>Scanning at 320px width…</span>
-            </div>
-          )}
-          {zoomStatus === "done" && (
-            <div className="zoom-inline-results">
-              <div className="zoom-inline-header">
-                <span className="zoom-inline-title">
-                  {zoomViolations.length === 0
-                    ? "✓ No extra issues at 400% zoom"
-                    : `${zoomViolations.length} issue${zoomViolations.length !== 1 ? "s" : ""} only at 400% zoom`}
-                </span>
-                <button className="zoom-inline-close" onClick={() => { setZoomStatus("idle"); setZoomViolations([]); }}>
-                  Clear
-                </button>
-              </div>
-              {zoomViolations.map((v) => {
-                const impMeta = IMPACT_META[v.impact] || IMPACT_META.minor;
-                return (
-                  <div key={v.id} className="violation-card" onClick={() => handleViolationClick(v)}>
-                    <div className="violation-card__inner">
-                      <div className="violation-card__accent" style={{ background: impMeta.color }} />
-                      <div className="violation-card__body">
-                        <div className="violation-card__row1">
-                          <span className="violation-badge" style={{ color: impMeta.color, background: impMeta.bg }}>
-                            {impMeta.label}
-                          </span>
-                          <span className="violation-card__title">{v.description}</span>
-                        </div>
-                        <div className="violation-card__row2">zoom only</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
 

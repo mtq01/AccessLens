@@ -113,6 +113,7 @@ const TABS = [
   { id: "scan", label: "Scan" },
   { id: "contrast", label: "Colors" },
   { id: "checklist", label: "Checklist" },
+  { id: "tools", label: "Tools" },
 ];
 
 export default function App() {
@@ -219,8 +220,12 @@ export default function App() {
             />
             <p>Connecting to page…</p>
           </div>
-        ) : tab === "scan" ? (
-          <ScanPanel tabId={tabId} onOpenChecklist={() => setTab("checklist")} />
+        ) : tab === "scan" || tab === "tools" ? (
+          <ScanPanel
+            tabId={tabId}
+            onOpenChecklist={() => setTab("checklist")}
+            view={tab === "tools" ? "tools" : "scan"}
+          />
         ) : tab === "contrast" ? (
           <ContrastPanel tabId={tabId} />
         ) : (
