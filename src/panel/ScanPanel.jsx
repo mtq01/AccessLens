@@ -813,86 +813,74 @@ Note: Legal terms, medical words, and code names raise the score. If you must us
   );
 }
 
-export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
+export default function ScanPanel({ tabId, initialTab = "violations", onViolationCount }) {
   const [status, setStatus]         = useState("idle");
   const [errorMsg, setErrorMsg]     = useState("");
   const [violations, setViolations] = useState([]);
-  const [dynamicIssues, setDynamicIssues] = useState([]);
   const [passes, setPasses]         = useState([]);
-  const [activeSelector, setActiveSelector] = useState(null);
-  const [expanded, setExpanded]     = useState({});
-  const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [wcagFilter, setWcagFilter] = useState("All");
+  const [dynamicIssues, setDynamicIssues] = useState([]);
+  const [activeTab, setActiveTab]   = useState(initialTab);
   const [impactFilter, setImpactFilter] = useState("All");
+  const [expanded, setExpanded]     = useState({});
+  const [activeDetailTab, setActiveDetailTab] = useState({});
+  const [pageUrl, setPageUrl]       = useState("");
+  const [history, setHistory]       = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [focusMode, setFocusMode]   = useState(false);
-  const [focusDropdown, setFocusDropdown] = useState(false);
-  const [tabOrderStops, setTabOrderStops] = useState(null); // null=off, []=active
+  const [tabOrderStops, setTabOrderStops] = useState(null);
   const [selectedStop, setSelectedStop] = useState(null);
-  const [zoomStatus, setZoomStatus] = useState("idle"); // idle|running|done
+  const [zoomStatus, setZoomStatus] = useState("idle");
   const [zoomViolations, setZoomViolations] = useState([]);
   const [highContrast, setHighContrast] = useState(false);
-  const [activeTab, setActiveTab]   = useState("violations"); // violations|zoom|dynamic
-
-  const [showExport, setShowExport] = useState(false);
-  const [pageUrl, setPageUrl] = useState("");
-  const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [delta, setDelta] = useState(null); // {added, fixed}
+  const [hcChecklist, setHcChecklist] = useState({});
   const [contentAnalysis, setContentAnalysis] = useState(null);
   const [contentStatus, setContentStatus] = useState("idle");
+  const [openElementRows, setOpenElementRows] = useState({});
 
-  // Get the current page URL for the report
   useEffect(() => {
-    if (tabId) {
-      chrome.tabs.get(tabId, (tab) => {
-        if (!chrome.runtime.lastError && tab?.url) setPageUrl(tab.url);
-      });
-    }
+    if (tabId) chrome.tabs.get(tabId, (t) => {
+      if (!chrome.runtime.lastError && t?.url) setPageUrl(t.url);
+    });
   }, [tabId]);
 
-  // Listen for tab switches
   useEffect(() => {
     const listener = (msg) => {
       if (msg.type === "TAB_CHANGED") {
-        setStatus("idle");
-        setViolations([]);
-        setPasses([]);
-        setDynamicIssues([]);
-        setDelta(null);
-        setActiveSelector(null);
-        setExpanded({});
-        setZoomStatus("idle");
-        setZoomViolations([]);
-        setHighContrast(false);
-        setFocusMode(false);
-        setTabOrderStops(null);
-        setContentAnalysis(null);
-        setContentStatus("idle");
-        // Update URL for new tab
-        if (msg.tabId) {
-          chrome.tabs.get(msg.tabId, (tab) => {
-            if (!chrome.runtime.lastError && tab?.url) setPageUrl(tab.url);
-          });
-        }
+        setStatus("idle"); setViolations([]); setPasses([]);
+        setDynamicIssues([]); setExpanded({}); setActiveDetailTab({});
+        setZoomStatus("idle"); setZoomViolations([]);
+        setHighContrast(false); setFocusMode(false); setTabOrderStops(null);
+        setContentAnalysis(null); setContentStatus("idle");
+        if (msg.tabId) chrome.tabs.get(msg.tabId, (t) => {
+          if (!chrome.runtime.lastError && t?.url) setPageUrl(t.url);
+        });
       }
     };
     chrome.runtime.onMessage.addListener(listener);
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, []);
 
+  // Listen for export trigger from App.jsx
+  useEffect(() => {
+    const handler = () => setShowExport(true);
+    window.addEventListener("al-open-export", handler);
+    return () => window.removeEventListener("al-open-export", handler);
+  }, []);
+
+  useEffect(() => {
+    if (pageUrl) loadHistory(getDomain(pageUrl)).then(setHistory);
+  }, [pageUrl]);
+
   async function runScan() {
     setStatus("scanning");
     setViolations([]); setPasses([]); setDynamicIssues([]);
-    setActiveSelector(null); setExpanded({});
-    setDelta(null);
+    setExpanded({}); setActiveDetailTab({});
 
     chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
       if (chrome.runtime.lastError || !response?.success) {
         const err = response?.error || chrome.runtime.lastError?.message || "";
-        setErrorMsg(err === "chrome_restricted"
-          ? "chrome_restricted"
-          : "inject_failed"
-        );
+        setErrorMsg(err === "chrome_restricted" ? "chrome_restricted" : "inject_failed");
         setStatus("error");
         return;
       }
@@ -903,147 +891,42 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
       setPasses(response.passes || []);
       setDynamicIssues(response.dynamicIssues || []);
       setStatus("done");
+      setActiveTab("violations");
 
-      // Save history + compute delta
+      if (onViolationCount) onViolationCount(sorted.length);
+
       const domain = getDomain(pageUrl);
-      const prev = await loadHistory(domain);
-      if (prev.length > 0) {
-        const prevIds = new Set(prev[0].violationIds || []);
-        const currIds = new Set(sorted.map(v => v.id));
-        const added = [...currIds].filter(id => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter(id => !currIds.has(id)).length;
-        if (added > 0 || fixed > 0) setDelta({ added, fixed });
+      if (domain) {
+        const entry = {
+          date: new Date().toLocaleString(),
+          total: sorted.length,
+          critical: sorted.filter(v=>v.impact==="critical").length,
+          serious:  sorted.filter(v=>v.impact==="serious").length,
+          instances: sorted.reduce((s,v)=>s+v.nodes.length,0),
+        };
+        await saveHistory(domain, entry);
+        loadHistory(domain).then(setHistory);
       }
-
-      const entry = {
-        date: new Date().toLocaleString(),
-        total: sorted.length,
-        critical: sorted.filter(v=>v.impact==='critical').length,
-        serious:  sorted.filter(v=>v.impact==='serious').length,
-        instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        violationIds: sorted.map(v => v.id),
-      };
-      await saveHistory(domain, entry);
-      const updated = await loadHistory(domain);
-      setHistory(updated);
     });
   }
-
-  const [devDelta, setDevDelta]     = useState(null); // {added, fixed} from auto-scan
-  const [lastAutoScan, setLastAutoScan] = useState(null);
-
-  // Auto-scan when countdown resets to devInterval (meaning it just ticked over)
-  useEffect(() => {
-    if (!devMode || countdown === null) return;
-    // Fire when countdown equals devInterval (just reset) but not on first mount
-    if (countdown === devInterval && lastAutoScan !== null) {
-      triggerAutoScan();
-    }
-  }, [countdown, devMode]);
-
-  // First auto-scan when dev mode turns on
-  useEffect(() => {
-    if (devMode) {
-      setLastAutoScan(Date.now());
-      triggerAutoScan();
-    } else {
-      setDevDelta(null);
-      chrome.runtime.sendMessage({ type: "SET_BADGE", text: "" });
-    }
-  }, [devMode]);
-
-  function triggerAutoScan() {
-    setLastAutoScan(Date.now());
-    // Silent scan — update results without full loading state reset
-    chrome.runtime.sendMessage({ type: "RUN_SCAN" }, async (response) => {
-      if (chrome.runtime.lastError || !response?.success) return;
-      const sorted = [...response.violations].sort(
-        (a,b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact)
-      );
-
-      // Compute delta vs current violations
-      setViolations(prev => {
-        const prevIds = new Set(prev.map(v => v.id));
-        const currIds = new Set(sorted.map(v => v.id));
-        const added = [...currIds].filter(id => !prevIds.has(id)).length;
-        const fixed = [...prevIds].filter(id => !currIds.has(id)).length;
-        setDevDelta({ added, fixed, clean: added === 0 && fixed === 0 });
-        return sorted;
-      });
-      setPasses(response.passes || []);
-      setStatus("done");
-
-      // Update extension badge with critical/serious count
-      const critical = sorted.filter(v => v.impact === "critical" || v.impact === "serious").length;
-      if (critical > 0) {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: String(critical), color: "#E24B4A" });
-      } else if (sorted.length > 0) {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: String(sorted.length), color: "#EF9F27" });
-      } else {
-        chrome.runtime.sendMessage({ type: "SET_BADGE", text: "✓", color: "#22c97a" });
-      }
-
-      // Save to history
-      const domain = getDomain(pageUrl);
-      const entry = {
-        date: new Date().toLocaleString(),
-        total: sorted.length,
-        critical: sorted.filter(v=>v.impact==='critical').length,
-        serious:  sorted.filter(v=>v.impact==='serious').length,
-        instances: sorted.reduce((s,v) => s+v.nodes.length, 0),
-        violationIds: sorted.map(v => v.id),
-      };
-      await saveHistory(domain, entry);
-      const updated = await loadHistory(domain);
-      setHistory(updated);
-    });
-  }
-
-  // Load history when URL is known
-  useEffect(() => {
-    if (pageUrl) {
-      loadHistory(getDomain(pageUrl)).then(setHistory);
-    }
-  }, [pageUrl]);
 
   function runContentAnalysis() {
     setContentStatus("running");
     chrome.runtime.sendMessage({ type: "RUN_CONTENT_ANALYSIS" }, (response) => {
-      if (chrome.runtime.lastError || !response?.success) {
-        setContentStatus("error");
-        return;
-      }
+      if (chrome.runtime.lastError || !response?.success) { setContentStatus("error"); return; }
       setContentAnalysis(response);
       setContentStatus("done");
     });
   }
 
-  function handleViolationClick(v) {
-    const selector = v.nodes?.[0]?.target?.[0];
-    if (!selector) return;
-    const isTargetSize = v.id?.includes("target-size");
-    if (activeSelector === selector) {
-      setActiveSelector(null);
-      chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
-    } else {
-      setActiveSelector(selector);
-      chrome.runtime.sendMessage({ type: "HIGHLIGHT_ELEMENT", selector, showDimensions: isTargetSize });
-    }
-  }
-
-  function toggleExpanded(id) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
-  function toggleGroup(p) { setCollapsedGroups(prev => ({ ...prev, [p]: !prev[p] })); }
-
   function startFocusMode() {
     setFocusMode(true);
     setTabOrderStops(null);
-    setFocusDropdown(false);
     chrome.runtime.sendMessage({ type: "START_FOCUS_MODE" });
   }
   function stopFocusMode() { setFocusMode(false); }
 
-  function showTabOrder() {
-    setFocusDropdown(false);
+  function showTabOrderMap() {
     setFocusMode(false);
     setTabOrderStops(null);
     chrome.runtime.sendMessage({ type: "SHOW_TAB_ORDER" }, (response) => {
@@ -1062,16 +945,13 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
     chrome.runtime.sendMessage({ type: "SCROLL_TO_STOP", stopIndex: stop.index });
   }
 
-  async function runZoomTest() {
+  function runZoomTest() {
     setZoomStatus("running");
     chrome.runtime.sendMessage({ type: "RUN_ZOOM_TEST" }, (response) => {
       if (!response?.success) { setZoomStatus("idle"); return; }
-      // Only show NEW violations not in the normal scan
       const normalIds = new Set(violations.map(v => v.id));
-      const newViolations = response.violations.filter(v => !normalIds.has(v.id));
-      setZoomViolations(newViolations);
+      setZoomViolations(response.violations.filter(v => !normalIds.has(v.id)));
       setZoomStatus("done");
-      setActiveTab("visuals");
     });
   }
 
@@ -1081,690 +961,488 @@ export default function ScanPanel({ tabId, devMode, devInterval, countdown }) {
     chrome.runtime.sendMessage({ type: next ? "ENABLE_HIGH_CONTRAST" : "DISABLE_HIGH_CONTRAST" });
   }
 
-  // Apply filters
-  const filteredViolations = violations.filter(v => {
-    const principle = getPrinciple(v.id);
-    const wcagOk = wcagFilter === "All" || principle === wcagFilter;
-    const impactOk = impactFilter === "All" || v.impact === impactFilter;
-    return wcagOk && impactOk;
-  });
+  function toggleExpanded(id) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
 
-  const grouped = groupByPrinciple(filteredViolations);
-  const totalIssues = violations.reduce((sum, v) => sum + v.nodes.length, 0);
+  const filteredViolations = violations.filter(v =>
+    impactFilter === "All" || v.impact === impactFilter
+  );
+
+  const critCount = violations.filter(v => v.impact === "critical").length;
+  const serCount  = violations.filter(v => v.impact === "serious").length;
+  const modCount  = violations.filter(v => v.impact === "moderate").length;
+  const minCount  = violations.filter(v => v.impact === "minor").length;
+  const passCount = passes.length;
+
+  function getComplianceStatus() {
+    if (critCount > 0) return { cls: "blocked", label: `${critCount} critical issue${critCount!==1?"s":""} — must fix before launch`, icon: "warning_amber" };
+    if (serCount  > 0) return { cls: "atrisk",  label: `${serCount} serious issue${serCount!==1?"s":""} — fix as soon as possible`, icon: "error_outline" };
+    if (violations.length > 0) return { cls: "atrisk", label: `${violations.length} minor issue${violations.length!==1?"s":""} found`, icon: "info_outline" };
+    return { cls: "clear", label: "No violations found — looking good", icon: "check_circle" };
+  }
+  const compStatus = getComplianceStatus();
+
+  const IMPACT_DOT_COLOURS = { critical:"#dc2626", serious:"#d97706", moderate:"#2563eb", minor:"#9ca3af" };
+
+  // HC checklist items
+  const HC_ITEMS = [
+    "Can you still read all the text?",
+    "Are buttons still easy to see?",
+    "Are icons still visible?",
+    "Are form fields still clear?",
+    "Is colour-only information still understandable?",
+  ];
+
+  function setHcItem(i, val) { setHcChecklist(p => ({ ...p, [i]: { status: val, note: p[i]?.note || "" } })); }
+  function setHcNote(i, note) { setHcChecklist(p => ({ ...p, [i]: { ...p[i], note } })); }
 
   return (
     <div className="scan-panel">
-      {/* Dev mode status bar */}
-      {devMode && (
-        <div className="dev-status-bar">
-          <span className="dev-status-icon"><Icon name="bolt" size={14} /></span>
-          <span className="dev-status-text">
-            Dev mode on. Auto-scanning every {devInterval}s
-          </span>
-          {devDelta && (
-            devDelta.clean ? (
-              <span className="dev-status-clean">✓ No changes</span>
-            ) : (
-              <span className="dev-status-delta">
-                {devDelta.added > 0 && <span className="delta-added">↑{devDelta.added} new</span>}
-                {devDelta.fixed > 0 && <span className="delta-fixed">↓{devDelta.fixed} fixed</span>}
-              </span>
-            )
-          )}
-        </div>
-      )}
-
-      {/* Tool buttons row — clean: only the primary scan action */}
-      <div className="tool-row">
-        <button className="btn-scan" onClick={runScan} disabled={status==="scanning"} style={{flex:1}}>
-          {status==="scanning" ? <><span className="spinner"/> Scanning…</> : "Run scan"}
-        </button>
-      </div>
-
-      {/* Export modal */}
-      {showExport && (
-        <ExportModal
-          scanData={{ violations, passes, dynamicIssues, url: pageUrl }}
-          tabOrderStops={tabOrderStops}
-          onClose={() => setShowExport(false)}
-        />
-      )}
-
-      {/* Summary */}
-      {status==="done" && !focusMode && (
-        <>
-          <div className="summary">
-            {/* Status — plain language, no score */}
-            {(() => {
-              const critical = violations.filter(v=>v.impact==='critical').length;
-              const serious  = violations.filter(v=>v.impact==='serious').length;
-              const moderate = violations.filter(v=>v.impact==='moderate').length;
-              const minor    = violations.filter(v=>v.impact==='minor').length;
-
-              let statusLabel, statusColor, statusBg;
-              if (violations.length === 0) {
-                statusLabel = 'No violations'; statusColor = '#16a34a'; statusBg = 'rgba(22,163,74,0.1)';
-              } else if (critical > 0) {
-                statusLabel = 'Fix now'; statusColor = '#E24B4A'; statusBg = 'rgba(226,75,74,0.1)';
-              } else if (serious > 0) {
-                statusLabel = 'Needs work'; statusColor = '#EF9F27'; statusBg = 'rgba(239,159,39,0.1)';
-              } else if (moderate > 0) {
-                statusLabel = 'Minor issues'; statusColor = '#4f8ef7'; statusBg = 'rgba(79,142,247,0.1)';
-              } else {
-                statusLabel = 'Almost clean'; statusColor = '#65a30d'; statusBg = 'rgba(101,163,13,0.1)';
-              }
-
-              return (
-                <div className="summary-status" style={{background: statusBg, borderColor: statusColor+'33'}}>
-                  <span className="summary-status-label" style={{color: statusColor}}>{statusLabel}</span>
-                  <div className="summary-impact-row">
-                    {critical > 0 && <span className="summary-impact-chip" style={{color:'#E24B4A'}}>{critical} critical</span>}
-                    {serious  > 0 && <span className="summary-impact-chip" style={{color:'#EF9F27'}}>{serious} serious</span>}
-                    {moderate > 0 && <span className="summary-impact-chip" style={{color:'#4f8ef7'}}>{moderate} moderate</span>}
-                    {minor    > 0 && <span className="summary-impact-chip" style={{color:'#888780'}}>{minor} minor</span>}
-                    {violations.length === 0 && <span className="summary-impact-chip" style={{color:'#16a34a'}}>All checks passed</span>}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="summary-stat">
-              <span className="summary-num" style={{color: violations.length>0?"#E24B4A":"#1D9E75"}}>{violations.length}</span>
-              <span className="summary-label">violations</span>
-            </div>
-            <div className="summary-stat">
-              <span className="summary-num" style={{color:"#888780"}}>{totalIssues}</span>
-              <span className="summary-label">instances</span>
-            </div>
-            <div className="summary-stat">
-              <span className="summary-num" style={{color:"#1D9E75"}}>{passes.length}</span>
-              <span className="summary-label">passed</span>
-            </div>
-            <button
-              className={`summary-history-btn ${showHistory?"summary-history-btn--active":""}`}
-              onClick={() => setShowHistory(p=>!p)}
-              title="Scan history"
-            ><Icon name="history" size={16} /></button>
-          </div>
-
-          {/* Delta bar */}
-          {delta && (
-            <div className="delta-bar">
-              {delta.added > 0 && <span className="delta-added">↑ {delta.added} new</span>}
-              {delta.fixed > 0 && <span className="delta-fixed">↓ {delta.fixed} fixed</span>}
-              <span className="delta-label">since last scan</span>
-            </div>
-          )}
-
-          {/* History panel */}
-          {showHistory && history.length > 0 && (
-            <div className="history-panel">
-              <div className="history-title">Scan history for {getDomain(pageUrl)}</div>
-              {history.map((h, i) => {
-                const critical = h.critical || 0;
-                const serious  = h.serious  || 0;
-                const statusColor = critical>0?"#E24B4A":serious>0?"#EF9F27":h.total===0?"#16a34a":"#4f8ef7";
-                const statusLabel = critical>0?"Fix now":serious>0?"Needs work":h.total===0?"No violations":"Minor issues";
-                return (
-                  <div key={i} className={`history-row ${i===0?"history-row--current":""}`}>
-                    <span className="history-grade" style={{color: statusColor, fontSize:16, fontWeight:600}}>{statusLabel}</span>
-                    <div className="history-info">
-                      <span className="history-date">{h.date}{i===0?" (latest)":""}</span>
-                      <span className="history-stats">
-                        {critical>0 && <span style={{color:"#E24B4A"}}>{critical} critical </span>}
-                        {serious>0  && <span style={{color:"#EF9F27"}}>{serious} serious </span>}
-                        <span style={{color:"var(--text3)"}}>{h.total} total</span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {showHistory && history.length === 0 && (
-            <div className="history-panel">
-              <p style={{fontSize:16,color:"var(--text3)",padding:"8px 0"}}>No previous scans on this domain.</p>
-            </div>
-          )}
-          <button className="btn-export" onClick={() => setShowExport(true)}>
-            ↗ Export report
-          </button>
-        </>
-      )}
-
-      {/* Sub-tabs — render whenever we have any data, not gated to status===done */}
-      {(status==="done" || zoomStatus==="done" || zoomViolations.length>0) && !focusMode && (
-        <div className="subtabs">
-          <button className={`subtab ${activeTab==="violations"?"subtab--active":""}`} onClick={()=>setActiveTab("violations")}>
-            Issues {violations.length > 0 && <span className="subtab-count">{violations.length}</span>}
-          </button>
-          <button className={`subtab ${activeTab==="focus"?"subtab--active":""}`} onClick={()=>setActiveTab("focus")}>
-            Focus
-          </button>
-          <button className={`subtab ${activeTab==="visuals"?"subtab--active":""}`} onClick={()=>setActiveTab("visuals")}>
-            Visuals {zoomViolations.length > 0 && <span className="subtab-count subtab-count--amber">{zoomViolations.length}</span>}
-          </button>
-          <button className={`subtab ${activeTab==="dynamic"?"subtab--active":""}`} onClick={()=>setActiveTab("dynamic")}>
-            Dynamic {dynamicIssues.length > 0 && <span className="subtab-count subtab-count--amber">{dynamicIssues.length}</span>}
-          </button>
-          <button className={`subtab ${activeTab==="content"?"subtab--active":""}`} onClick={()=>setActiveTab("content")}>
-            Content {contentAnalysis && contentAnalysis.linkResults?.issues?.length > 0 && <span className="subtab-count subtab-count--amber">{contentAnalysis.linkResults.issues.length}</span>}
-          </button>
-        </div>
-      )}
 
       {/* Error */}
-      {status==="error" && (
-        <div className="empty-state empty-state--error">
-          {errorMsg === "chrome_restricted" ? (
-            <>
-              <div className="error-icon"><Icon name="block" size={28} /></div>
-              <p>Can't scan Chrome's own pages</p>
-              <p className="empty-hint">Navigate to any regular website (http:// or https://) then click the AccessLens icon to open a fresh panel on that page.</p>
-            </>
-          ) : (
-            <>
-              <div className="error-icon"><Icon name="warning_amber" size={28} /></div>
-              <p>Scan failed</p>
-              <p className="empty-hint">This can happen if you switched tabs while the panel was open. <strong>Close this panel</strong>, navigate to the page you want to scan, then click the AccessLens icon again.</p>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:180,background:"var(--red)"}} onClick={runScan}>
-                ↺ Try again
-              </button>
-            </>
+      {status === "error" && (
+        <div className="empty-state">
+          <Icon name="warning_amber" size={28} style={{color: errorMsg==="chrome_restricted" ? "#5a6070" : "#dc2626", marginBottom:4}} />
+          <p style={{fontWeight:600,fontSize:16}}>
+            {errorMsg==="chrome_restricted" ? "Can't scan this page" : "Scan failed"}
+          </p>
+          <p className="empty-hint">
+            {errorMsg==="chrome_restricted"
+              ? "AccessLens can't run on Chrome's own pages. Go to any website and try again."
+              : "Close this panel, navigate to the page, then click the AccessLens icon again."}
+          </p>
+          {errorMsg !== "chrome_restricted" && (
+            <button className="btn-scan" style={{maxWidth:200,marginTop:8}} onClick={runScan}>Try again</button>
           )}
+        </div>
+      )}
+
+      {/* Scanning */}
+      {status === "scanning" && (
+        <div className="empty-state">
+          <div className="spinner" style={{width:20,height:20,border:"2px solid #e8eaef",borderTopColor:"#2563eb",margin:"0 auto 12px"}} />
+          <p style={{fontWeight:600,fontSize:16}}>Scanning…</p>
+          <p className="empty-hint">Checking against WCAG 2.2 AA rules</p>
         </div>
       )}
 
       {/* Idle */}
-      {status==="idle" && !focusMode && (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5" opacity="0.3"/>
-              <path d="M10 16h12M16 10v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
-            </svg>
+      {status === "idle" && (
+        <div style={{padding:"20px 18px"}}>
+          <button className="btn-scan" onClick={runScan} style={{marginBottom:16}}>
+            <Icon name="search" size={16} />
+            Run scan
+          </button>
+          <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:"14px 16px"}}>
+            <div style={{fontSize:16,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>What we check</div>
+            {["Missing labels on forms and buttons","Images with no description","Headings in the wrong order","Colour contrast on all text","Keyboard navigation and focus order","30+ WCAG 2.2 AA rules"].map(t => (
+              <div key={t} style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:8,fontSize:16,color:"var(--text2)",lineHeight:1.4}}>
+                <span style={{color:"var(--green)",flexShrink:0,marginTop:2}}>✓</span>{t}
+              </div>
+            ))}
           </div>
-          <p style={{fontSize:16, fontWeight:600, color:'var(--text)'}}>Ready to check this page</p>
-          <p className="empty-hint" style={{marginTop:8}}>
-            Click <strong>Run scan</strong>. We will look for things that make the page hard to use for some people.
-          </p>
-          <div className="empty-hint" style={{marginTop:14, padding:'12px 14px', background:'var(--bg3)', borderRadius:8, textAlign:'left'}}>
-            <strong>What we check:</strong>
-            <ul style={{margin:'6px 0 0 0', paddingLeft:18, lineHeight:1.7}}>
-              <li>Missing labels on buttons and forms</li>
-              <li>Pictures with no description</li>
-              <li>Links that say "click here"</li>
-              <li>Headings in the wrong order</li>
-              <li>Many other rules from WCAG</li>
-            </ul>
-          </div>
-          <p className="empty-hint" style={{marginTop:10}}>
-            After scanning, use <strong>Focus</strong> to test the keyboard, <strong>Zoom</strong> to test 400% size, or <strong>HC</strong> for high contrast.
-          </p>
         </div>
       )}
 
-      {/* All clear */}
-      {status==="done" && violations.length===0 && activeTab==="violations" && (
-        <div className="empty-state empty-state--success">
-          <div className="empty-icon" style={{color:"#1D9E75"}}>
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 16l4 4 8-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <p>No violations found. Nice work.</p>
-        </div>
-      )}
-
-      {/* ── Violations tab ── */}
-      {status==="done" && activeTab==="violations" && violations.length>0 && (
+      {/* Done */}
+      {status === "done" && (
         <>
-          <FilterBar wcagFilter={wcagFilter} setWcagFilter={setWcagFilter} impactFilter={impactFilter} setImpactFilter={setImpactFilter}/>
-          {filteredViolations.length === 0 ? (
-            <div className="empty-state"><p>No violations match the current filters.</p></div>
-          ) : (
-            <div className="violation-groups">
-              {PRINCIPLES.map(principle => {
-                const group = grouped[principle];
-                if (!group.length) return null;
-                const isCollapsed = collapsedGroups[principle];
-                const instances = group.reduce((s,v)=>s+v.nodes.length,0);
+          {/* Summary bar */}
+          <div className="summary">
+            <div className="summary-stat">
+              <span className="summary-num" style={{color: critCount > 0 ? "#E24B4A" : "var(--text3)"}}>{critCount}</span>
+              <span className="summary-label" style={{color:"var(--text2)"}}>Critical</span>
+            </div>
+            <div className="summary-stat">
+              <span className="summary-num" style={{color: serCount > 0 ? "#EF9F27" : "var(--text3)"}}>{serCount}</span>
+              <span className="summary-label" style={{color:"var(--text2)"}}>Serious</span>
+            </div>
+            <div className="summary-stat">
+              <span className="summary-num" style={{color: passCount > 0 ? "var(--green)" : "var(--text3)"}}>{passCount}</span>
+              <span className="summary-label" style={{color:"var(--text2)"}}>Passed</span>
+            </div>
+            <div className="summary-stat" style={{flexDirection:"row",alignItems:"center",gap:6,padding:"10px 12px"}}>
+              <button className="tool-btn" style={{flex:"none",padding:"5px 12px"}} onClick={runScan}>Re-scan</button>
+              <button className="tool-btn" style={{flex:"none",padding:"5px 12px"}} onClick={() => setShowExport(true)}>Export</button>
+              {history.length > 0 && (
+                <button className="tool-btn" style={{flex:"none",padding:"5px 8px"}} onClick={() => setShowHistory(p=>!p)} title="Scan history">⏱</button>
+              )}
+            </div>
+          </div>
+
+          {/* History */}
+          {showHistory && (
+            <div className="history-panel" style={{margin:"0 0 8px"}}>
+              <div className="history-title">{getDomain(pageUrl)} — scan history</div>
+              {history.map((h, i) => {
+                const lbl = h.critical>0?"Blocked":h.serious>0?"At risk":h.total===0?"Clear":"Minor";
+                const col = h.critical>0?"#E24B4A":h.serious>0?"#EF9F27":h.total===0?"var(--green)":"var(--text3)";
                 return (
-                  <div key={principle} className="principle-group">
-                    <button className="principle-header" onClick={()=>toggleGroup(principle)}>
-                      <span className="principle-icon"><PrincipleIcon name={principle} /></span>
-                      <span className="principle-name">{principle}</span>
-                      <span className="principle-count">{group.length} rule{group.length!==1?"s":""} · {instances} instance{instances!==1?"s":""}</span>
-                      <span className="principle-chevron-icon"><Icon name={isCollapsed?"expand_more":"expand_less"} size={18} /></span>
-                    </button>
-                    {!isCollapsed && <div className="principle-desc">{PRINCIPLE_DESC[principle]}</div>}
-                    {!isCollapsed && (
-                      <div className="violations">
-                        {group.map(v => {
-                          const selector = v.nodes[0]?.target?.[0];
-                          const isActive = activeSelector===selector;
-                          const isExp = expanded[v.id];
-                          const wcagVer = getWcagVersion(v.tags);
-                          const isNew22 = wcagVer==="2.2";
-                          const sc = v.tags.filter(t=>/^\d+\.\d+\.\d+$/.test(t)).join(", ");
-                          return (
-                            <div key={v.id} className={`violation violation--${v.impact || 'minor'} ${isActive?"violation--active":""}`}>
-                              <div className="violation-header" onClick={()=>handleViolationClick(v)}>
-                                <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
-                                <div className="violation-info">
-                                  <div className="violation-title-row">
-                                    <span className="violation-title">{v.description}</span>
-                                    {isNew22 && <span className="badge-new22">New in 2.2</span>}
-                                  </div>
-                                  <div className="violation-meta">
-                                    <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
-                                    {wcagVer && <span className="wcag-version-badge">WCAG {wcagVer}</span>}
-                                    {sc && <span className="wcag-badge">{sc}</span>}
-                                    <span className="node-count">{v.nodes.length} {v.nodes.length===1?"instance":"instances"}</span>
-                                  </div>
-                                </div>
-                                <button className="expand-btn" onClick={e=>{e.stopPropagation();toggleExpanded(v.id);}}>
-                                  <Icon name={isExp ? "expand_less" : "expand_more"} size={16} />
-                                </button>
-                              </div>
-                              {isExp && (
-                                <ViolationDetail violation={v} />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                  <div key={i} className="history-row">
+                    <span className="history-status" style={{color:col}}>{lbl}</span>
+                    <div className="history-info">
+                      <div className="history-date">{h.date}{i===0?" (latest)":""}</div>
+                      <div className="history-stats">{h.critical>0?`${h.critical} crit · `:""}{h.serious>0?`${h.serious} serious · `:""}{h.total} total</div>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </>
-      )}
 
-      {/* ── Focus tab — all keyboard tools live here ── */}
-      {activeTab==="focus" && status==="done" && (
-        <div className="focus-tab">
-          {/* Tab order map (when active) */}
-          {tabOrderStops !== null ? (
-            <TabOrderPanel
-              stops={tabOrderStops}
-              selectedStop={selectedStop}
-              onStopClick={handleStopClick}
-              onClose={clearTabOrder}
-            />
-          ) : focusMode ? (
-            <FocusModePanel onStop={stopFocusMode} />
-          ) : (
-            <div className="focus-tab-home">
-              <div className="tab-explainer-icon"><Icon name="keyboard" size={24} /></div>
-              <div className="tab-explainer-title">Keyboard testing</div>
-              <div className="tab-explainer-body">
-                People who can't use a mouse rely on the keyboard to use the page. These tools help you check if your page works without a mouse.
+          {/* Subtabs */}
+          <div className="subtabs">
+            {[
+              {id:"violations",label:"Issues",   count: violations.length > 0 ? violations.length : null},
+              {id:"focus",     label:"Focus"},
+              {id:"visuals",   label:"Visuals",  count: zoomViolations.length > 0 ? zoomViolations.length : null, amber:true},
+              {id:"dynamic",   label:"Dynamic",  count: dynamicIssues.length > 0 ? dynamicIssues.length : null, amber:true},
+              {id:"content",   label:"Content"},
+            ].map(t => (
+              <button
+                key={t.id}
+                className={`subtab ${activeTab===t.id?"subtab--active":""}`}
+                onClick={() => { setActiveTab(t.id); if(t.id!=="focus") setFocusMode(false); }}
+                role="tab"
+                aria-selected={activeTab===t.id}
+              >
+                {t.label}
+                {t.count != null && (
+                  <span className={`subtab-count${t.amber?" subtab-count--amber":""}`}>{t.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* ── ISSUES ── */}
+          {activeTab === "violations" && (
+            <div>
+              <div className="filter-bar">
+                <div className="filter-group">
+                  <span className="filter-label">Severity</span>
+                  {["All","critical","serious","moderate","minor"].map(v => (
+                    <button
+                      key={v}
+                      className={`filter-btn ${impactFilter===v?"filter-btn--active":""}`}
+                      onClick={() => setImpactFilter(v)}
+                      style={v!=="All" && impactFilter!==v ? {color:IMPACT_COLOURS[v]} : {}}
+                    >{v==="All"?"All":v.charAt(0).toUpperCase()+v.slice(1)}</button>
+                  ))}
+                </div>
               </div>
 
-              <div className="focus-tool-grid">
-                <button className="focus-tool-card" onClick={startFocusMode}>
-                  <div className="focus-tool-icon"><Icon name="keyboard" size={22} /></div>
-                  <div className="focus-tool-title">Test with keyboard</div>
-                  <div className="focus-tool-desc">Watch where focus goes as you press Tab. Shows pass or fail for each focus ring.</div>
-                </button>
+              {filteredViolations.length === 0 && (
+                <div className="empty-state">
+                  <span style={{fontSize:28,color:"var(--green)"}}>✓</span>
+                  <p style={{fontWeight:600,color:"var(--green)"}}>
+                    {violations.length === 0 ? "No violations found" : "No issues match this filter"}
+                  </p>
+                  <p className="empty-hint">{violations.length===0 ? `${passCount} checks passed` : "Try a different filter"}</p>
+                </div>
+              )}
 
-                <button className="focus-tool-card" onClick={showTabOrder}>
-                  <div className="focus-tool-icon"><Icon name="account_tree" size={22} /></div>
-                  <div className="focus-tool-title">See the order</div>
-                  <div className="focus-tool-desc">Shows numbered badges on every keyboard stop so you can spot wrong order or hidden problems.</div>
-                </button>
-              </div>
+              <div className="violations">
+                {filteredViolations.map(v => {
+                  const isOpen = expanded[v.id];
+                  const detailTab = activeDetailTab[v.id] || "why";
+                  const ctx = getViolationContext(v.id);
+                  const wcagRef = v.tags?.find(t => t.startsWith("wcag") && /\d{3}/.test(t));
+                  const wcagLabel = wcagRef ? "WCAG "+wcagRef.replace("wcag","").replace(/(\d)(\d{2})$/,"$1.$2") : "";
+                  const impact = v.impact || "minor";
 
-              <div className="info-callout">
-                <Icon name="info_outline" size={14} />
-                <span><strong>Tip:</strong> Test with keyboard works best. It shows real Tab key behaviour and detects most missing focus rings.</span>
+                  return (
+                    <div key={v.id} className={`violation violation--${impact} ${isOpen?"violation--active":""}`}>
+                      <div className="violation-header" onClick={() => toggleExpanded(v.id)}>
+                        <div className="violation-info">
+                          <div className="violation-title-row">
+                            <span className="violation-title">{v.description}</span>
+                          </div>
+                          <div className="violation-meta">
+                            <span className="impact-badge" style={{color:IMPACT_COLOURS[impact]}}>{impact}</span>
+                            <span className="node-count">{v.nodes.length}×</span>
+                            {wcagLabel && <span className="wcag-version-badge">{wcagLabel}</span>}
+                          </div>
+                        </div>
+                        <button
+                          className="expand-btn"
+                          onClick={e => { e.stopPropagation(); toggleExpanded(v.id); }}
+                          aria-expanded={isOpen}
+                        >
+                          {isOpen ? "Close" : "View"}
+                          <Icon name={isOpen?"expand_less":"expand_more"} size={14} />
+                        </button>
+                      </div>
+
+                      {/* Quick actions when closed */}
+                      {!isOpen && (
+                        <div style={{display:"flex",gap:6,padding:"0 14px 10px"}}>
+                          <button className="tool-btn" style={{fontSize:16,padding:"4px 10px"}} onClick={e=>{e.stopPropagation();setExpanded(p=>({...p,[v.id]:true}));setActiveDetailTab(p=>({...p,[v.id]:"why"}));}}>
+                            Why it matters
+                          </button>
+                          <button className="tool-btn" style={{fontSize:16,padding:"4px 10px"}} onClick={e=>{e.stopPropagation();setExpanded(p=>({...p,[v.id]:true}));setActiveDetailTab(p=>({...p,[v.id]:"fix"}));}}>
+                            How to fix
+                          </button>
+                          <button className="tool-btn" style={{fontSize:16,padding:"4px 10px"}} onClick={e=>{e.stopPropagation();const sel=v.nodes?.[0]?.target?.[0];if(sel)chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT",selector:sel});}}>
+                            Jump ↗
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Expanded detail */}
+                      {isOpen && (
+                        <div className="violation-detail">
+                          <div className="detail-tabs">
+                            {[{id:"why",label:"Why it matters"},{id:"fix",label:"How to fix"},{id:"elements",label:`Elements (${v.nodes.length})`}].map(t => (
+                              <button
+                                key={t.id}
+                                className={`detail-tab ${detailTab===t.id?"detail-tab--active":""}`}
+                                onClick={e=>{e.stopPropagation();setActiveDetailTab(p=>({...p,[v.id]:t.id}));}}
+                              >{t.label}</button>
+                            ))}
+                          </div>
+                          <div className="detail-body" onClick={e=>e.stopPropagation()}>
+                            {detailTab==="why" && (
+                              <>
+                                <p className="detail-why">{ctx?.why || v.help}</p>
+                                {v.helpUrl && <a href={v.helpUrl} target="_blank" rel="noreferrer" className="violation-link">WCAG documentation ↗</a>}
+                              </>
+                            )}
+                            {detailTab==="fix" && ctx?.fix && (
+                              <div className="detail-code"><code>{ctx.fix}</code></div>
+                            )}
+                            {detailTab==="elements" && (
+                              <div className="nodes-list">
+                                {v.nodes.map((node, i) => {
+                                  const key = v.id+"_"+i;
+                                  const isElOpen = openElementRows[key];
+                                  const html = node.html || "";
+                                  const match = html.match(/^<(\w+)/i);
+                                  const tag = match ? match[1].toLowerCase() : "element";
+                                  const labels = {a:"Link",button:"Button",input:"Input field",textarea:"Text area",select:"Dropdown",img:"Image",svg:"SVG image",h1:"Heading 1",h2:"Heading 2",h3:"Heading 3",h4:"Heading 4",h5:"Heading 5",h6:"Heading 6",p:"Paragraph",div:"Container",span:"Inline text",nav:"Navigation",form:"Form",label:"Label",table:"Table",li:"List item"};
+                                  const typeLabel = labels[tag] || `<${tag}>`;
+                                  const selector = node.target?.[0];
+                                  return (
+                                    <div key={i} className={`element-row ${isElOpen?"element-row--open":""}`}>
+                                      <div className="element-row-header">
+                                        <span className="element-row-num">#{i+1}</span>
+                                        <span className="element-row-type">{typeLabel}</span>
+                                        <div className="element-row-actions">
+                                          {selector && (
+                                            <button className="element-row-btn element-row-btn--jump" onClick={()=>chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT",selector})}>
+                                              <Icon name="open_in_new" size={13}/> Jump
+                                            </button>
+                                          )}
+                                          <button className="element-row-btn" onClick={()=>setOpenElementRows(p=>({...p,[key]:!p[key]}))}>
+                                            {isElOpen?"Hide":"Details"}
+                                            <Icon name={isElOpen?"expand_less":"expand_more"} size={13}/>
+                                          </button>
+                                        </div>
+                                      </div>
+                                      {isElOpen && (
+                                        <div className="element-row-body">
+                                          {selector && <div className="element-row-section"><span className="element-row-label">Selector</span><code className="element-row-code">{selector}</code></div>}
+                                          {node.html && <div className="element-row-section"><span className="element-row-label">HTML</span><code className="element-row-code">{node.html.slice(0,300)}</code></div>}
+                                          {node.failureSummary && <div className="element-row-section"><span className="element-row-label">Why this fails</span><p className="element-row-text">{node.failureSummary}</p></div>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
-        </div>
-      )}
-      {activeTab==="focus" && status!=="done" && (
-        <div className="tab-explainer">
-          <div className="tab-explainer-icon"><Icon name="keyboard" size={24} /></div>
-          <div className="tab-explainer-title">Keyboard testing</div>
-          <div className="tab-explainer-body">Run a scan first, then come back here to test keyboard navigation.</div>
-        </div>
-      )}
 
-      {/* ── Visuals tab — zoom test + high contrast preview ── */}
-      {activeTab==="visuals" && (
-        <div className="visuals-tab">
-          {status!=="done" && zoomStatus==="idle" ? (
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="zoom_in" size={24} /></div>
-              <div className="tab-explainer-title">Visual tests</div>
-              <div className="tab-explainer-body">Run a scan first, then come back here to test zoom and high contrast mode.</div>
+          {/* ── FOCUS TAB ── */}
+          {activeTab === "focus" && (
+            <div>
+              {focusMode ? (
+                <FocusModePanel onStop={stopFocusMode} />
+              ) : tabOrderStops !== null ? (
+                <TabOrderPanel stops={tabOrderStops} selectedStop={selectedStop} onStopClick={handleStopClick} onClose={clearTabOrder} />
+              ) : (
+                <div className="focus-tab-home">
+                  <p style={{fontSize:16,color:"var(--text2)",lineHeight:1.65,marginBottom:4}}>
+                    People who can't use a mouse rely on the keyboard. Test that every element is reachable and in the right order.
+                  </p>
+                  <div className="focus-tool-grid">
+                    <button className="focus-tool-card" onClick={startFocusMode}>
+                      <div className="focus-tool-icon"><Icon name="keyboard" size={16}/></div>
+                      <div className="focus-tool-title">Test with keyboard</div>
+                      <div className="focus-tool-desc">Tab through the page and see focus ring detection live</div>
+                    </button>
+                    <button className="focus-tool-card" onClick={showTabOrderMap}>
+                      <div className="focus-tool-icon"><Icon name="account_tree" size={16}/></div>
+                      <div className="focus-tool-title">See the order</div>
+                      <div className="focus-tool-desc">Number every keyboard stop and check the sequence</div>
+                    </button>
+                  </div>
+                  <div className="info-callout">
+                    <Icon name="info_outline" size={14}/>
+                    <span>Focus rings can't be detected automatically. Tab through each stop to check manually.</span>
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <>
-              {/* Zoom test section */}
+          )}
+
+          {/* ── VISUALS TAB ── */}
+          {activeTab === "visuals" && (
+            <div className="visuals-tab">
+              {/* Zoom */}
               <div className="visuals-section">
                 <div className="visuals-section-header">
-                  <Icon name="zoom_in" size={18} />
-                  <h3 className="visuals-section-title">Zoom test (400%)</h3>
+                  <Icon name="zoom_in" size={16} style={{color:"var(--text3)"}}/>
+                  <h2 className="visuals-section-title">Zoom test (400%)</h2>
                 </div>
-                <p className="visuals-section-desc">
-                  Some people zoom their browser to read text. The page must still work at 400% zoom (about 320px wide). This test shrinks the page to that size and looks for new problems.
-                </p>
-
-                {zoomStatus==="idle" && (
-                  <button className="btn-scan" style={{marginTop:8, maxWidth:220}} onClick={runZoomTest}>
-                    Run zoom test
-                  </button>
-                )}
+                <p className="visuals-section-desc">Some users zoom to 400% to read text. The page must work at that size without horizontal scrolling (WCAG 1.4.10).</p>
+                {zoomStatus==="idle" && <button className="btn-scan" style={{maxWidth:220}} onClick={runZoomTest}>Run zoom test</button>}
                 {zoomStatus==="running" && (
-                  <div className="empty-state">
-                    <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
-                    <p>Resizing to 320px and scanning…</p>
+                  <div style={{display:"flex",alignItems:"center",gap:10,fontSize:16,color:"var(--text3)",padding:"8px 0"}}>
+                    <div className="spinner" style={{width:14,height:14,border:"2px solid #e8eaef",borderTopColor:"#2563eb"}}/>
+                    Resizing to 320px and scanning…
                   </div>
                 )}
                 {zoomStatus==="done" && zoomViolations.length===0 && (
                   <div className="visuals-result visuals-result--ok">
-                    <Icon name="check_circle" size={18} style={{color:"#1D9E75"}}/>
-                    <div>
-                      <strong>No new problems at 400% zoom.</strong>
-                      <p style={{margin:"3px 0 0 0", fontSize:16, color:"var(--text2)"}}>The page reflows correctly. WCAG 1.4.10 passes.</p>
-                    </div>
+                    <Icon name="check_circle" size={16} style={{color:"var(--green)",flexShrink:0}}/>
+                    <div><strong>No new issues at 400% zoom</strong><p style={{fontSize:16,color:"var(--text2)",marginTop:2}}>Content reflows correctly. WCAG 1.4.10 passes.</p></div>
                   </div>
                 )}
                 {zoomStatus==="done" && zoomViolations.length>0 && (
-                  <div className="violations" style={{marginTop:10}}>
-                    <p className="zoom-intro">These problems only show up at 400% zoom:</p>
-                    {zoomViolations.map(v=>(
-                      <div key={v.id} className={`violation violation--${v.impact || 'minor'}`}>
-                        <div className="violation-header" onClick={()=>handleViolationClick(v)}>
-                          <span className="impact-bar" style={{background:IMPACT_COLOURS[v.impact]||"#888"}}/>
+                  <div className="violations" style={{marginTop:8}}>
+                    {zoomViolations.map(v => (
+                      <div key={v.id} className={`violation violation--${v.impact||"minor"}`}>
+                        <div className="violation-header">
                           <div className="violation-info">
-                            <div className="violation-title">{v.description}</div>
-                            <div className="violation-meta">
-                              <span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact]}}>{v.impact}</span>
-                              <span className="wcag-version-badge" style={{background:"rgba(194,64,12,0.15)",color:"#F0997B"}}>zoom only</span>
-                            </div>
+                            <div className="violation-title-row"><span className="violation-title">{v.description}</span></div>
+                            <div className="violation-meta"><span className="impact-badge" style={{color:IMPACT_COLOURS[v.impact||"minor"]}}>{v.impact}</span><span className="node-count">zoom only</span></div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-
-              {/* High contrast section */}
-              <div className="visuals-section">
-                <div className="visuals-section-header">
-                  <Icon name="contrast" size={18} />
-                  <h3 className="visuals-section-title">High contrast preview</h3>
-                </div>
-                <p className="visuals-section-desc">
-                  Some people turn on high contrast mode to read better. This button copies what they see. When it's on, look at the page and check the list below.
-                </p>
-
-                <button
-                  className={`btn-scan ${highContrast ? "btn-stop" : ""}`}
-                  style={{marginTop:8, maxWidth:220}}
-                  onClick={toggleHighContrast}
-                >
-                  {highContrast ? "Turn off high contrast" : "Turn on high contrast"}
-                </button>
-
-                {highContrast && (
-                  <div className="hc-checklist">
-                    <div className="hc-checklist-title">Look at the page now and check:</div>
-                    <ul className="hc-checklist-list">
-                      <li>Can you still read all the text?</li>
-                      <li>Are buttons still easy to see?</li>
-                      <li>Are icons still visible?</li>
-                      <li>Are form fields still clear?</li>
-                      <li>Is colour-only info still understandable?</li>
-                    </ul>
-                    <p className="hc-checklist-hint">If anything is missing or invisible, it's a problem for users who rely on high contrast.</p>
-                  </div>
+                {zoomStatus==="done" && (
+                  <button className="btn-rerun" style={{marginTop:8}} onClick={()=>{setZoomStatus("idle");setZoomViolations([]);}}>Run again</button>
                 )}
               </div>
-            </>
-          )}
-        </div>
-      )}
 
-      {/* ── Dynamic errors tab ── */}
-      {activeTab==="dynamic" && (
-        <div className="dynamic-tab">
-          {dynamicIssues.length===0 ? (
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
-              <div className="tab-explainer-title">Dynamic ARIA error detection</div>
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="bolt" size={24} /></div>
-              <div className="tab-explainer-title">Form error detection</div>
-              <div className="tab-explainer-body">
-                This tab catches a specific problem: when a form shows an error message after you submit it, screen readers often never hear it. That's because the error was added to the page by JavaScript <em>after</em> the screen reader already read the page.
-              </div>
-              <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Keep this panel open</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Find a form on the page and submit it with empty or invalid fields</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>If error messages appear without <code>role="alert"</code>, they show up here</div>
-              </div>
-              <div className="tab-explainer-note">
-                <strong>Nothing here yet.</strong> This tab only shows issues when JavaScript adds new content to the page. It does not scan existing page content.
-              </div>
-            </div>
-            </div>
-          ) : (
-            <div className="violations">
-              {/* Summary */}
-              {(() => {
-                const total = dynamicIssues.reduce((s,i) => s + (i.count||1), 0);
-                return (
-                  <div className="dynamic-summary">
-                    <Icon name="info_outline" size={14} />
-                    <span>
-                      <strong>{dynamicIssues.length}</strong> unique pattern{dynamicIssues.length!==1?"s":""} found
-                      {total > dynamicIssues.length ? ` across ${total} elements` : ''}.
-                      Fix each pattern once to fix all copies.
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Group by category — cap at 10 shown */}
-              {(() => {
-                const groups = {};
-                dynamicIssues.forEach(issue => {
-                  const cat = issue.category || issue.description || 'Content';
-                  if (!groups[cat]) groups[cat] = [];
-                  groups[cat].push(issue);
-                });
-
-                const entries = Object.entries(groups).slice(0, 10);
-                const hiddenCount = Object.keys(groups).length - entries.length;
-
-                return (
-                  <>
-                    {entries.map(([category, catIssues]) => {
-                      const totalCount = catIssues.reduce((s, i) => s + (i.count || 1), 0);
-                      const samples = catIssues.slice(0, 2).map(i => i.sampleText).filter(t => t && t.length > 2);
-                      const firstIssue = catIssues[0];
-
+              {/* High contrast */}
+              <div className="visuals-section">
+                <div className="visuals-section-header">
+                  <Icon name="contrast" size={16} style={{color:"var(--text3)"}}/>
+                  <h2 className="visuals-section-title">High contrast preview</h2>
+                </div>
+                <p className="visuals-section-desc">Some users rely on high contrast mode. Turn this on and verify everything is still readable.</p>
+                <button className="btn-scan" style={{maxWidth:240}} onClick={toggleHighContrast}>
+                  {highContrast ? "Turn off high contrast" : "Turn on high contrast"}
+                </button>
+                {highContrast && (
+                  <div className="hc-checklist">
+                    <div className="hc-checklist-title">Check these items while HC mode is on:</div>
+                    {HC_ITEMS.map((item, i) => {
+                      const state = hcChecklist[i];
                       return (
-                        <div key={category} className="violation">
-                          <div className="violation-header">
-                            <span className="impact-bar" style={{background:IMPACT_COLOURS.serious}}/>
-                            <div className="violation-info">
-                              <div className="violation-title-row">
-                                <span className="violation-title">{category}</span>
-                                <span className="badge-new22" style={{background:"rgba(239,159,39,0.18)",color:"#EF9F27",fontFamily:"var(--mono)",fontSize:16,padding:"2px 7px",borderRadius:4}}>
-                                  {totalCount}x
-                                </span>
-                              </div>
-                              <div className="violation-meta">
-                                <span className="impact-badge" style={{color:IMPACT_COLOURS.serious}}>serious</span>
-                                <span className="wcag-badge">Missing ARIA</span>
-                              </div>
-                            </div>
+                        <div key={i} className="hc-item">
+                          <div className="hc-item-check-btns">
+                            <button className={`hc-btn ${state?.status==="pass"?"pass":"unset"}`} onClick={()=>setHcItem(i,"pass")} aria-label={`${item} — pass`}>✓</button>
+                            <button className={`hc-btn ${state?.status==="fail"?"fail":"unset"}`} onClick={()=>setHcItem(i,"fail")} aria-label={`${item} — fail`}>✗</button>
                           </div>
-                          <div className="violation-detail">
-                            <div className="tab-stop-detail-body">
-                              {firstIssue.issues.slice(0,1).map((msg, j) => {
-                                const isLiveRegion = msg.includes("aria-live") || msg.includes("role=alert");
-                                const why = isLiveRegion
-                                  ? "Screen readers only read new content inside a live region. Without role=\"alert\" or aria-live, blind users never hear this."
-                                  : "Link error messages to inputs using aria-describedby so screen readers read the error when the user focuses the field.";
-                                const fix = isLiveRegion
-                                  ? `<!-- Errors and alerts -->\n<div role="alert">Something went wrong</div>\n\n<!-- Status updates -->\n<div aria-live="polite">Changes saved</div>`
-                                  : `<!-- Give the message an ID -->\n<div id="field-error">Enter a valid email</div>\n\n<!-- Link it to the input -->\n<input type="email" aria-describedby="field-error">`;
-                                return (
-                                  <div key={j} style={{marginBottom:10}}>
-                                    <p className="detail-why" style={{marginBottom:4}}><strong>What is wrong:</strong> {msg}</p>
-                                    <p className="detail-why" style={{marginBottom:6}}>{why}</p>
-                                    <pre className="detail-code"><code>{fix}</code></pre>
-                                  </div>
-                                );
-                              })}
-                              {samples.length > 0 && (
-                                <div style={{marginTop:8}}>
-                                  <div className="detail-label" style={{marginBottom:6}}>
-                                    <Icon name="search" size={12} /> Found on this page
-                                  </div>
-                                  {samples.map((s, i) => (
-                                    <div key={i} className="node-snippet" style={{marginBottom:4}}>
-                                      <span className="node-num">#{i+1}</span>
-                                      <code style={{fontSize:16,color:"var(--text2)"}}>{s}</code>
-                                    </div>
-                                  ))}
-                                  {totalCount > 2 && (
-                                    <p className="nodes-more">+{totalCount - 2} more of this type</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                          <div className="hc-item-body">
+                            <div className="hc-item-label">{item}</div>
+                            {state?.status==="fail" && (
+                              <input className="hc-note-input" placeholder="Describe what's wrong…" value={state.note||""} onChange={e=>setHcNote(i,e.target.value)} aria-label={`Notes for: ${item}`}/>
+                            )}
                           </div>
                         </div>
                       );
                     })}
-                    {hiddenCount > 0 && (
-                      <div className="dynamic-summary" style={{justifyContent:"center",marginTop:6}}>
-                        <span style={{color:"var(--text3)",fontSize:16}}>
-                          +{hiddenCount} more pattern types. Fix the ones above first.
-                        </span>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Content analysis tab ── */}
-      {activeTab==="content" && (
-        <div className="content-tab">
-          {contentStatus==="idle" && (
-            <div className="tab-explainer">
-              <div className="tab-explainer-icon"><Icon name="edit_note" size={24} /></div>
-              <div className="tab-explainer-title">Content accessibility analysis</div>
-              <div className="tab-explainer-body">
-                Checks three things axe-core doesn't cover: ambiguous link text that's meaningless to screen reader users navigating by link list, the reading level of your page content (WCAG 3.1.5), and CSS animations running without pause controls (WCAG 2.2.2).
-              </div>
-              <button className="btn-scan" style={{marginTop:14,maxWidth:220}} onClick={runContentAnalysis}>
-                Analyse content
-              </button>
-            </div>
-          )}
-
-          {contentStatus==="running" && (
-            <div className="empty-state">
-              <span className="spinner" style={{width:20,height:20,margin:"0 auto 8px"}}/>
-              <p>Analysing content…</p>
-            </div>
-          )}
-
-          {contentStatus==="error" && (
-            <div className="empty-state empty-state--error">
-              <p>Could not analyse this page.</p>
-            </div>
-          )}
-
-          {contentStatus==="done" && contentAnalysis && (
-            <div className="content-results">
-
-              {/* Reading level */}
-              <div className="content-section">
-                <div className="content-section-title"><Icon name="menu_book" size={16} style={{marginRight:6}} />Reading level</div>
-                {contentAnalysis.readingLevel?.grade ? (
-                  <ReadingLevelCard data={contentAnalysis.readingLevel} />
-                ) : (
-                  <p className="content-empty">{contentAnalysis.readingLevel?.message || "Not enough text to analyse."}</p>
+                    <p className="hc-checklist-hint">Tick ✓ for each item that works. Use ✗ and add a note for anything broken.</p>
+                  </div>
                 )}
               </div>
+            </div>
+          )}
 
-              {/* Link text */}
-              <div className="content-section">
-                <div className="content-section-title">
-                  <Icon name="link" size={16} style={{marginRight:6}} /> Link text
-                  <span className="content-section-meta">{contentAnalysis.linkResults?.total} links total</span>
+          {/* ── DYNAMIC TAB ── */}
+          {activeTab === "dynamic" && (
+            <div style={{padding:"14px 18px"}}>
+              {dynamicIssues.length === 0 ? (
+                <div className="tab-explainer">
+                  <div className="tab-explainer-title">Form error detection</div>
+                  <div className="tab-explainer-body">Catches form validation errors that JavaScript adds after submit. Those errors need <code>role="alert"</code> so screen readers hear them.</div>
+                  <div className="tab-step"><span className="tab-step-num">1</span><span>Keep this panel open</span></div>
+                  <div className="tab-step"><span className="tab-step-num">2</span><span>Submit a form with empty or invalid fields</span></div>
+                  <div className="tab-step"><span className="tab-step-num">3</span><span>Issues appear here automatically</span></div>
                 </div>
-                {contentAnalysis.linkResults?.issues?.length === 0 ? (
-                  <p className="content-ok">✓ All link text is descriptive</p>
-                ) : (
-                  <div className="content-issues">
-                    {contentAnalysis.linkResults.issues.map((issue, i) => (
-                      <div key={i} className="content-issue">
-                        <div className="content-issue-head">
-                          <span className={`content-issue-type ${issue.type==="empty"?"content-issue-type--red":"content-issue-type--amber"}`}>
-                            {issue.type === "empty" ? "Empty" : "Ambiguous"}
-                          </span>
-                          <code className="content-issue-text">"{issue.text}"</code>
-                          <button
-                            className="cscan-jump-btn"
-                            onClick={() => chrome.runtime.sendMessage({
-                              type: "SCROLL_TO_ELEMENT",
-                              selector: issue.selector || null,
-                              text: issue.type !== "empty" ? issue.text : null,
-                            })}
-                          ><Icon name="open_in_new" size={12} /> Jump</button>
-                        </div>
-                        <p className="content-issue-msg">{issue.message}</p>
-                      </div>
-                    ))}
+              ) : (
+                <>
+                  <div className="dynamic-summary">
+                    <Icon name="info_outline" size={14}/>
+                    <span><strong>{dynamicIssues.length}</strong> pattern{dynamicIssues.length!==1?"s":""} found. Fix each once to fix all copies.</span>
                   </div>
-                )}
-              </div>
-
-              {/* Motion */}
-              <div className="content-section">
-                <div className="content-section-title"><Icon name="movie_filter" size={16} style={{marginRight:6}} />Animations</div>
-                {contentAnalysis.motionIssues?.length === 0 ? (
-                  <p className="content-ok">✓ No problematic animations detected</p>
-                ) : (
-                  <div className="content-issues">
-                    {contentAnalysis.motionIssues.map((issue, i) => (
-                      <div key={i} className="content-issue">
-                        <div className="content-issue-head">
-                          <span className="content-issue-type content-issue-type--amber">
-                            {issue.type === "infinite" ? "Infinite" : "Long"}
-                          </span>
-                          <code className="content-issue-text">{issue.animName} · {issue.duration}</code>
-                        </div>
-                        <p className="content-issue-msg">{issue.message}</p>
-                      </div>
-                    ))}
+                  <div className="violations">
+                    {(() => {
+                      const groups = {};
+                      dynamicIssues.forEach(i => { const c=i.category||i.description||"Content"; if(!groups[c])groups[c]=[];groups[c].push(i); });
+                      return Object.entries(groups).slice(0,10).map(([cat,items]) => {
+                        const total = items.reduce((s,i)=>s+(i.count||1),0);
+                        return (
+                          <div key={cat} className="violation violation--serious">
+                            <div className="violation-header">
+                              <div className="violation-info">
+                                <div className="violation-title-row"><span className="violation-title">{cat}</span></div>
+                                <div className="violation-meta"><span className="impact-badge" style={{color:IMPACT_COLOURS.serious}}>serious</span><span className="node-count">{total}×</span><span className="wcag-version-badge">Missing ARIA</span></div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
-                )}
-              </div>
-
-              <button className="btn-rerun" onClick={runContentAnalysis}><Icon name="refresh" size={14} style={{marginRight:4}} />Re-analyse</button>
+                </>
+              )}
             </div>
           )}
-        </div>
+
+          {/* ── CONTENT TAB ── */}
+          {activeTab === "content" && (
+            <div style={{padding:"14px 18px"}}>
+              {contentStatus==="idle" && (
+                <div className="tab-explainer">
+                  <div className="tab-explainer-title">Content analysis</div>
+                  <div className="tab-explainer-body">Checks reading level, link text quality, and motion animations on the page.</div>
+                  <button className="btn-scan" style={{maxWidth:200,marginTop:4}} onClick={runContentAnalysis}>Analyse content</button>
+                </div>
+              )}
+              {contentStatus==="running" && (
+                <div className="empty-state">
+                  <div className="spinner" style={{width:18,height:18,border:"2px solid #e8eaef",borderTopColor:"#2563eb",margin:"0 auto 10px"}}/>
+                  <p className="empty-hint">Analysing content…</p>
+                </div>
+              )}
+              {contentStatus==="done" && contentAnalysis && (
+                <ReadingLevelCard data={contentAnalysis.readingLevel} />
+              )}
+            </div>
+          )}
+
+          {/* Export modal */}
+          {showExport && (
+            <ExportModal
+              scanData={{ violations, passes, dynamicIssues, url: pageUrl }}
+              tabOrderStops={tabOrderStops}
+              onClose={() => setShowExport(false)}
+            />
+          )}
+        </>
       )}
     </div>
   );
