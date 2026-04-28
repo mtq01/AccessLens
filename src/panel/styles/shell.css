@@ -1,0 +1,8 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   shell.css — app frame: outer container, header (logo + tabs), main, footer
+   Classes:
+     .app, .main
+     .header, .logo, .logo-svg, .logo-text, .logo-accent
+     .tabs, .tab, .tab--active, .tab-badge
+     .app-footer, .app-footer-meta, .app-footer-btn
+   ──────────────────────────────────────────────────────────────────────────── */

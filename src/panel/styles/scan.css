@@ -1,0 +1,27 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   scan.css — Scan panel + Violations + Content subtab + ExportModal
+   Classes:
+     .scan-panel, .scan-idle, .scan-info-card, .scan-info-title, .scan-info-item, .scan-info-check
+     .summary, .summary-stat, .summary-num, .summary-num--{critical|serious|pass|zero}
+     .summary-label, .summary-actions
+     .history-panel, .history-title, .history-row, .history-status, .history-status--{blocked|atrisk|clear|minor}
+     .history-info, .history-date, .history-stats
+     .subtabs, .subtab, .subtab--active, .subtab-count, .subtab-count--amber
+     .filter-bar, .filter-group, .filter-label, .filter-btn, .filter-btn--{all|critical|serious|moderate|minor}, .filter-btn--active
+     .violations, .violation, .violation--{critical|serious|moderate|minor}, .violation--active
+     .violation-header, .violation-info, .violation-title-row, .violation-title, .violation-meta
+     .impact-badge, .impact-badge--{critical|serious|moderate|minor}
+     .node-count, .wcag-version-badge, .expand-btn
+     .violation-quick-actions, .violation-detail, .violation-link
+     .detail-tabs, .detail-tab, .detail-tab--active, .detail-body, .detail-why, .detail-links, .detail-link, .detail-link-icon, .detail-code, .detail-code--prose
+     .nodes-list, .element-row, .element-row--open, .element-row-header, .element-row-num, .element-row-type, .element-row-actions, .element-row-btn, .element-row-btn--jump
+     .element-row-body, .element-row-section, .element-row-label, .element-row-code, .element-row-text
+     .reading-card, .reading-card--{very-easy|easy|moderate|difficult|very-difficult}
+     .reading-header, .reading-grade, .reading-label, .reading-meta-right, .reading-meta, .reading-body
+     .pass-badge, .pass-badge--pass, .pass-badge--fail
+     .content-flag, .content-tab, .tab-explainer, .tab-explainer-title, .tab-explainer-body
+     .modal-overlay, .modal, .modal--export, .modal-header, .modal-title, .modal-sub, .modal-close
+     .modal-body, .export-sections, .export-row, .export-row--checked, .export-row--disabled
+     .export-checkbox, .export-row-icon, .export-row-text, .export-row-label, .export-row-detail
+     .modal-footer, .modal-counter, .modal-actions, .btn-cancel-modal
+   ──────────────────────────────────────────────────────────────────────────── */

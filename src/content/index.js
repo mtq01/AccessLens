@@ -1018,17 +1018,17 @@ function getReadingLevel() {
   const fkgl = 0.39 * (wordCount / sentences) + 11.8 * (syllables / wordCount) - 15.59;
   const grade = Math.max(1, Math.round(fkgl));
 
-  let label, color, explanation;
-  if (grade <= 6)  { label = 'Very easy';  color = '#16a34a'; explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
-  else if (grade <= 8)  { label = 'Easy';  color = '#65a30d'; explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
-  else if (grade <= 10) { label = 'Moderate'; color = '#d97706'; explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
-  else if (grade <= 12) { label = 'Difficult'; color = '#ea580c'; explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
-  else                  { label = 'Very difficult'; color = '#dc2626'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
+  let label, tier, explanation;
+  if (grade <= 6)       { label = 'Very easy';      tier = 'very-easy';      explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
+  else if (grade <= 8)  { label = 'Easy';           tier = 'easy';           explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
+  else if (grade <= 10) { label = 'Moderate';       tier = 'moderate';       explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
+  else if (grade <= 12) { label = 'Difficult';      tier = 'difficult';      explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
+  else                  { label = 'Very difficult'; tier = 'very-difficult'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
 
   return {
     grade,
     label,
-    color,
+    tier,
     explanation,
     wordCount,
     sentenceCount: sentences,

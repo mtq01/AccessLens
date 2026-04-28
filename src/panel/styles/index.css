@@ -1,0 +1,8 @@
+@import "./normalize.css";
+@import "./base.css";
+@import "./shell.css";
+@import "./onboarding.css";
+@import "./scan.css";
+@import "./tools.css";
+@import "./contrast.css";
+@import "./checklist.css";

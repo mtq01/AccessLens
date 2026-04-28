@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Icon } from "./icons";
+import { Icon } from "../Icon";
 
 const CHECKLIST_STORAGE_KEY = "accesslens_checklist_v1";
 
