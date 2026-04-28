@@ -691,6 +691,10 @@ export default function ScanPanel({ tabId, onOpenChecklist }) {
 
   async function runScan() {
     // Full manual scan started by button click.
+    chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setStatus("scanning");
     setViolations([]);
     setPasses([]);

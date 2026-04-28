@@ -14,8 +14,12 @@ function persistTabId(id) {
 
 // ── Open panel on icon click ──────────────────────────────────────────────────
 chrome.action.onClicked.addListener(function (tab) {
+  var prev = trackedTabId;
   trackedTabId = tab.id;
   persistTabId(tab.id);
+  if (prev != null && prev !== tab.id) {
+    dispatchToTab(prev, { type: "CLEAR_HIGHLIGHT" }, null);
+  }
 
   if (panelWindowId !== null) {
     chrome.windows.update(panelWindowId, { focused: true });
@@ -44,8 +48,12 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
   chrome.windows.get(panelWindowId, function (panelWin) {
     if (chrome.runtime.lastError) return;
     if (activeInfo.windowId !== panelWin.id) {
+      var previousTabId = trackedTabId;
       trackedTabId = activeInfo.tabId;
       persistTabId(activeInfo.tabId);
+      if (previousTabId != null && previousTabId !== activeInfo.tabId) {
+        dispatchToTab(previousTabId, { type: "CLEAR_HIGHLIGHT" }, null);
+      }
       // Notify panel that the tracked tab changed
       chrome.tabs.query({ windowId: panelWin.id }, function (tabs) {
         if (tabs && tabs[0]) {
@@ -62,9 +70,13 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
 // ── Clean up when panel closes ────────────────────────────────────────────────
 chrome.windows.onRemoved.addListener(function (windowId) {
   if (windowId === panelWindowId) {
+    var tabToClear = trackedTabId;
     panelWindowId = null;
     trackedTabId = null;
     persistTabId(null);
+    if (tabToClear != null) {
+      dispatchToTab(tabToClear, { type: "CLEAR_HIGHLIGHT" }, null);
+    }
   }
 });
 

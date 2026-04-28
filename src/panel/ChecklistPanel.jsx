@@ -12,7 +12,7 @@ const C = {
   amber: "var(--amber)",
   green: "var(--green)",
   greenBg: "var(--green-bg)",
-  greenBtn: "var(--green-btn)",
+  greenBtn: "var(--green)",
   purple: "var(--purple)",
   surface2: "var(--bg3)",
 };
@@ -175,12 +175,9 @@ function Chevron({ open }) {
       viewBox="0 0 13 13"
       fill="none"
       aria-hidden="true"
-      style={{
-        color: "var(--text-faint)",
-        transition: "transform .2s",
-        transform: open ? "rotate(180deg)" : "none",
-        flexShrink: 0,
-      }}
+      className={
+        open ? "checklist-chevron checklist-chevron--open" : "checklist-chevron"
+      }
     >
       <path
         d="M2.5 4.5l4 4 4-4"
@@ -191,6 +188,18 @@ function Chevron({ open }) {
       />
     </svg>
   );
+}
+
+function pctClass(pct, total) {
+  if (total === 0) return "checklist-panel__pct--empty";
+  if (pct === 100) return "checklist-panel__pct--done";
+  if (pct > 0) return "checklist-panel__pct--in-progress";
+  return "checklist-panel__pct--empty";
+}
+
+function fillClass(pct) {
+  if (pct === 100) return "checklist-panel__fill--success";
+  return "checklist-panel__fill--in-progress";
 }
 
 export default function ChecklistPanel() {
@@ -212,112 +221,42 @@ export default function ChecklistPanel() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div
-        style={{ padding: "13px 22px", borderBottom: `1px solid ${C.border}` }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            marginBottom: 9,
-          }}
-        >
-          <span style={{ fontSize: "0.875rem", fontWeight: 700, color: C.text }}>
+    <div className="checklist-panel">
+      <div className="checklist-panel__header">
+        <div className="checklist-panel__progress-row">
+          <span className="checklist-panel__count-text">
             {done} of {total} complete
           </span>
-          <span
-            style={{
-              fontSize: "1.375rem",
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-              color: pct === 100 ? C.green : pct > 0 ? C.amber : C.textMuted,
-            }}
-          >
+          <span className={`checklist-panel__pct ${pctClass(pct, total)}`}>
             {pct}%
           </span>
         </div>
-        <div
-          style={{
-            height: 7,
-            background: C.surface2,
-            borderRadius: 7,
-            overflow: "hidden",
-          }}
-        >
+        <div className="checklist-panel__track">
           <div
-            style={{
-              height: "100%",
-              width: `${pct}%`,
-              background: pct === 100 ? C.greenBtn : C.blueBtn,
-              borderRadius: 7,
-              transition: "width .4s cubic-bezier(0.34,1.56,0.64,1)",
-            }}
+            className={`checklist-panel__fill ${fillClass(pct)}`}
+            style={{ width: `${pct}%` }}
           />
         </div>
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "10px 22px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
+      <div className="checklist-panel__list">
         {CHECKLIST_DATA.map(({ id, title, accent, items }) => {
           const secDone = items.filter((i) => checked[i.id]).length;
           const isOpen = openSecs[id];
           return (
-            <div
-              key={id}
-              style={{
-                borderRadius: 11,
-                border: `1.5px solid ${C.border}`,
-                overflow: "hidden",
-                background: "#fff",
-              }}
-            >
+            <div key={id} className="checklist-panel__section">
               <button
+                type="button"
+                className="checklist-panel__section-toggle"
                 onClick={() => setOpenSecs((s) => ({ ...s, [id]: !s[id] }))}
-                style={{
-                  width: "100%",
-                  background: "none",
-                  border: "none",
-                  padding: "13px 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 9,
-                  fontFamily: "var(--font)",
-                }}
               >
                 <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    background: accent,
-                    flexShrink: 0,
-                  }}
+                  className="checklist-panel__section-bar"
+                  style={{ background: accent }}
                   aria-hidden="true"
                 />
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: "0.875rem",
-                    fontWeight: 700,
-                    color: C.text,
-                    textAlign: "left",
-                  }}
-                >
-                  {title}
-                </span>
-                <span
-                  style={{ fontSize: "0.8125rem", color: C.textMuted, fontWeight: 700 }}
-                >
+                <span className="checklist-panel__section-title">{title}</span>
+                <span className="checklist-panel__section-meta">
                   {secDone}/{items.length}
                 </span>
                 <Chevron open={isOpen} />
@@ -330,36 +269,22 @@ export default function ChecklistPanel() {
                   return (
                     <div
                       key={item.id}
-                      style={{
-                        borderTop: `1px solid ${C.border}`,
-                        background: isChecked ? C.greenBg : "#fff",
-                        transition: "background .15s",
-                      }}
+                      className={
+                        isChecked
+                          ? "checklist-panel__item checklist-panel__item--done"
+                          : "checklist-panel__item"
+                      }
                     >
                       <div
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 11,
-                          padding: "12px 14px",
-                          cursor: "pointer",
-                        }}
+                        className="checklist-panel__item-row"
                         onClick={() => toggleItem(item.id)}
                       >
                         <div
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 5,
-                            flexShrink: 0,
-                            marginTop: 1,
-                            border: `2px solid ${isChecked ? C.green : "var(--border-mid)"}`,
-                            background: isChecked ? C.greenBtn : "#fff",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all .15s",
-                          }}
+                          className={
+                            isChecked
+                              ? "checklist-panel__check checklist-panel__check--on"
+                              : "checklist-panel__check"
+                          }
                           role="checkbox"
                           aria-checked={isChecked}
                         >
@@ -381,40 +306,20 @@ export default function ChecklistPanel() {
                             </svg>
                           )}
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div className="checklist-panel__item-body">
                           <div
-                            style={{
-                              fontSize: "0.9375rem",
-                              fontWeight: 500,
-                              color: isChecked ? C.textMuted : C.text,
-                              lineHeight: 1.5,
-                              textDecoration: isChecked
-                                ? "line-through"
-                                : "none",
-                              transition: "all .15s",
-                            }}
+                            className={
+                              isChecked
+                                ? "checklist-panel__item-text checklist-panel__item-text--done"
+                                : "checklist-panel__item-text"
+                            }
                           >
                             {item.text}
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                              marginTop: 4,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: "0.8125rem",
-                                color: C.textMuted,
-                                fontFamily: "var(--mono)",
-                                fontWeight: 600,
-                              }}
-                            >
-                              WCAG {item.wcag}
-                            </span>
+                          <div className="checklist-panel__meta-row">
+                            <span className="checklist-panel__wcag">WCAG {item.wcag}</span>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenGuide((s) => ({
@@ -422,18 +327,7 @@ export default function ChecklistPanel() {
                                   [item.id]: !s[item.id],
                                 }));
                               }}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                fontSize: "0.875rem",
-                                color: C.blue,
-                                fontWeight: 800,
-                                padding: 0,
-                                textDecoration: "underline",
-                                textUnderlineOffset: 2,
-                                fontFamily: "var(--font)",
-                                cursor: "pointer",
-                              }}
+                              className="checklist-panel__guide-link"
                               aria-expanded={guideOpen}
                             >
                               {guideOpen ? "Hide guide ▲" : "How to test ▼"}
@@ -443,42 +337,20 @@ export default function ChecklistPanel() {
                       </div>
 
                       {guideOpen && (
-                        <div
-                          style={{
-                            margin: "0 14px 12px",
-                            background: C.blueBg,
-                            border: `1px solid ${C.blueBorder}`,
-                            borderRadius: 8,
-                            padding: "10px 12px",
-                          }}
-                        >
+                        <div className="checklist-panel__guide">
                           {item.guide.map((step, si) => (
                             <div
                               key={si}
-                              style={{
-                                display: "flex",
-                                gap: 9,
-                                marginTop: si > 0 ? 7 : 0,
-                              }}
+                              className={
+                                si > 0
+                                  ? "checklist-panel__guide-step checklist-panel__guide-step--spaced"
+                                  : "checklist-panel__guide-step"
+                              }
                             >
-                              <span
-                                style={{
-                                  fontSize: "0.875rem",
-                                  fontWeight: 800,
-                                  color: C.blue,
-                                  minWidth: 18,
-                                  marginTop: 1,
-                                }}
-                              >
+                              <span className="checklist-panel__guide-step-num">
                                 {si + 1}
                               </span>
-                              <span
-                                style={{
-                                  fontSize: "0.8125rem",
-                                  color: C.textMid,
-                                  lineHeight: 1.55,
-                                }}
-                              >
+                              <span className="checklist-panel__guide-step-text">
                                 {step}
                               </span>
                             </div>

@@ -1265,6 +1265,24 @@ function normalizeTextContent(text) {
   return (text || "").replace(/\s+/g, " ").trim();
 }
 
+/** Skip decorative spans (chevrons, empty chips) so scans focus on real copy. */
+function shouldSkipContrastScan(el, style, normalizedText) {
+  if (el.closest('[aria-hidden="true"]')) return true;
+  if (el.getAttribute("aria-hidden") === "true") return true;
+  const tag = el.tagName.toLowerCase();
+  if (tag === "span") {
+    if (!normalizedText) {
+      const r = el.getBoundingClientRect();
+      if (Math.max(r.width, r.height) < 22) return true;
+    }
+    const fs = parseFloat(style.fontSize) || 0;
+    if (fs <= 10 && normalizedText.length > 0 && normalizedText.length <= 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function scanContrast() {
   const results = {
     summary: { total: 0, failures: 0, warnings: 0 },
@@ -1280,6 +1298,9 @@ function scanContrast() {
     if (rect.width === 0 || rect.height === 0) return;
     const style = window.getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden") return;
+
+    const normalizedText = normalizeTextContent(el.textContent || "");
+    if (shouldSkipContrastScan(el, style, normalizedText)) return;
 
     const fgStr = style.color;
     const bgStr = getEffectiveBg(el);
@@ -1313,7 +1334,7 @@ function scanContrast() {
     el.setAttribute("data-al-cscan", String(cscanIdx));
     const selector = '[data-al-cscan="' + cscanIdx + '"]';
 
-    const textContent = normalizeTextContent(el.textContent || "");
+    const textContent = normalizedText;
 
     results.groups[type].push({
       ratio: Math.round(ratio * 100) / 100,
