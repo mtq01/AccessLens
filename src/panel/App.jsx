@@ -102,7 +102,7 @@ export default function App() {
     <div className="app">
       {showOnboarding && <OnboardingPanel onDone={completeOnboarding} />}
 
-      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} />
+      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} onFeedback={openFeedback} />
 
       <main className="main" id="main-content">
         {!ready ? (

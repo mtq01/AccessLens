@@ -1,8 +1,89 @@
-/* ──────────────────────────────────────────────────────────────────────────────
-   shell.css — app frame: outer container, header (logo + tabs), main, footer
-   Classes:
-     .app, .main
-     .header, .logo, .logo-svg, .logo-text, .logo-accent
-     .tabs, .tab, .tab--active, .tab-badge
-     .app-footer, .app-footer-meta, .app-footer-btn
-   ──────────────────────────────────────────────────────────────────────────── */
+/* ── Header (logo row) ───────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--brand-green);
+}
+
+.logo-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.logo-accent {
+  color: var(--brand-green);
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: #f3f4f6;
+  border: 0;
+  border-radius: 0.375rem;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.header-btn:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* ── Nav tabs ────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab {
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 0.875rem 0.5rem;
+  font: inherit;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: #111;
+}
+
+.tab--active {
+  color: #111;
+  font-weight: 700;
+  border-bottom-color: var(--brand-green);
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin-left: 0.375rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
