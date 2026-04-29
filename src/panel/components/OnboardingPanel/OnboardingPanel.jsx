@@ -4,7 +4,7 @@ import { Icon } from "../Icon";
 const ONBOARDING_STEPS = [
   { icon: "search",        title: "Scan any page instantly",    body: "Open AccessLens on any website and click Run scan. It checks for problems affecting people who use screen readers or keyboard navigation." },
   { icon: "warning_amber", title: "See what's broken and why",  body: "Issues are sorted by importance. The worst problems come first. Each one has a plain-language explanation and a code fix you can copy." },
-  { icon: "contrast",      title: "Check colour contrast",      body: "The Colours tab checks every text and background combination on the page. Bad contrast is one of the most common and easiest problems to fix." },
+  { icon: "contrast",      title: "Check color contrast",      body: "The Colors tab checks every text and background combination on the page. Bad contrast is one of the most common and easiest problems to fix." },
   { icon: "account_tree",  title: "Test keyboard navigation",   body: "Use the Tools tab to test without a mouse. The tab order map shows every keyboard stop and flags anything confusing." },
   { icon: "upload",        title: "Export a report",            body: "After scanning, use the Export button to get a PDF or CSV you can share with your team or client." },
 ];

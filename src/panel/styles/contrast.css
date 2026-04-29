@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────────────
-   contrast.css — Contrast panel (Page scan / Pick element / Check colours)
+   contrast.css — Contrast panel (Page scan / Pick element / Check colors)
 
    .contrast-panel
    .mode-toggle, .mode-btn, .mode-btn--active
@@ -14,7 +14,7 @@
      .cscan-fail-badge, .cscan-warn-badge, .cscan-total-badge
      .principle-chevron-icon
      .cscan-items, .cscan-item, .cscan-item--fail|warn|pass
-     .cscan-preview-row, .cscan-colour-preview, .cscan-preview-text
+     .cscan-preview-row, .cscan-color-preview, .cscan-preview-text
      .cscan-preview-meta, .cscan-preview-top
      .cscan-ratio, .cscan-ratio--fail|warn|pass
      .cscan-status-pill, .cscan-status-pill--fail|warn|pass
@@ -25,10 +25,10 @@
      .picker-mode, .picker-prompt, .picker-waiting, .crosshair-icon
      .picker-result, .swatch-row, .swatch-item, .swatch, .swatch-label, .swatch-hex
 
-   Check colours mode (manual):
+   Check colors mode (manual):
      .manual-mode, .manual-intro
-     .colour-inputs, .colour-field, .colour-input-row
-     .colour-picker-input, .hex-input, .eyedropper-btn
+     .color-inputs, .color-field, .color-input-row
+     .color-picker-input, .hex-input, .eyedropper-btn
      .preview, .preview-normal, .preview-large
      .ratio-display, .ratio-number, .ratio-number--pass|fail
      .ratio-grid, .ratio-row, .ratio-label, .ratio-req

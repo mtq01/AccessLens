@@ -17,7 +17,9 @@ function saveChecked(checked) {
 
 export default function ChecklistPanel() {
   const [checked, setChecked] = useState(loadChecked);
-  const [collapsed, setCollapsed] = useState({});
+  const [collapsed, setCollapsed] = useState(() =>
+    Object.fromEntries(CHECKLIST.map(cat => [cat.id, true]))
+  );
 
   const totalItems = CHECKLIST.reduce((s, c) => s + c.items.length, 0);
   const totalChecked = Object.values(checked).filter(Boolean).length;

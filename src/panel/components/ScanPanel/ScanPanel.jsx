@@ -146,7 +146,7 @@ export default function ScanPanel({ scanData, runScan, pageUrl, onViolationCount
               "Missing labels on forms and buttons",
               "Images with no description",
               "Headings in the wrong order",
-              "Colour contrast on all text",
+              "Color contrast on all text",
               "Keyboard navigation and focus order",
               "30+ WCAG 2.2 AA rules",
             ].map(t => (

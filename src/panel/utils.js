@@ -29,7 +29,7 @@ export function saveHistory(domain, entry) {
   });
 }
 
-// ── Colour math (used by ContrastPanel) ──────────────────────────────────────
+// ── Color math (used by ContrastPanel) ──────────────────────────────────────
 
 export function parseRgb(str) {
   const m = str?.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);

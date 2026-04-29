@@ -1,7 +1,7 @@
 const TABS = [
   { id: "scan",      label: "Scan" },
   { id: "tools",     label: "Tools" },
-  { id: "contrast",  label: "Colours" },
+  { id: "contrast",  label: "Colors" },
   { id: "checklist", label: "Checklist" },
 ];
 

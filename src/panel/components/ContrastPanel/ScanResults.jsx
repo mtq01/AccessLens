@@ -103,11 +103,11 @@ export default function ScanResults({ results, onRescan, onVerify }) {
             {" "}Automated scanning reads CSS values but cannot see gradients, images, or overlapping elements.
           </p>
           <p>
-            <strong>Results are grouped by colour pair.</strong>
-            {" "}If 50 elements use the same colours, they count as one pair. Fix the pair, fix all 50.
+            <strong>Results are grouped by color pair.</strong>
+            {" "}If 50 elements use the same colors, they count as one pair. Fix the pair, fix all 50.
           </p>
           <p>
-            To confirm any result, click <strong>Check</strong> next to it. The colours open in the eyedropper tab so you can verify visually.
+            To confirm any result, click <strong>Check</strong> next to it. The colors open in the eyedropper tab so you can verify visually.
           </p>
         </section>
       )}
@@ -152,7 +152,7 @@ export default function ScanResults({ results, onRescan, onVerify }) {
                   return (
                     <div key={i} className={`cscan-item cscan-item--${status}`}>
                       <div className="cscan-preview-row">
-                        <div className="cscan-colour-preview" style={{ background: item.bg }}>
+                        <div className="cscan-color-preview" style={{ background: item.bg }}>
                           <span className="cscan-preview-text" style={{ color: item.fg }}>
                             {item.text ? `"${item.text}"` : "Sample text"}
                           </span>
@@ -193,7 +193,7 @@ export default function ScanResults({ results, onRescan, onVerify }) {
                         )}
                         <button
                           className="cscan-verify-btn"
-                          title="Open these colours in Check colours tab to confirm"
+                          title="Open these colors in Check colors tab to confirm"
                           onClick={() => onVerify(item.fg, item.bg)}
                         >
                           <Icon name="colorize" size={12} /> Check

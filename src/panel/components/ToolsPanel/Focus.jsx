@@ -320,7 +320,7 @@ function FocusModePanel({ onStop }) {
               </div>
               {currentStop.hasFocusRing === false && (
                 <p className="focus-status-note">
-                  We didn't detect an outline or shadow change. Check the page visually — some sites use border or background colour for focus, which we can miss.
+                  We didn't detect an outline or shadow change. Check the page visually — some sites use border or background color for focus, which we can miss.
                 </p>
               )}
             </div>

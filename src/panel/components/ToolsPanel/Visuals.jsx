@@ -6,7 +6,7 @@ const HC_ITEMS = [
   "Are buttons still easy to see?",
   "Are icons still visible?",
   "Are form fields still clear?",
-  "Is colour-only information still understandable?",
+  "Is color-only information still understandable?",
 ];
 
 export default function Visuals({ violations = [] }) {

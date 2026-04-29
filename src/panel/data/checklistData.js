@@ -32,7 +32,7 @@ export const CHECKLIST = [
       { id: "vi-1", text: "Zoom to 200% (Cmd/Ctrl +). All content is still readable with no overlap.", wcag: "1.4.4" },
       { id: "vi-2", text: "Zoom to 400%. Content reflows to a single column with no horizontal scrolling needd.", wcag: "1.4.10" },
       { id: "vi-3", text: "All error messages explain the problem in words. Not just a red border.", wcag: "3.3.1" },
-      { id: "vi-4", text: "Instructions don't rely on colour or position alone. Avoid saying 'click the green button.'", wcag: "1.3.3" },
+      { id: "vi-4", text: "Instructions don't rely on color or position alone. Avoid saying 'click the green button.'", wcag: "1.3.3" },
       { id: "vi-5", text: "Animation can be paused or stopped. Test with the Reduce Motion setting on your OS.", wcag: "2.3.3" },
     ],
   },

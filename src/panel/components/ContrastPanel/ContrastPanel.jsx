@@ -58,7 +58,7 @@ function EyedropperBtn({ onPick, label }) {
     <button
       className="eyedropper-btn"
       onClick={pick}
-      title={`Pick ${label} colour from screen`}
+      title={`Pick ${label} color from screen`}
     >
       <Icon name="colorize" size={15} />
     </button>
@@ -125,7 +125,7 @@ export default function ContrastPanel() {
         {[
           { id: "scan",   label: "Page scan" },
           { id: "picker", label: "Pick element" },
-          { id: "manual", label: "Check colours" },
+          { id: "manual", label: "Check colors" },
         ].map(m => (
           <button
             key={m.id}
@@ -143,9 +143,9 @@ export default function ContrastPanel() {
           {scanStatus === "idle" && (
             <div className="tab-explainer">
               <div className="tab-explainer-icon"><Icon name="palette" size={24} /></div>
-              <div className="tab-explainer-title">Check the colours on this page</div>
+              <div className="tab-explainer-title">Check the colors on this page</div>
               <div className="tab-explainer-body">
-                This tool looks at the text and background colours on the page. It tells you if the text is hard to read.
+                This tool looks at the text and background colors on the page. It tells you if the text is hard to read.
               </div>
               <div className="tab-explainer-section-label">What it can do:</div>
               <ul className="tab-explainer-list">
@@ -155,8 +155,8 @@ export default function ContrastPanel() {
               </ul>
               <div className="tab-explainer-section-label">What it can't do:</div>
               <ul className="tab-explainer-list">
-                <li>See colours from images or photos</li>
-                <li>See colours from backgrounds with patterns</li>
+                <li>See colors from images or photos</li>
+                <li>See colors from backgrounds with patterns</li>
                 <li>Always be 100% right (some results need a second look)</li>
               </ul>
               <div className="tab-explainer-steps">
@@ -165,7 +165,7 @@ export default function ContrastPanel() {
                 <div className="tab-step"><span className="tab-step-num">3</span>Click <strong>Find on page</strong> to see where it is, or <strong>Check</strong> with the eyedropper to double-check</div>
               </div>
               <button className="btn-scan" onClick={runContrastScan}>
-                Start the colour check
+                Start the color check
               </button>
             </div>
           )}
@@ -173,7 +173,7 @@ export default function ContrastPanel() {
           {scanStatus === "running" && (
             <div className="empty-state">
               <span className="spinner" />
-              <p>Looking at all the colours…</p>
+              <p>Looking at all the colors…</p>
             </div>
           )}
 
@@ -217,7 +217,7 @@ export default function ContrastPanel() {
               <div className="swatch-row">
                 <div className="swatch-item">
                   <div className="swatch" style={{ background: pickerResult.fg }} />
-                  <span className="swatch-label">Text colour</span>
+                  <span className="swatch-label">Text color</span>
                   <code className="swatch-hex">{pickerResult.fg}</code>
                 </div>
                 <div className="swatch-item">
@@ -235,17 +235,17 @@ export default function ContrastPanel() {
         </div>
       )}
 
-      {/* ── Check colours mode ── */}
+      {/* ── Check colors mode ── */}
       {mode === "manual" && (
         <div className="manual-mode">
           <p className="manual-intro">
-            Type or paste hex colours below, or use the eyedropper to sample any colour on your screen.
+            Type or paste hex colors below, or use the eyedropper to sample any color on your screen.
           </p>
-          <div className="colour-inputs">
-            <div className="colour-field">
-              <label>Text colour</label>
-              <div className="colour-input-row">
-                <input type="color" value={fg} onChange={e => setFg(e.target.value)} className="colour-picker-input" />
+          <div className="color-inputs">
+            <div className="color-field">
+              <label>Text color</label>
+              <div className="color-input-row">
+                <input type="color" value={fg} onChange={e => setFg(e.target.value)} className="color-picker-input" />
                 <input
                   type="text" value={fg}
                   onChange={e => setFg(e.target.value)}
@@ -254,10 +254,10 @@ export default function ContrastPanel() {
                 <EyedropperBtn label="text" onPick={setFg} />
               </div>
             </div>
-            <div className="colour-field">
-              <label>Background colour</label>
-              <div className="colour-input-row">
-                <input type="color" value={bg} onChange={e => setBg(e.target.value)} className="colour-picker-input" />
+            <div className="color-field">
+              <label>Background color</label>
+              <div className="color-input-row">
+                <input type="color" value={bg} onChange={e => setBg(e.target.value)} className="color-picker-input" />
                 <input
                   type="text" value={bg}
                   onChange={e => setBg(e.target.value)}
