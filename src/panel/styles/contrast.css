@@ -39,12 +39,11 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Tab explainer extensions (contrast panel adds to the scan.css base) */
-
+/* ── Tab explainer extensions (.tab-explainer is used in multiple locations, see more in scan.css) */
 .tab-explainer-icon {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: left;
   width: 3rem;
   height: 3rem;
   background: #f0fdf4;

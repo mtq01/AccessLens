@@ -143,26 +143,26 @@ export default function ContrastPanel() {
           {scanStatus === "idle" && (
             <div className="tab-explainer">
               <div className="tab-explainer-icon"><Icon name="palette" size={24} /></div>
-              <div className="tab-explainer-title">Check the colors on this page</div>
+              <h3 className="tab-explainer-title">Check the colors on this page</h3>
               <div className="tab-explainer-body">
                 This tool looks at the text and background colors on the page. It tells you if the text is hard to read.
               </div>
-              <div className="tab-explainer-section-label">What it can do:</div>
+              <h4 className="tab-explainer-section-label">What it can do:</h4>
               <ul className="tab-explainer-list">
                 <li>Find text that is too light to read</li>
                 <li>Group results by type (links, buttons, headings)</li>
                 <li>Show you where each problem is on the page</li>
               </ul>
-              <div className="tab-explainer-section-label">What it can't do:</div>
+              <h4 className="tab-explainer-section-label">What it can't do:</h4>
               <ul className="tab-explainer-list">
                 <li>See colors from images or photos</li>
                 <li>See colors from backgrounds with patterns</li>
                 <li>Always be 100% right (some results need a second look)</li>
               </ul>
               <div className="tab-explainer-steps">
-                <div className="tab-step"><span className="tab-step-num">1</span>Click the button below to start</div>
-                <div className="tab-step"><span className="tab-step-num">2</span>Look at the list of issues we found</div>
-                <div className="tab-step"><span className="tab-step-num">3</span>Click <strong>Find on page</strong> to see where it is, or <strong>Check</strong> with the eyedropper to double-check</div>
+                <div className="tab-step"><span className="tab-step-num">1</span><span>Click the button below to start</span></div>
+                <div className="tab-step"><span className="tab-step-num">2</span><span>Look at the list of issues we found</span></div>
+                <div className="tab-step"><span className="tab-step-num">3</span><span>Click <strong>Find on page</strong> to see where it is, or <strong>Check</strong> with the eyedropper to double-check</span></div>
               </div>
               <button className="btn-scan" onClick={runContrastScan}>
                 Start the color check
