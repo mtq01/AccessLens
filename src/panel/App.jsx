@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "./components/Header/Header";
 import OnboardingPanel from "./components/OnboardingPanel/OnboardingPanel";
-import ScanPanel from "./components/ScanPanel/ScanPanel";
-import ToolsPanel from "./components/ToolsPanel/ToolsPanel";
-import ContrastPanel from "./components/ContrastPanel/ContrastPanel";
-import ChecklistPanel from "./components/ChecklistPanel/ChecklistPanel";
+import MainContent from "./components/MainContent/MainContent";
 import { IMPACT_ORDER } from "./utils";
 
 const INITIAL_SCAN_DATA = {
@@ -104,27 +101,14 @@ export default function App() {
 
       <Header tab={tab} setTab={setTab} scanBadge={scanBadge} onFeedback={openFeedback} />
 
-      <main className="main" id="main-content">
-        {!ready ? (
-          <div className="empty-state">
-            <div className="spinner" aria-label="Connecting…" />
-            <p className="empty-text">Connecting to page…</p>
-          </div>
-        ) : tab === "scan" ? (
-          <ScanPanel
-            scanData={scanData}
-            runScan={runScan}
-            pageUrl={pageUrl}
-            onViolationCount={setScanBadge}
-          />
-        ) : tab === "tools" ? (
-          <ToolsPanel scanData={scanData} />
-        ) : tab === "contrast" ? (
-          <ContrastPanel />
-        ) : (
-          <ChecklistPanel />
-        )}
-      </main>
+      <MainContent
+        ready={ready}
+        tab={tab}
+        scanData={scanData}
+        runScan={runScan}
+        pageUrl={pageUrl}
+        onViolationCount={setScanBadge}
+      />
 
       <footer className="app-footer">
         <span className="app-footer-dot" aria-hidden="true" />
