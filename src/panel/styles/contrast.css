@@ -1,35 +1,756 @@
-/* ──────────────────────────────────────────────────────────────────────────────
-   contrast.css — Contrast panel (Page scan / Pick element / Check colors)
+/* ── Panel wrapper ────────────────────────────────────────────────────── */
 
-   .contrast-panel
-   .mode-toggle, .mode-btn, .mode-btn--active
+.contrast-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
 
-   Page scan results:
-     .scan-mode, .contrast-scan-results
-     .cscan-hero, .cscan-hero-stats
-     .cscan-stat-card, .cscan-stat-card--fail|warn|pass, .cscan-stat-card--active
-     .cscan-stat-num, .cscan-stat-text
-     .cscan-hero-actions, .cscan-howto-toggle, .cscan-explainer
-     .cscan-group, .cscan-group-header, .cscan-group-icon, .cscan-group-label, .cscan-group-counts
-     .cscan-fail-badge, .cscan-warn-badge, .cscan-total-badge
-     .principle-chevron-icon
-     .cscan-items, .cscan-item, .cscan-item--fail|warn|pass
-     .cscan-preview-row, .cscan-color-preview, .cscan-preview-text
-     .cscan-preview-meta, .cscan-preview-top
-     .cscan-ratio, .cscan-ratio--fail|warn|pass
-     .cscan-status-pill, .cscan-status-pill--fail|warn|pass
-     .cscan-hex-row, .cscan-swatch-mini, .cscan-hex, .cscan-hex-on, .cscan-size-note
-     .cscan-actions, .cscan-jump-btn, .cscan-verify-btn
+/* ── Mode toggle (Page scan / Pick element / Check colors) ────────────── */
 
-   Pick element mode:
-     .picker-mode, .picker-prompt, .picker-waiting, .crosshair-icon
-     .picker-result, .swatch-row, .swatch-item, .swatch, .swatch-label, .swatch-hex
+.mode-toggle {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 1.5rem;
+  background: #f8f7fb;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
 
-   Check colors mode (manual):
-     .manual-mode, .manual-intro
-     .color-inputs, .color-field, .color-input-row
-     .color-picker-input, .hex-input, .eyedropper-btn
-     .preview, .preview-normal, .preview-large
-     .ratio-display, .ratio-number, .ratio-number--pass|fail
-     .ratio-grid, .ratio-row, .ratio-label, .ratio-req
-   ──────────────────────────────────────────────────────────────────────────── */
+.mode-btn {
+  flex: 1;
+  padding: 0.375rem 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 0.375rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+
+.mode-btn--active {
+  background: #fff;
+  color: var(--green);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Tab explainer extensions (contrast panel adds to the scan.css base) */
+
+.tab-explainer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: #f0fdf4;
+  border-radius: 0.75rem;
+  color: var(--green);
+}
+
+.tab-explainer-section-label {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: -0.25rem;
+}
+
+.tab-explainer-list {
+  align-self: stretch;
+  padding-left: 1.25rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.tab-explainer-steps {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* Error state variant */
+.empty-state--error .empty-text,
+.empty-state--error p {
+  color: #dc2626;
+}
+
+.btn-scan--danger {
+  background: #dc2626;
+}
+
+.btn-scan--danger:hover {
+  background: #b91c1c;
+}
+
+/* ── Scan mode wrapper ────────────────────────────────────────────────── */
+
+.scan-mode {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE SCAN RESULTS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.contrast-scan-results {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* ── Hero — stat cards + actions ──────────────────────────────────────── */
+
+.cscan-hero {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cscan-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.cscan-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.625rem 0.25rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fff;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cscan-stat-card:hover {
+  background: #f8f7fb;
+}
+
+.cscan-stat-card--active.cscan-stat-card--fail {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.cscan-stat-card--active.cscan-stat-card--warn {
+  border-color: #d97706;
+  background: #fffbeb;
+}
+
+.cscan-stat-card--active.cscan-stat-card--pass {
+  border-color: var(--green);
+  background: #f0fdf4;
+}
+
+.cscan-stat-num {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cscan-stat-card--fail .cscan-stat-num {
+  color: #dc2626;
+}
+
+.cscan-stat-card--warn .cscan-stat-num {
+  color: #d97706;
+}
+
+.cscan-stat-card--pass .cscan-stat-num {
+  color: var(--green);
+}
+
+.cscan-stat-text {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* Actions row */
+.cscan-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 1.5rem 0.625rem;
+}
+
+.cscan-howto-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.cscan-howto-toggle:hover {
+  color: #111;
+}
+
+/* ── Collapsible explainer ────────────────────────────────────────────── */
+
+.cscan-explainer {
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8f7fb;
+  font-size: 0.8125rem;
+  color: #374151;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.cscan-explainer p {
+  margin: 0;
+}
+
+/* ── Result groups ────────────────────────────────────────────────────── */
+
+.cscan-group {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cscan-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 1.5rem;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.cscan-group-header:hover {
+  background: #f8f7fb;
+}
+
+.cscan-group-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: #f3f4f6;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cscan-group-label {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.cscan-group-counts {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cscan-fail-badge,
+.cscan-warn-badge,
+.cscan-total-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+}
+
+.cscan-fail-badge {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.cscan-warn-badge {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.cscan-total-badge {
+  background: #f3f4f6;
+  color: var(--text-muted);
+}
+
+.principle-chevron-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Individual items ─────────────────────────────────────────────────── */
+
+.cscan-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.cscan-item {
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #9ca3af;
+  border-radius: 0.5rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.cscan-item--fail {
+  border-left-color: #dc2626;
+}
+
+.cscan-item--warn {
+  border-left-color: #d97706;
+}
+
+.cscan-item--pass {
+  border-left-color: var(--green);
+}
+
+/* Color preview + metadata row */
+.cscan-preview-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.cscan-color-preview {
+  width: 4.5rem;
+  flex-shrink: 0;
+  min-height: 3.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem;
+}
+
+.cscan-preview-text {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.cscan-preview-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  justify-content: center;
+}
+
+.cscan-preview-top {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.cscan-ratio {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cscan-ratio--fail {
+  color: #dc2626;
+}
+
+.cscan-ratio--warn {
+  color: #d97706;
+}
+
+.cscan-ratio--pass {
+  color: var(--green);
+}
+
+.cscan-status-pill {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+}
+
+.cscan-status-pill--fail {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.cscan-status-pill--warn {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.cscan-status-pill--pass {
+  background: #f0fdf4;
+  color: var(--green);
+}
+
+/* Hex pair row */
+.cscan-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.cscan-swatch-mini {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 0.1875rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.cscan-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: #374151;
+}
+
+.cscan-hex-on {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.cscan-size-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Action buttons */
+.cscan-actions {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0 0.75rem 0.625rem;
+}
+
+.cscan-jump-btn,
+.cscan-verify-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cscan-jump-btn {
+  background: #f0fdf4;
+  color: var(--green);
+}
+
+.cscan-jump-btn:hover {
+  background: #dcfce7;
+}
+
+.cscan-verify-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.cscan-verify-btn:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PICK ELEMENT MODE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.picker-mode {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.picker-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.picker-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.crosshair-icon {
+  color: var(--green);
+  animation: pulse-icon 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.92);
+  }
+}
+
+.btn-cancel {
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* Picker result */
+.picker-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.swatch-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.swatch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.swatch {
+  width: 100%;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.swatch-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.swatch-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  color: #111;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CHECK COLORS MODE (MANUAL)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.manual-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  flex: 1;
+}
+
+.manual-intro {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Color input fields */
+.color-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+.color-field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.color-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.color-picker-input {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0.125rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.hex-input {
+  flex: 1;
+  padding: 0.375rem 0.625rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  color: #111;
+  background: #fff;
+}
+
+.hex-input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.eyedropper-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  color: #6b7280;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.eyedropper-btn:hover {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* Live preview box */
+.preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  min-height: 5rem;
+}
+
+.preview-normal {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.preview-large {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Ratio result display */
+.ratio-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.ratio-number {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ratio-number--pass {
+  color: var(--green);
+}
+
+.ratio-number--fail {
+  color: #dc2626;
+}
+
+.ratio-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ratio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.625rem;
+  background: #f8f7fb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.ratio-label {
+  flex: 1;
+  color: #374151;
+  font-weight: 500;
+}
+
+.ratio-req {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
