@@ -3,8 +3,43 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --green: #166534;
-  --text-muted: #33323f;
+  /* ── Brand ─────────────────────────────────────────────────────────────── */
+  --green:              #166534;
+  --green-hover:        #14532d;
+  --green-bg:           #f0fdf4;
+  --green-bg-hover:     #dcfce7;
+  --green-600:          #16a34a;  /* reading: very easy */
+  --shadow-btn-green:   0 4px 14px rgba(22, 101, 52, 0.35);
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --text:               #111;
+  --text-muted:         #3c3a54;
+
+  /* ── Surface ────────────────────────────────────────────────────────────── */
+  --surface:            #fff;
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border:             #e5e7eb;
+  --border-strong:      #d1d5db;
+  --border-tinted:      #e4e2ef;
+
+  /* ── Severity: Critical ─────────────────────────────────────────────────── */
+  --critical:           #dc2626;
+  --critical-bg:        #fef2f2;
+  --critical-bg-strong: #fee2e2;
+
+  /* ── Severity: Serious ──────────────────────────────────────────────────── */
+  --serious:            #d97706;
+  --serious-bg:         #fffbeb;
+  --serious-border:     #fcd34d;
+  --serious-text:       #92400e;
+
+  /* ── Severity: Moderate ─────────────────────────────────────────────────── */
+  --moderate:           #2563eb;
+  --moderate-bg:        #eff6ff;
+
+  /* ── Reading level extras ───────────────────────────────────────────────── */
+  --orange-600:         #ea580c;  /* reading: difficult */
 }
 
 html,
@@ -20,8 +55,8 @@ body {
 
 body {
   font-family: "Nunito", system-ui, -apple-system, sans-serif;
-  color: #111;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

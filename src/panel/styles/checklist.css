@@ -26,14 +26,14 @@
 }
 
 .checklist-progress-text {
-  font-size: 0.875rem;
+
   font-weight: 600;
   color: #111;
 }
 
 /* Percentage badge — color shifts by tier */
 .checklist-pct {
-  font-size: 0.8125rem;
+
   font-weight: 700;
   padding: 0.125rem 0.5rem;
   border-radius: 999px;
@@ -80,7 +80,7 @@ progress.checklist-bar-track::-moz-progress-bar {
 .checklist-bar-track--low::-moz-progress-bar      { background: #dc2626; }
 
 .checklist-note {
-  font-size: 0.8125rem;
+
   color: var(--text-muted);
   line-height: 1.5;
   margin: 0;
@@ -225,7 +225,7 @@ progress.checklist-bar-track::-moz-progress-bar {
 }
 
 .checklist-item-text {
-  font-size: 0.875rem;
+
   color: #111;
   line-height: 1.5;
 }
@@ -256,7 +256,7 @@ progress.checklist-bar-track::-moz-progress-bar {
 .checklist-reset {
   align-self: flex-start;
   margin: 0.875rem 1.5rem;
-  font-size: 0.8125rem;
+
   font-weight: 600;
   color: var(--text-muted);
   text-decoration: underline;
