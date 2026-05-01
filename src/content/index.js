@@ -307,7 +307,7 @@ async function showAllTabOrder() {
     // Skip elements with zero size (hidden)
     if (rect.width === 0 && rect.height === 0) return;
 
-    // Colour by issue type — only two reliable states
+    // Color by issue type — only two reliable states
     let color = '#4f8ef7'; // blue — normal stop
     if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red — definite bug
     else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber — breaks tab order
@@ -498,7 +498,7 @@ function startFocusMode() {
     const hasBoxShadow = boxShadow && boxShadow !== 'none';
     const hasFocusRing = hasOutline || hasBoxShadow;
 
-    // Colour overlay reflects detection result for the panel feedback,
+    // Color overlay reflects detection result for the panel feedback,
     // but we always draw the OUR overlay so the user can see their position.
     const overlayColor = hasFocusRing ? '#16a34a' : '#d97706';
 
@@ -1018,17 +1018,17 @@ function getReadingLevel() {
   const fkgl = 0.39 * (wordCount / sentences) + 11.8 * (syllables / wordCount) - 15.59;
   const grade = Math.max(1, Math.round(fkgl));
 
-  let label, color, explanation;
-  if (grade <= 6)  { label = 'Very easy';  color = '#16a34a'; explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
-  else if (grade <= 8)  { label = 'Easy';  color = '#65a30d'; explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
-  else if (grade <= 10) { label = 'Moderate'; color = '#d97706'; explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
-  else if (grade <= 12) { label = 'Difficult'; color = '#ea580c'; explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
-  else                  { label = 'Very difficult'; color = '#dc2626'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
+  let label, tier, explanation;
+  if (grade <= 6)       { label = 'Very easy';      tier = 'very-easy';      explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
+  else if (grade <= 8)  { label = 'Easy';           tier = 'easy';           explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
+  else if (grade <= 10) { label = 'Moderate';       tier = 'moderate';       explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
+  else if (grade <= 12) { label = 'Difficult';      tier = 'difficult';      explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
+  else                  { label = 'Very difficult'; tier = 'very-difficult'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
 
   return {
     grade,
     label,
-    color,
+    tier,
     explanation,
     wordCount,
     sentenceCount: sentences,
@@ -1140,7 +1140,7 @@ function isTransparent(colorStr) {
   return rgba.a === 0;
 }
 
-// Blend a foreground colour with alpha over a background
+// Blend a foreground color with alpha over a background
 function blendWithBg(fg, bg) {
   if (fg.a === 1) return fg;
   const a = fg.a;
@@ -1153,7 +1153,7 @@ function blendWithBg(fg, bg) {
 }
 
 function getEffectiveBg(el) {
-  // Collect all background colours up the tree, then blend them
+  // Collect all background colors up the tree, then blend them
   const layers = [];
   let node = el.parentElement;
 
@@ -1230,7 +1230,7 @@ function scanContrast() {
     // Skip if fg === bg (invisible text rendered on matching bg)
     if (fgRgb[0]===bgRgb[0] && fgRgb[1]===bgRgb[1] && fgRgb[2]===bgRgb[2]) return;
 
-    // Dedup by hex colours — same colour pair only reported once
+    // Dedup by hex colors — same color pair only reported once
     const fgHex = rgbToHex(fgRgb);
     const bgHex = rgbToHex(bgRgb);
     const key = fgHex + '|' + bgHex;

@@ -48,10 +48,10 @@ const context = {
     ]
   },
 
-  // ── Colour contrast ───────────────────────────────────────────────────────
+  // ── Color contrast ───────────────────────────────────────────────────────
 
   "color-contrast": {
-    why: "Low contrast text is hard to read for users with low vision, colour blindness, or anyone in bright sunlight. WCAG AA requires 4.5:1 for normal text and 3:1 for large text (18px+ bold or 24px+). Roughly 300 million people have colour blindness worldwide.",
+    why: "Low contrast text is hard to read for users with low vision, color blindness, or anyone in bright sunlight. WCAG AA requires 4.5:1 for normal text and 3:1 for large text (18px+ bold or 24px+). Roughly 300 million people have color blindness worldwide.",
     fix: `/* Before: fails AA (2.8:1 ratio) */
 color: #999999;
 background: #ffffff;
@@ -61,18 +61,18 @@ color: #767676;
 background: #ffffff;
 
 /* Tip: use the Contrast tab in this extension
-   to check any colour combination instantly */`,
+   to check any color combination instantly */`,
     links: [
       { label: "WCAG 1.4.3 — Contrast (Minimum)", url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum" },
       { label: "WebAIM contrast checker", url: "https://webaim.org/resources/contrastchecker/" },
-      { label: "Who can use — colour contrast simulator", url: "https://www.whocanuse.com/" },
+      { label: "Who can use — color contrast simulator", url: "https://www.whocanuse.com/" },
     ]
   },
 
   "color-contrast-enhanced": {
     why: "WCAG AAA requires 7:1 contrast for normal text and 4.5:1 for large text. While not legally required in most contexts, it significantly improves readability for users with moderate low vision who don't use assistive technology.",
     fix: `/* AAA requires 7:1 for normal text */
-/* Use the Contrast tab to find a passing colour */`,
+/* Use the Contrast tab to find a passing color */`,
     links: [
       { label: "WCAG 1.4.6 — Contrast (Enhanced)", url: "https://www.w3.org/WAI/WCAG21/Understanding/contrast-enhanced" },
     ]
