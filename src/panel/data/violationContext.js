@@ -9,6 +9,7 @@ const context = {
   // ── Images & media ────────────────────────────────────────────────────────
 
   "image-alt": {
+    label: "Images missing alt text",
     why: "Screen reader users hear alt text instead of seeing the image. Without it, they either hear the filename ('img_2847.jpg') or nothing at all — both are useless. Blind users miss context that sighted users get instantly.",
     fix: `<!-- Before: missing alt -->
 <img src="hero.jpg">
@@ -25,6 +26,7 @@ const context = {
   },
 
   "image-redundant-alt": {
+    label: "Images with redundant alt text",
     why: "When an image's alt text repeats the text right next to it, screen reader users hear the same thing twice. It's the equivalent of a sighted person reading the same sentence twice in a row.",
     fix: `<!-- Before: redundant -->
 <img src="icon.png" alt="Download PDF"> Download PDF
@@ -37,6 +39,7 @@ const context = {
   },
 
   "input-image-alt": {
+    label: "Image buttons missing alt text",
     why: "An <input type='image'> acts as a submit button. Without alt text, screen reader users don't know what submitting the form will do.",
     fix: `<!-- Before -->
 <input type="image" src="submit-btn.png">
@@ -51,6 +54,7 @@ const context = {
   // ── Color contrast ───────────────────────────────────────────────────────
 
   "color-contrast": {
+    label: "Text with low color contrast",
     why: "Low contrast text is hard to read for users with low vision, color blindness, or anyone in bright sunlight. WCAG AA requires 4.5:1 for normal text and 3:1 for large text (18px+ bold or 24px+). Roughly 300 million people have color blindness worldwide.",
     fix: `/* Before: fails AA (2.8:1 ratio) */
 color: #999999;
@@ -70,6 +74,7 @@ background: #ffffff;
   },
 
   "color-contrast-enhanced": {
+    label: "Text doesn't meet enhanced contrast",
     why: "WCAG AAA requires 7:1 contrast for normal text and 4.5:1 for large text. While not legally required in most contexts, it significantly improves readability for users with moderate low vision who don't use assistive technology.",
     fix: `/* AAA requires 7:1 for normal text */
 /* Use the Contrast tab to find a passing color */`,
@@ -79,6 +84,7 @@ background: #ffffff;
   },
 
   "non-text-contrast": {
+    label: "UI elements with low contrast",
     why: "UI components like button borders, input outlines, focus rings, and icons must have 3:1 contrast against their background. Users with low vision need to be able to distinguish interactive elements from the page.",
     fix: `/* Before: light grey border barely visible */
 border: 1px solid #cccccc; /* 1.6:1 — fails */
@@ -96,6 +102,7 @@ color: #767676; /* ensure 3:1 against background */`,
   // ── Forms ────────────────────────────────────────────────────────────────
 
   "label": {
+    label: "Form inputs without labels",
     why: "When a form input has no label, screen reader users hear 'edit text' with no context about what to type. Sighted users use placeholder text as a hint, but it disappears on input and has poor contrast — it's not a substitute for a label.",
     fix: `<!-- Before: no label -->
 <input type="email" placeholder="Email address">
@@ -113,6 +120,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "select-name": {
+    label: "Dropdowns without labels",
     why: "A <select> dropdown without a label gives screen reader users no context about what they're choosing. They hear the options but not the question.",
     fix: `<!-- Before -->
 <select>
@@ -130,6 +138,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "autocomplete-valid": {
+    label: "Invalid autocomplete values",
     why: "The autocomplete attribute tells browsers and password managers what a field is for. Users with cognitive disabilities benefit enormously from autofill — it reduces the memory and typing burden. Using wrong values breaks this.",
     fix: `<!-- Before: wrong value -->
 <input type="text" autocomplete="username123">
@@ -147,6 +156,7 @@ color: #767676; /* ensure 3:1 against background */`,
   // ── Buttons & links ───────────────────────────────────────────────────────
 
   "button-name": {
+    label: "Buttons without a name",
     why: "A button without a text label is invisible to screen reader users. Icon-only buttons are common offenders — a trash icon with no label is announced as 'button' with no indication of what it does.",
     fix: `<!-- Before: icon only, no name -->
 <button><svg>...</svg></button>
@@ -168,6 +178,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "link-name": {
+    label: "Links without a readable name",
     why: "Screen reader users often navigate by tabbing through links or pulling up a list of all links on the page. 'Click here', 'Read more', and 'Learn more' are meaningless out of context. Each link should describe its destination.",
     fix: `<!-- Before: meaningless out of context -->
 <a href="/report.pdf">Click here</a>
@@ -187,6 +198,7 @@ color: #767676; /* ensure 3:1 against background */`,
   // ── Structure & semantics ─────────────────────────────────────────────────
 
   "heading-order": {
+    label: "Headings in the wrong order",
     why: "Screen reader users navigate pages by jumping between headings — it's their equivalent of skimming. Skipping levels (h1 → h3) or using headings for visual styling breaks this navigation. The heading hierarchy should reflect the document outline.",
     fix: `<!-- Before: skips h2, jumps from h1 to h3 -->
 <h1>Page title</h1>
@@ -206,6 +218,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "landmark-one-main": {
+    label: "Page missing a main landmark",
     why: "The <main> element is how screen reader users jump directly to the page content, skipping navigation. Without it, they have to Tab through every nav link on every page load — like forcing sighted users to scroll past the header on every visit.",
     fix: `<!-- Before: no landmark structure -->
 <div id="nav">...</div>
@@ -226,6 +239,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "region": {
+    label: "Content outside landmark regions",
     why: "Landmark regions (main, nav, header, footer, aside) act as a page map for screen reader users. Content outside any landmark is in a 'dead zone' that's hard to navigate to and may be skipped entirely.",
     fix: `<!-- Before: content with no landmark -->
 <div class="sidebar">Related articles...</div>
@@ -240,6 +254,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "bypass": {
+    label: "No skip navigation link",
     why: "Keyboard users must Tab through every navigation link on every page load unless a skip link exists. On a site with 20 nav items, that's 20 extra Tab presses before reaching the content — every single page.",
     fix: `<!-- Add as the very first element in <body> -->
 <a href="#main-content" class="skip-link">
@@ -269,6 +284,7 @@ color: #767676; /* ensure 3:1 against background */`,
   // ── ARIA ──────────────────────────────────────────────────────────────────
 
   "aria-allowed-attr": {
+    label: "Invalid ARIA attributes used",
     why: "Using an ARIA attribute on an element that doesn't support it creates conflicting signals for assistive technology. Screen readers may announce incorrect roles or ignore the element entirely.",
     fix: `<!-- Before: aria-checked is not valid on a <div> -->
 <div aria-checked="true">Option A</div>
@@ -286,6 +302,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "aria-hidden-focus": {
+    label: "Focusable elements hidden from screen readers",
     why: "aria-hidden='true' hides an element from screen readers, but keyboard focus can still land on it. This creates ghost focus stops where the screen reader announces nothing — deeply confusing for keyboard users.",
     fix: `<!-- Before: hidden from AT but still focusable -->
 <div aria-hidden="true">
@@ -307,6 +324,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "aria-required-attr": {
+    label: "ARIA roles missing required attributes",
     why: "Some ARIA roles require specific attributes to work correctly. A slider without aria-valuenow, for example, gives screen reader users no information about the current value.",
     fix: `<!-- Before: role="slider" missing required attributes -->
 <div role="slider">Volume</div>
@@ -327,6 +345,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "aria-roles": {
+    label: "Invalid ARIA roles",
     why: "An invalid or misspelled ARIA role is ignored by assistive technology — the element falls back to its native semantics (or none). A custom widget that relies on a role that doesn't exist simply won't work for screen reader users.",
     fix: `<!-- Before: misspelled role -->
 <div role="buttn">Submit</div>
@@ -342,6 +361,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "aria-valid-attr-value": {
+    label: "ARIA attributes with invalid values",
     why: "An ARIA attribute with an invalid value (like aria-expanded='yes' instead of 'true') is treated as if the attribute doesn't exist. The component's state won't be communicated to screen reader users.",
     fix: `<!-- Before: invalid boolean value -->
 <button aria-expanded="yes">Menu</button>
@@ -361,6 +381,7 @@ color: #767676; /* ensure 3:1 against background */`,
   // ── Keyboard & focus ──────────────────────────────────────────────────────
 
   "scrollable-region-focusable": {
+    label: "Scrollable area not keyboard accessible",
     why: "If a scrollable area can't receive keyboard focus, keyboard-only users have no way to scroll it. They're locked out of the content inside.",
     fix: `<!-- Before: scrollable but not focusable -->
 <div style="overflow: auto; height: 200px">
@@ -382,6 +403,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "tabindex": {
+    label: "Positive tabindex values used",
     why: "Positive tabindex values (tabindex='2', tabindex='5') create a custom tab order that overrides the natural DOM order. This almost always creates a confusing, unpredictable tab sequence. Use tabindex='0' to add elements to the natural tab order, or tabindex='-1' to make them programmatically focusable only.",
     fix: `<!-- Before: positive tabindex breaks natural order -->
 <button tabindex="3">First visually</button>
@@ -405,6 +427,7 @@ color: #767676; /* ensure 3:1 against background */`,
   },
 
   "focus-trap": {
+    label: "Focus not trapped in modal",
     why: "When a modal or dialog opens, keyboard focus must be trapped inside it. If users can Tab out of the modal into the page behind it, they lose context and can interact with content that should be blocked.",
     fix: `// In React: use a focus trap library
 // npm install focus-trap-react
@@ -431,6 +454,7 @@ function Modal({ isOpen, onClose }) {
   // ── Page & document ───────────────────────────────────────────────────────
 
   "document-title": {
+    label: "Page missing a title",
     why: "The page title is the first thing screen reader users hear when a page loads. In a browser with many tabs, it's how users identify the right tab. Titles like 'Untitled' or the same title on every page are useless.",
     fix: `<!-- Before: missing or generic -->
 <title>Page</title>
@@ -450,6 +474,7 @@ import { Helmet } from 'react-helmet';
   },
 
   "html-has-lang": {
+    label: "Page is missing a language",
     why: "The lang attribute tells screen readers which language to use for pronunciation. Without it, a French screen reader trying to read English content will mispronounce every word — making the page unintelligible.",
     fix: `<!-- Before: no language declared -->
 <html>
@@ -465,6 +490,7 @@ import { Helmet } from 'react-helmet';
   },
 
   "html-lang-valid": {
+    label: "Page has an invalid language code",
     why: "An invalid language code (like lang='english' or lang='en-us' with wrong casing) may not be recognised by screen readers, causing the same mispronunciation problem as having no lang attribute at all.",
     fix: `<!-- Before: invalid lang value -->
 <html lang="english">
@@ -484,6 +510,7 @@ import { Helmet } from 'react-helmet';
   // ── Lists & tables ────────────────────────────────────────────────────────
 
   "list": {
+    label: "Invalid list structure",
     why: "Screen readers announce list semantics ('list, 5 items'). This tells users they're in a structured group and lets them navigate item by item. Broken list markup loses this context — users just hear a stream of text with no structure.",
     fix: `<!-- Before: invalid list structure -->
 <ul>
@@ -502,6 +529,7 @@ import { Helmet } from 'react-helmet';
   },
 
   "td-headers-attr": {
+    label: "Table cells not linked to headers",
     why: "Complex tables with merged cells use headers attributes to link data cells to their headers. Without this, screen reader users lose track of which column and row header applies to each data cell.",
     fix: `<!-- Before: no header association -->
 <table>
@@ -529,6 +557,7 @@ import { Helmet } from 'react-helmet';
   // ── IDs ───────────────────────────────────────────────────────────────────
 
   "duplicate-id": {
+    label: "Duplicate element IDs",
     why: "IDs must be unique on a page. Duplicate IDs break aria-labelledby, aria-describedby, htmlFor, and anchor links — any feature that references an element by ID. The browser picks one arbitrarily, usually the wrong one.",
     fix: `<!-- Before: duplicate IDs -->
 <label for="email">Email</label>
@@ -553,6 +582,7 @@ const id = useId();
   },
 
   "duplicate-id-aria": {
+    label: "Duplicate IDs referenced by ARIA",
     why: "When an aria-labelledby or aria-describedby references a duplicate ID, the association is broken. The screen reader either picks the wrong element or announces nothing — directly breaking accessibility for that component.",
     fix: `<!-- Before: aria-labelledby references a non-unique ID -->
 <div id="title">Choose a date</div>
@@ -571,6 +601,7 @@ const id = useId();
   // ── Target size (WCAG 2.2) ────────────────────────────────────────────────
 
   "target-size": {
+    label: "Tap targets too small",
     why: "Small touch targets are impossible to tap accurately for users with motor impairments, tremors, or large fingers. WCAG 2.2 requires a minimum 24×24px target — anything smaller and users will routinely mis-tap, triggering unintended actions.",
     fix: `/* Before: tiny icon button */
 .icon-btn { width: 16px; height: 16px; }
@@ -601,6 +632,7 @@ const id = useId();
   // ── Meta & viewport ───────────────────────────────────────────────────────
 
   "meta-viewport": {
+    label: "Page blocks user zoom",
     why: "Setting user-scalable=no or maximum-scale=1 prevents users from zooming the page. Many users with low vision rely on browser zoom as their primary accessibility tool. Blocking it is a direct WCAG violation.",
     fix: `<!-- Before: blocks user zoom -->
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
