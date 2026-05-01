@@ -6,13 +6,25 @@ export default function Violations({ violations, passCount }) {
   const [impactFilter, setImpactFilter] = useState("All");
   const [expanded, setExpanded] = useState({});
   const [activeDetailTab, setActiveDetailTab] = useState({});
+  const [activeElementIdx, setActiveElementIdx] = useState({});
   const [openElementRows, setOpenElementRows] = useState({});
 
   const filteredViolations = violations.filter(v =>
     impactFilter === "All" || v.impact === impactFilter
   );
 
-  function toggleExpanded(id) { setExpanded(p => ({ ...p, [id]: !p[id] })); }
+  function toggleExpanded(id, nodes) {
+    setExpanded(p => {
+      const opening = !p[id];
+      if (opening) {
+        const sel = nodes?.[0]?.target?.[0];
+        if (sel) chrome.runtime.sendMessage({ type: "SCROLL_TO_ELEMENT", selector: sel });
+      } else {
+        chrome.runtime.sendMessage({ type: "CLEAR_HIGHLIGHT" });
+      }
+      return { ...p, [id]: opening };
+    });
+  }
 
   return (
     <div>
@@ -43,6 +55,7 @@ export default function Violations({ violations, passCount }) {
         {filteredViolations.map(v => {
           const isOpen = expanded[v.id];
           const detailTab = activeDetailTab[v.id] || "why";
+          const activeEl = activeElementIdx[v.id] ?? 0;
           const ctx = getViolationContext(v.id);
           const wcagRef = v.tags?.find(t => t.startsWith("wcag") && /\d{3}/.test(t));
           const wcagLabel = wcagRef ? "WCAG "+wcagRef.replace("wcag","").replace(/(\d)(\d{2})$/,"$1.$2") : "";
@@ -50,43 +63,66 @@ export default function Violations({ violations, passCount }) {
 
           return (
             <div key={v.id} className={`violation violation--${impact} ${isOpen?"violation--active":""}`}>
-              <div className="violation-header" onClick={() => toggleExpanded(v.id)}>
+              <div className="violation-header" onClick={() => toggleExpanded(v.id, v.nodes)}>
                 <div className="violation-info">
                   <div className="violation-title-row">
-                    <span className="violation-title">{v.description}</span>
+                    <span className="violation-title">{ctx?.label || v.help}</span>
                   </div>
                   <div className="violation-meta">
                     <span className={`impact-badge impact-badge--${impact}`}>{impact}</span>
-                    <span className="node-count">{v.nodes.length}×</span>
-                    {wcagLabel && <span className="wcag-version-badge">{wcagLabel}</span>}
+                    <span className="node-count">· {v.nodes.length} {v.nodes.length === 1 ? "element" : "elements"}</span>
                   </div>
                 </div>
                 <button
                   className="expand-btn"
-                  onClick={e => { e.stopPropagation(); toggleExpanded(v.id); }}
+                  onClick={e => { e.stopPropagation(); toggleExpanded(v.id, v.nodes); }}
                   aria-expanded={isOpen}
+                  aria-label={isOpen ? "Collapse" : "Expand"}
                 >
-                  {isOpen ? "Close" : "View"}
-                  <Icon name={isOpen?"expand_less":"expand_more"} size={14} />
+                  <Icon name={isOpen ? "expand_less" : "expand_more"} size={18} />
                 </button>
               </div>
 
-              {!isOpen && (
-                <div className="violation-quick-actions">
-                  <button className="tool-btn" onClick={e=>{e.stopPropagation();setExpanded(p=>({...p,[v.id]:true}));setActiveDetailTab(p=>({...p,[v.id]:"why"}));}}>
-                    Why it matters
-                  </button>
-                  <button className="tool-btn" onClick={e=>{e.stopPropagation();setExpanded(p=>({...p,[v.id]:true}));setActiveDetailTab(p=>({...p,[v.id]:"fix"}));}}>
-                    How to fix
-                  </button>
-                  <button className="tool-btn" onClick={e=>{e.stopPropagation();const sel=v.nodes?.[0]?.target?.[0];if(sel)chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT",selector:sel});}}>
-                    Jump ↗
-                  </button>
-                </div>
-              )}
 
               {isOpen && (
                 <div className="violation-detail">
+                  <div className="element-nav">
+                    <button
+                      className="element-nav__btn"
+                      disabled={activeEl === 0}
+                      onClick={e => {
+                        e.stopPropagation();
+                        const idx = activeEl - 1;
+                        setActiveElementIdx(p => ({...p, [v.id]: idx}));
+                        const sel = v.nodes[idx]?.target?.[0];
+                        if (sel) chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT",selector:sel});
+                      }}
+                    >←</button>
+                    <button
+                      className="element-nav__label"
+                      onClick={e => {
+                        e.stopPropagation();
+                        const sel = v.nodes[activeEl]?.target?.[0];
+                        if (sel) chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT", selector:sel});
+                      }}
+                    >Element {activeEl + 1} of {v.nodes.length}</button>
+                    <button
+                      className="element-nav__btn"
+                      disabled={activeEl === v.nodes.length - 1}
+                      onClick={e => {
+                        e.stopPropagation();
+                        const idx = activeEl + 1;
+                        setActiveElementIdx(p => ({...p, [v.id]: idx}));
+                        const sel = v.nodes[idx]?.target?.[0];
+                        if (sel) chrome.runtime.sendMessage({type:"SCROLL_TO_ELEMENT",selector:sel});
+                      }}
+                    >→</button>
+                    <button
+                      className="element-nav__btn element-nav__btn--clear"
+                      aria-label="Clear highlight"
+                      onClick={e => { e.stopPropagation(); chrome.runtime.sendMessage({type:"CLEAR_HIGHLIGHT"}); }}
+                    >✕</button>
+                  </div>
                   <div className="detail-tabs">
                     {[{id:"why",label:"Why it matters"},{id:"fix",label:"How to fix"},{id:"elements",label:`Elements (${v.nodes.length})`}].map(t => (
                       <button

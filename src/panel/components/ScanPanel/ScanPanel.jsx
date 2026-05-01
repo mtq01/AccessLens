@@ -136,25 +136,27 @@ export default function ScanPanel({ scanData, runScan, pageUrl, onViolationCount
           a card listing what AccessLens checks for.                      */}
       {status === "idle" && (
         <div className="scan-idle">
-          <button className="btn-scan" onClick={runScan}>
-            <Icon name="search" size={16} />
-            Run scan
-          </button>
-          <div className="scan-info-card">
-            <div className="scan-info-title">What we check</div>
-            {[
-              "Missing labels on forms and buttons",
-              "Images with no description",
-              "Headings in the wrong order",
-              "Color contrast on all text",
-              "Keyboard navigation and focus order",
-              "30+ WCAG 2.2 AA rules",
-            ].map(t => (
-              <div key={t} className="scan-info-item">
-                <span className="scan-info-check">✓</span>{t}
-              </div>
-            ))}
+          <div className="idle-explainer">
+            <div className="idle-explainer__plus" aria-hidden="true">+</div>
+            <div className="idle-explainer__title">Ready to check this page</div>
+            <p className="idle-explainer__body">
+              Click <strong>Run scan</strong>. We will look for things that make the page hard to use for some people.
+            </p>
+            <div className="idle-explainer__checklist">
+              <div className="idle-explainer__checklist-title">What we check:</div>
+              <ul className="idle-explainer__list">
+                <li>Missing labels on buttons and forms</li>
+                <li>Pictures with no description</li>
+                <li>Links that say "click here"</li>
+                <li>Headings in the wrong order</li>
+                <li>Many other rules from WCAG</li>
+              </ul>
+            </div>
+            <p className="idle-explainer__footer">
+              After scanning, use <strong>Focus</strong> to test the keyboard, <strong>Zoom</strong> to test 400% size, or <strong>HC</strong> for high contrast.
+            </p>
           </div>
+          <button className="btn-scan-cta" onClick={runScan}>Run new scan</button>
         </div>
       )}
 

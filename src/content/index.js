@@ -900,23 +900,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
-        const orig = { outline: el.style.outline, outlineOffset: el.style.outlineOffset, transition: el.style.transition };
-        el.style.transition = 'outline 0.15s ease';
-        el.style.outline = '3px solid #4f8ef7';
-        el.style.outlineOffset = '4px';
-        let count = 0;
-        const pulse = setInterval(() => {
-          count++;
-          el.style.outline = count % 2 === 0 ? '3px solid #4f8ef7' : '3px solid #ef9f27';
-          if (count >= 4) {
-            clearInterval(pulse);
-            setTimeout(() => {
-              el.style.outline = orig.outline;
-              el.style.outlineOffset = orig.outlineOffset;
-              el.style.transition = orig.transition;
-            }, 500);
-          }
-        }, 300);
+        clearHighlights();
+        const rect = el.getBoundingClientRect();
+        const overlay = createOverlay(rect, "#4f8ef7", 0.10);
+        overlay.style.outlineOffset = "0";
+        document.documentElement.appendChild(overlay);
         sendResponse({ success: true });
       } else {
         sendResponse({ success: false });
