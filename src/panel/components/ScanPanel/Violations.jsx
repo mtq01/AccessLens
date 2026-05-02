@@ -139,8 +139,13 @@ export default function Violations({ violations, passCount }) {
                         {v.helpUrl && <a href={v.helpUrl} target="_blank" rel="noreferrer" className="violation-link">WCAG documentation ↗</a>}
                       </>
                     )}
-                    {detailTab==="fix" && ctx?.fix && (
-                      <div className="detail-code"><code>{ctx.fix}</code></div>
+                    {detailTab==="fix" && (
+                      ctx?.fix
+                        ? <div className="detail-code"><code>{ctx.fix}</code></div>
+                        : <div className="detail-no-fix">
+                            <p>No code example available for this rule.</p>
+                            {v.helpUrl && <a href={v.helpUrl} target="_blank" rel="noreferrer" className="violation-link">See WCAG guidance ↗</a>}
+                          </div>
                     )}
                     {detailTab==="elements" && (
                       <div className="nodes-list">

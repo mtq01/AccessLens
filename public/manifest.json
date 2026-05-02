@@ -3,7 +3,10 @@
   "name": "AccessLens",
   "version": "0.1.0",
   "description": "Developer-first accessibility inspector. Scan any page for WCAG violations and check colour contrast.",
-  "permissions": ["activeTab","scripting","storage","windows","tabs"],
+  "permissions": ["activeTab","scripting","storage","windows","tabs","sidePanel"],
+  "side_panel": {
+    "default_path": "panel.html"
+  },
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

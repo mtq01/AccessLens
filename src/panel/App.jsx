@@ -12,6 +12,10 @@ const INITIAL_SCAN_DATA = {
   dynamicIssues: [],
 };
 
+const _params   = new URLSearchParams(window.location.search);
+const isPopout  = _params.get("popout") === "1";
+const sidePanelWindowId = parseInt(_params.get("wid")) || null;
+
 export default function App() {
   const [tab, setTab]       = useState("scan");
   const [ready, setReady]   = useState(false);
@@ -51,7 +55,9 @@ export default function App() {
     });
   }, [tabId]);
 
-  // Reset state on tab change
+  const [poppedOut, setPoppedOut] = useState(false);
+
+  // Reset state on tab change; track popout state
   useEffect(() => {
     const listener = (msg) => {
       if (msg.type === "TAB_CHANGED") {
@@ -60,6 +66,9 @@ export default function App() {
         if (msg.tabId) chrome.tabs.get(msg.tabId, (t) => {
           if (!chrome.runtime.lastError && t?.url) setPageUrl(t.url);
         });
+      }
+      if (msg.type === "POPOUT_CHANGED") {
+        setPoppedOut(msg.value);
       }
     };
     chrome.runtime.onMessage.addListener(listener);
@@ -95,11 +104,25 @@ export default function App() {
     chrome.tabs.create({ url: "https://forms.gle/placeholder-feedback-form" });
   }
 
+  if (poppedOut && !isPopout) {
+    return (
+      <div className="popout-placeholder">
+        <svg width="32" height="32" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+          <rect width="26" height="26" rx="6" fill="#166534"/>
+          <path d="M5 13s2.5-5 8-5 8 5 8 5-2.5 5-8 5-8-5-8-5z" stroke="white" strokeWidth="1.6" strokeLinejoin="round"/>
+          <circle cx="13" cy="13" r="2.2" fill="white"/>
+        </svg>
+        <p>AccessLens is open in a floating window.</p>
+        <span>Use the <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{display:"inline",verticalAlign:"middle"}} aria-hidden="true"><path d="M21 3H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H3V5h18v14zm-10-3h8v-2h-8v2zm0-4h8v-2h-8v2zm0-4h8V6h-8v2zM5 17h4V7H5v10z" fill="currentColor"/></svg> button in that window to dock it back.</span>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       {showOnboarding && <OnboardingPanel onDone={completeOnboarding} />}
 
-      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} onFeedback={openFeedback} />
+      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} onFeedback={openFeedback} isPopout={isPopout} sidePanelWindowId={sidePanelWindowId} />
 
       <MainContent
         ready={ready}

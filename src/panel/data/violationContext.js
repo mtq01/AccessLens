@@ -650,7 +650,7 @@ const id = useId();
 // Fallback for rules without custom context
 const fallback = {
   why: "This violation affects users who rely on assistive technology or who cannot use a mouse. Fixing it improves the experience for users with visual, motor, or cognitive disabilities.",
-  fix: "Review the axe-core guidance below and the WCAG success criterion for specific remediation steps.",
+  fix: null,
   links: [],
 };
 
