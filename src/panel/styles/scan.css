@@ -700,6 +700,18 @@
   white-space: pre-wrap;
 }
 
+.detail-no-fix {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  color: var(--text-muted);
+}
+
+.detail-no-fix p {
+  margin: 0;
+}
+
 /* ── Affected elements list ───────────────────────────────────────────── */
 
 .nodes-list {

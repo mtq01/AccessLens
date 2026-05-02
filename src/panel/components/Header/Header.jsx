@@ -5,7 +5,16 @@ const TABS = [
   { id: "checklist", label: "Checklist" },
 ];
 
-export default function Header({ tab, setTab, scanBadge, onFeedback }) {
+export default function Header({ tab, setTab, scanBadge, onFeedback, isPopout, sidePanelWindowId }) {
+  function popOut() {
+    chrome.runtime.sendMessage({ type: "POPOUT" });
+  }
+
+  function dockBack() {
+    chrome.runtime.sendMessage({ type: "POPIN" });
+    chrome.windows.getCurrent(win => chrome.windows.remove(win.id));
+  }
+
   return (
     <>
       <header className="header">
@@ -18,11 +27,27 @@ export default function Header({ tab, setTab, scanBadge, onFeedback }) {
           <span className="logo-text">Access<span className="logo-accent">Lens</span></span>
         </div>
 
-        <button className="header-btn" onClick={onFeedback} aria-label="Send feedback">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        <div className="header-actions">
+          {!isPopout && (
+            <button className="header-btn" onClick={popOut} aria-label="Pop out into window">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" fill="currentColor"/>
+              </svg>
+            </button>
+          )}
+          {isPopout && (
+            <button className="header-btn" onClick={dockBack} aria-label="Dock back to sidebar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 3H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H3V5h18v14zm-10-3h8v-2h-8v2zm0-4h8v-2h-8v2zm0-4h8V6h-8v2zM5 17h4V7H5v10z" fill="currentColor"/>
+              </svg>
+            </button>
+          )}
+          <button className="header-btn" onClick={onFeedback} aria-label="Send feedback">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <nav className="tabs" role="tablist" aria-label="Main sections">

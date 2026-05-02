@@ -1,49 +1,40 @@
-var panelWindowId = null;
-var trackedTabId = null;
+var panelWindowId   = null;
+var trackedTabId    = null;
+var trackedWindowId = null;
 
-// ── Open panel on icon click ──────────────────────────────────────────────────
+// ── Tell Chrome to open the side panel when the toolbar icon is clicked ───────
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(function() {});
+
+// ── Track which tab/window is active when the panel opens ────────────────────
 chrome.action.onClicked.addListener(function(tab) {
-  trackedTabId = tab.id;
-
-  if (panelWindowId !== null) {
-    chrome.windows.update(panelWindowId, { focused: true });
-    // Update tracked tab even if panel is already open
-    chrome.runtime.sendMessage({ type: "TAB_CHANGED", tabId: tab.id });
-    return;
-  }
-
-  chrome.windows.create({
-    url: chrome.runtime.getURL("panel.html"),
-    type: "popup", width: 720, height: 800,
-  }, function(win) { panelWindowId = win.id; });
+  trackedTabId    = tab.id;
+  trackedWindowId = tab.windowId;
 });
 
 // ── Track tab switches ────────────────────────────────────────────────────────
 chrome.tabs.onActivated.addListener(function(activeInfo) {
-  // Only update if the activated tab is NOT the panel itself
-  if (panelWindowId === null) return;
-  chrome.windows.get(panelWindowId, function(panelWin) {
-    if (chrome.runtime.lastError) return;
-    if (activeInfo.windowId !== panelWin.id) {
-      trackedTabId = activeInfo.tabId;
-      // Notify panel that the tracked tab changed
-      chrome.tabs.query({ windowId: panelWin.id }, function(tabs) {
-        if (tabs && tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            type: "TAB_CHANGED",
-            tabId: activeInfo.tabId
-          });
-        }
-      });
-    }
-  });
+  if (panelWindowId !== null) {
+    // Popup mode: ignore activations inside the popup window itself
+    chrome.windows.get(panelWindowId, function(panelWin) {
+      if (chrome.runtime.lastError) { panelWindowId = null; return; }
+      if (activeInfo.windowId !== panelWin.id) {
+        trackedTabId = activeInfo.tabId;
+        forwardToPanel({ type: "TAB_CHANGED", tabId: activeInfo.tabId });
+      }
+    });
+  } else {
+    // Side panel mode: only follow tabs in the window where the panel lives
+    if (trackedWindowId !== null && activeInfo.windowId !== trackedWindowId) return;
+    trackedTabId = activeInfo.tabId;
+    forwardToPanel({ type: "TAB_CHANGED", tabId: activeInfo.tabId });
+  }
 });
 
-// ── Clean up when panel closes ────────────────────────────────────────────────
+// ── Restore side panel state when popup window is closed ─────────────────────
 chrome.windows.onRemoved.addListener(function(windowId) {
   if (windowId === panelWindowId) {
     panelWindowId = null;
-    trackedTabId = null;
+    forwardToPanel({ type: "POPOUT_CHANGED", value: false });
   }
 });
 
@@ -60,14 +51,12 @@ function sendToTab(message, sendResponse) {
     return;
   }
 
-  // First check if tab is accessible
   chrome.tabs.get(tabId, function(tab) {
     if (chrome.runtime.lastError || !tab) {
       if (sendResponse) sendResponse({ success: false, error: "Tab not found — click the extension icon on the page you want to scan" });
       return;
     }
 
-    // Block chrome:// and extension pages
     if (tab.url && (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://") || tab.url.startsWith("about:"))) {
       if (sendResponse) sendResponse({ success: false, error: "chrome_restricted" });
       return;
@@ -75,7 +64,6 @@ function sendToTab(message, sendResponse) {
 
     chrome.tabs.sendMessage(tabId, message, function(response) {
       if (chrome.runtime.lastError) {
-        // Content script not ready — inject then retry
         chrome.scripting.executeScript(
           { target: { tabId: tabId }, files: ["content.js"] },
           function() {
@@ -101,13 +89,11 @@ function sendToTab(message, sendResponse) {
   });
 }
 
-// ── Forward messages from content script to panel ─────────────────────────────
+// ── Forward messages to panel (side panel or popup window) ────────────────────
 function forwardToPanel(message) {
-  if (panelWindowId === null) return;
-  chrome.tabs.query({ windowId: panelWindowId }, function(tabs) {
-    if (tabs && tabs[0]) {
-      chrome.tabs.sendMessage(tabs[0].id, message);
-    }
+  // runtime.sendMessage reaches all extension pages: side panel, popup window, etc.
+  chrome.runtime.sendMessage(message, function() {
+    if (chrome.runtime.lastError) {} // suppress "no receiver" when panel is closed
   });
 }
 
@@ -115,7 +101,38 @@ function forwardToPanel(message) {
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
   if (message.type === "GET_TAB_ID") {
-    sendResponse({ tabId: trackedTabId });
+    if (trackedTabId !== null) {
+      sendResponse({ tabId: trackedTabId });
+      return true;
+    }
+    // Service worker restarted or onClicked didn't fire — query the active tab directly
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, function(tabs) {
+      if (tabs && tabs[0]) {
+        trackedTabId    = tabs[0].id;
+        trackedWindowId = tabs[0].windowId;
+      }
+      sendResponse({ tabId: trackedTabId });
+    });
+    return true;
+  }
+
+  if (message.type === "POPOUT") {
+    forwardToPanel({ type: "POPOUT_CHANGED", value: true });
+    var wid = trackedWindowId || "";
+    chrome.windows.create({
+      url: chrome.runtime.getURL("panel.html") + "?popout=1&wid=" + wid,
+      type: "popup",
+      width: 420,
+      height: 800,
+    }, function(win) { panelWindowId = win.id; });
+    sendResponse({ success: true });
+    return true;
+  }
+
+  if (message.type === "POPIN") {
+    panelWindowId = null;
+    forwardToPanel({ type: "POPOUT_CHANGED", value: false });
+    sendResponse({ success: true });
     return true;
   }
 
@@ -135,6 +152,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     "RUN_ZOOM_TEST", "ENABLE_HIGH_CONTRAST", "DISABLE_HIGH_CONTRAST",
     "SHOW_TAB_ORDER", "SCROLL_TO_STOP", "RUN_CONTENT_ANALYSIS",
     "SCAN_CONTRAST", "SCROLL_TO_ELEMENT",
+    "START_FOCUS_RING_TESTER", "STOP_FOCUS_RING_TESTER",
   ];
 
   if (toContentScript.indexOf(message.type) !== -1) {
