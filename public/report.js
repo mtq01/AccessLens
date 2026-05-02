@@ -105,6 +105,116 @@ const VIOLATION_CONTEXT = {
     fix: '<!-- Not keyboard reachable -->\n<div style="overflow: auto; height: 200px">\n  Long content...\n</div>\n\n<!-- Fixed: tabindex="0" adds to tab order -->\n<div\n  style="overflow: auto; height: 200px"\n  tabindex="0"\n  role="region"\n  aria-label="Product description"\n>\n  Long content...\n</div>',
     links: [{ label: "WCAG 2.1.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard" }]
   },
+  "aria-required-parent": {
+    why: "Some ARIA roles only make sense inside a specific parent — an option must be in a listbox, a menuitem must be in a menu. Without the right parent, screen readers can't tell users what widget they're in, breaking keyboard navigation patterns.",
+    fix: '<!-- Before: option with no listbox parent -->\n<ul>\n  <li role="option">First</li>\n</ul>\n\n<!-- After: nested inside listbox -->\n<ul role="listbox" aria-label="Choose a country">\n  <li role="option">United Kingdom</li>\n  <li role="option">United States</li>\n</ul>\n\n<!-- Before: menuitem outside menu -->\n<div role="menuitem">Edit</div>\n\n<!-- After: inside a menu -->\n<ul role="menu">\n  <li role="menuitem">Edit</li>\n  <li role="menuitem">Delete</li>\n</ul>',
+    links: [{ label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" }, { label: "WAI-ARIA required context roles", url: "https://www.w3.org/TR/wai-aria-1.2/#scope" }]
+  },
+  "aria-required-children": {
+    why: "Some ARIA roles must contain specific child roles — a listbox needs option children, a menu needs menuitem children. Without them, screen readers announce an empty widget users can't navigate.",
+    fix: '<!-- Before: listbox with no option children -->\n<ul role="listbox">\n  <li>First choice</li>\n</ul>\n\n<!-- After: correct children -->\n<ul role="listbox" aria-label="Sort by">\n  <li role="option" aria-selected="true">Relevance</li>\n  <li role="option" aria-selected="false">Price</li>\n</ul>\n\n<!-- Before: menu with no menuitem children -->\n<div role="menu"><div>Edit</div></div>\n\n<!-- After -->\n<div role="menu">\n  <div role="menuitem">Edit</div>\n  <div role="menuitem">Delete</div>\n</div>',
+    links: [{ label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" }]
+  },
+  "frame-title": {
+    why: "When a screen reader hits an iframe, the first thing it announces is the frame title. Without one, users hear the filename or nothing and have no idea what the embedded content is.",
+    fix: '<!-- Before: no title -->\n<iframe src="https://www.youtube.com/embed/abc123"></iframe>\n\n<!-- After: descriptive title -->\n<iframe\n  src="https://www.youtube.com/embed/abc123"\n  title="Introduction to web accessibility — YouTube video"\n></iframe>\n\n<!-- Decorative/tracking iframes: hide from AT -->\n<iframe src="tracking.html" title="none" aria-hidden="true" tabindex="-1"></iframe>',
+    links: [{ label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" }]
+  },
+  "object-alt": {
+    why: "The <object> element needs a text alternative inside it that screen readers can use if the object can't be rendered. Without one, users with visual disabilities get nothing.",
+    fix: '<!-- Before: no text fallback -->\n<object data="chart.svg" type="image/svg+xml"></object>\n\n<!-- After: text description inside -->\n<object data="chart.svg" type="image/svg+xml">\n  Bar chart showing sales growth from 2022 to 2024.\n  <a href="sales-data.csv">Download the data as CSV</a>\n</object>',
+    links: [{ label: "WCAG 1.1.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" }]
+  },
+  "role-img-alt": {
+    why: "Any element with role='img' is treated as an image by screen readers. Without an accessible name, the screen reader announces 'image' with no description.",
+    fix: '<!-- Before: no accessible name -->\n<div role="img"></div>\n\n<!-- After: aria-label -->\n<div role="img" aria-label="Company logo — Acme Corp"></div>\n\n<!-- SVG -->\n<svg role="img" aria-label="Pie chart: 60% returning, 40% new users">\n  <!-- paths -->\n</svg>\n\n<!-- Decorative: hide entirely -->\n<div role="img" aria-hidden="true"></div>',
+    links: [{ label: "WCAG 1.1.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" }]
+  },
+  "svg-img-alt": {
+    why: "SVGs used as images need a text alternative just like <img> tags. Without one, screen readers skip them or read raw SVG markup.",
+    fix: '<!-- Before: no accessible name -->\n<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="green"/></svg>\n\n<!-- After: role + aria-label -->\n<svg role="img" aria-label="Green circle indicating success" viewBox="0 0 100 100">\n  <circle cx="50" cy="50" r="50" fill="green"/>\n</svg>\n\n<!-- Decorative: hide from screen readers -->\n<svg aria-hidden="true" focusable="false" viewBox="0 0 100 100">\n  <circle cx="50" cy="50" r="50" fill="green"/>\n</svg>',
+    links: [{ label: "WCAG 1.1.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" }]
+  },
+  "listitem": {
+    why: "A <li> must be a direct child of <ul> or <ol>. Outside a list element, screen readers lose the list context, item count, and list navigation commands.",
+    fix: '<!-- Before: li not inside a list -->\n<div>\n  <li>First item</li>\n  <li>Second item</li>\n</div>\n\n<!-- After -->\n<ul>\n  <li>First item</li>\n  <li>Second item</li>\n</ul>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "definition-list": {
+    why: "A <dl> must only contain <dt> and <dd> elements as direct children. Other elements break the semantic relationship screen readers use to pair terms with their definitions.",
+    fix: '<!-- Before: invalid children -->\n<dl><p>Term: Definition</p></dl>\n\n<!-- After: correct dt/dd structure -->\n<dl>\n  <dt>Accessibility</dt>\n  <dd>Making products usable by people with disabilities.</dd>\n  <dt>WCAG</dt>\n  <dd>Web Content Accessibility Guidelines.</dd>\n</dl>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "dlitem": {
+    why: "<dt> and <dd> elements must be inside a <dl>. Outside one, screen readers can't announce the definition list context.",
+    fix: '<!-- Before: dt/dd outside dl -->\n<div>\n  <dt>Screen reader</dt>\n  <dd>Software that reads content aloud for blind users.</dd>\n</div>\n\n<!-- After: wrapped in dl -->\n<dl>\n  <dt>Screen reader</dt>\n  <dd>Software that reads content aloud for blind users.</dd>\n</dl>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "empty-heading": {
+    why: "Screen reader users navigate by jumping between headings. An empty heading creates a phantom stop — the screen reader announces 'heading level 2' and reads nothing.",
+    fix: '<!-- Before: heading with no content -->\n<h2></h2>\n\n<!-- After: meaningful text -->\n<h2>Product features</h2>\n\n<!-- In React: handle loading state -->\n<h2>{pageTitle || \'Loading...\'}</h2>\n\n<!-- Purely decorative: use div instead -->\n<div class="section-divider" aria-hidden="true"></div>',
+    links: [{ label: "WCAG 2.4.6", url: "https://www.w3.org/WAI/WCAG21/Understanding/headings-and-labels" }]
+  },
+  "landmark-no-duplicate-banner": {
+    why: "A page should have only one banner landmark. Multiple banners create ambiguity — screen reader users don't know which one to go to.",
+    fix: '<!-- Before: multiple banners -->\n<header>Site header</header>\n<section>\n  <header>Section header</header>  <!-- becomes banner 2 -->\n</section>\n\n<!-- After: only top-level header is the banner landmark -->\n<header>Site header</header>\n<section>\n  <header>Section header</header>  <!-- nested: not a landmark -->\n</section>',
+    links: [{ label: "ARIA banner role", url: "https://www.w3.org/TR/wai-aria-1.2/#banner" }]
+  },
+  "landmark-no-duplicate-contentinfo": {
+    why: "A page should have only one contentinfo landmark (page-level footer). Multiple contentinfo landmarks confuse screen reader landmark navigation.",
+    fix: '<!-- Before: multiple footers as landmarks -->\n<footer>Site footer</footer>\n<section>\n  <footer>Section footer</footer>  <!-- becomes landmark 2 -->\n</section>\n\n<!-- After: only top-level footer is a landmark -->\n<footer>Site footer</footer>\n<section>\n  <footer>Section footer</footer>  <!-- nested: not a landmark -->\n</section>',
+    links: [{ label: "ARIA contentinfo role", url: "https://www.w3.org/TR/wai-aria-1.2/#contentinfo" }]
+  },
+  "landmark-no-duplicate-main": {
+    why: "There must be exactly one <main> landmark per page. Multiple main elements break skip navigation and confuse users about which is the primary content.",
+    fix: '<!-- Before: two main elements -->\n<main>Primary content</main>\n<main>Secondary content</main>  <!-- invalid -->\n\n<!-- After: one main, use aside for secondary -->\n<main>Primary content</main>\n<aside>Secondary content</aside>',
+    links: [{ label: "WCAG 2.4.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks" }]
+  },
+  "landmark-banner-is-top-level": {
+    why: "The banner landmark must be at the page top level. A banner nested inside another landmark breaks screen reader landmark navigation.",
+    fix: '<!-- Before: header inside main -->\n<main>\n  <header>Wrongly nested</header>\n  Page content...\n</main>\n\n<!-- After: header at the top level -->\n<header>Site-wide header</header>\n<main>Page content...</main>\n<footer>Site footer</footer>',
+    links: [{ label: "ARIA banner role", url: "https://www.w3.org/TR/wai-aria-1.2/#banner" }]
+  },
+  "landmark-contentinfo-is-top-level": {
+    why: "The contentinfo (footer) landmark must be at the page top level. A footer nested inside another landmark won't appear in screen reader landmark navigation.",
+    fix: '<!-- Before: footer nested inside main -->\n<main>\n  Page content...\n  <footer>Wrong: nested footer</footer>\n</main>\n\n<!-- After: footer at the top level -->\n<main>Page content...</main>\n<footer>Site-wide footer</footer>',
+    links: [{ label: "ARIA contentinfo role", url: "https://www.w3.org/TR/wai-aria-1.2/#contentinfo" }]
+  },
+  "scope-attr-valid": {
+    why: "The scope attribute on <th> tells screen readers whether the header applies to a column or row. An invalid value is ignored — users hear column data without any header context.",
+    fix: '<!-- Before: invalid scope -->\n<th scope="yes">Name</th>\n\n<!-- After: valid scope values -->\n<table>\n  <thead>\n    <tr>\n      <th scope="col">Name</th>\n      <th scope="col">Score</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th scope="row">Alice</th>\n      <td>92</td>\n    </tr>\n  </tbody>\n</table>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "th-has-data-cells": {
+    why: "A <th> header with no data cells is either misplaced or unnecessary. Screen readers announce it as a header, but users never see data it labels — creating confusion about the table.",
+    fix: '<!-- Before: header with no data cells -->\n<table>\n  <tr><th>Name</th><th>Score</th><th>Extra</th></tr>\n  <tr><td>Alice</td><td>92</td></tr>  <!-- missing third cell -->\n</table>\n\n<!-- After: every header has data cells -->\n<table>\n  <thead><tr><th scope="col">Name</th><th scope="col">Score</th></tr></thead>\n  <tbody><tr><td>Alice</td><td>92</td></tr></tbody>\n</table>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "keyboard": {
+    why: "Any element a mouse user can click must also be reachable by keyboard. Users who can't use a mouse are completely locked out of functionality that requires mouse-only interaction.",
+    fix: '<!-- Before: click handler on a non-interactive div -->\n<div onclick="doSomething()">Click me</div>\n\n<!-- After: use native button (handles Tab + Enter/Space automatically) -->\n<button onclick="doSomething()">Click me</button>\n\n// In React\n<button onClick={doSomething}>Click me</button>',
+    links: [{ label: "WCAG 2.1.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard" }]
+  },
+  "empty-table-header": {
+    why: "An empty <th> is useless to screen reader users — they hear 'column header' with no text. Users can't tell which column or row they're in.",
+    fix: '<!-- Before: empty th -->\n<th></th>\n<th>Score</th>\n\n<!-- After: all headers have text -->\n<th scope="col">Player name</th>\n<th scope="col">Score</th>\n\n<!-- If the column is for row numbers with no label, use aria-label -->\n<th scope="col" aria-label="Row number">#</th>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }]
+  },
+  "p-as-heading": {
+    why: "Bold or large <p> tags look like headings to sighted users but are invisible to screen reader heading navigation. Users who tab through headings will miss this content entirely.",
+    fix: '<!-- Before: paragraph styled to look like a heading -->\n<p style="font-size: 24px; font-weight: bold;">Section Title</p>\n\n<!-- After: real heading element, styled to match design -->\n<h2 class="section-title">Section Title</h2>\n\n<style>\n  .section-title { font-size: 24px; font-weight: bold; }\n</style>',
+    links: [{ label: "WCAG 1.3.1", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" }, { label: "WCAG 2.4.6", url: "https://www.w3.org/WAI/WCAG21/Understanding/headings-and-labels" }]
+  },
+  "aria-command-name": {
+    why: "Custom buttons, links, and menuitems built with ARIA roles must have an accessible name. Without one, screen readers announce only the role ('button') with no indication of what it does.",
+    fix: '<!-- Before: custom button with no label -->\n<div role="button" tabindex="0"><svg><!-- icon --></svg></div>\n\n<!-- After: aria-label -->\n<div role="button" tabindex="0" aria-label="Close dialog">\n  <svg aria-hidden="true"><!-- icon --></svg>\n</div>\n\n<!-- Better: use native <button> -->\n<button aria-label="Close dialog">\n  <svg aria-hidden="true"><!-- icon --></svg>\n</button>',
+    links: [{ label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" }]
+  },
+  "aria-progressbar-name": {
+    why: "A progress bar without a label leaves screen reader users guessing what is loading. They hear '40%' but 40% of what? A label like 'Uploading file' gives essential context.",
+    fix: '<!-- Before: no label -->\n<div role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>\n\n<!-- After: aria-label -->\n<div role="progressbar" aria-label="File upload progress"\n  aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">40%</div>\n\n<!-- Or native progress with label -->\n<label>Uploading file\n  <progress value="40" max="100">40%</progress>\n</label>',
+    links: [{ label: "WCAG 4.1.2", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" }]
+  },
 };
 
 const FALLBACK_CONTEXT = {
@@ -211,7 +321,7 @@ function calcRiskScore(violations) {
 
 // ── Render ─────────────────────────────────────────────────────────────────────
 function renderReport(data) {
-  const { url, scanDate, sections, violations=[], passes=[], tabOrderStops=[], dynamicIssues=[], checklist={} } = data;
+  const { url, scanDate, sections, violations=[], passes=[], tabOrderStops=[], dynamicIssues=[], checklist={}, focusLog=[] } = data;
   const critical = violations.filter(v=>v.impact==='critical').length;
   const serious  = violations.filter(v=>v.impact==='serious').length;
   const moderate = violations.filter(v=>v.impact==='moderate').length;
@@ -497,6 +607,38 @@ function renderReport(data) {
     });
 
     html += `</div>`;
+  }
+
+  // ── Focus ring test log ──
+  if (sections.focusLog && focusLog.length > 0) {
+    const withRing    = focusLog.filter(s => s.hasFocusRing === true).length;
+    const withoutRing = focusLog.filter(s => s.hasFocusRing === false).length;
+
+    html += `<div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background:#f0f9ff; color:#0369a1;">
+          ${svg('keyboard', 20, '#0369a1')}
+        </div>
+        <div class="section-title-wrap">
+          <div class="section-title">Focus Ring Test Log</div>
+          <div class="section-subtitle">Keyboard tab-through test — ${withRing} with focus ring · ${withoutRing} missing focus ring</div>
+        </div>
+        <span class="section-badge" style="background:#f0f9ff;color:#0369a1;">${focusLog.length} stop${focusLog.length!==1?'s':''}</span>
+      </div>
+      <div class="passed-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        ${focusLog.map(s => {
+          const tag = (s.tagName || '').toLowerCase();
+          const id  = s.id ? ` #${s.id}` : '';
+          const color = s.hasFocusRing ? '#16a34a' : '#d97706';
+          const icon  = s.hasFocusRing ? 'check' : 'warning';
+          return `<div class="passed-item" style="color:${color}; border-left:3px solid ${color}; padding-left:8px;">
+            ${svg(icon, 13, color)}
+            <span style="font-weight:600;">#${s.stopCount}</span>
+            <code style="font-size:11px;">&lt;${esc(tag)}&gt;${esc(id)}</code>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
   }
 
   // ── Manual checklist ──

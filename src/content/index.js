@@ -8,6 +8,7 @@ let focusKeyHandler = null;
 let highContrastStyleEl = null;
 let mutationObserver = null;
 let dynamicIssues = [];
+let lastSubmitTime = 0;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -461,6 +462,13 @@ function scrollToStop(stopIndex) {
 
 function startFocusMode() {
   if (focusModeActive) return;
+  // DOM-based cross-instance lock: if background retries inject a second copy of content.js,
+  // this prevents it from starting a duplicate focus session and sending duplicate FOCUS_UPDATE messages.
+  if (document.getElementById('__al_focus_lock__')) return;
+  const lock = document.createElement('div');
+  lock.id = '__al_focus_lock__';
+  lock.style.cssText = 'display:none!important';
+  document.documentElement.appendChild(lock);
   focusModeActive = true;
   focusStopCount = 0;
 
@@ -532,6 +540,7 @@ function startFocusMode() {
 function stopFocusMode() {
   if (!focusModeActive) return;
   focusModeActive = false;
+  document.getElementById('__al_focus_lock__')?.remove();
   document.removeEventListener("focusin", focusHandler, true);
   document.removeEventListener("keydown", focusKeyHandler, true);
   document.getElementById("__al_focus_hint__")?.remove();
@@ -731,6 +740,8 @@ function startMutationObserver() {
   // Only watch for elements ADDED after page load via JavaScript.
   // Static content doesn't need aria-live — only content that changes does.
   mutationObserver = new MutationObserver((mutations) => {
+    // Only collect dynamic issues within 3 seconds of a form submit — ignore all other DOM mutations
+    if (Date.now() - lastSubmitTime > 3000) return;
     mutations.forEach(m => {
       m.addedNodes.forEach(node => {
         if (node.nodeType !== 1) return;
@@ -747,6 +758,12 @@ function startMutationObserver() {
       });
     });
   });
+
+  // Reset the issue list and start the 3-second window every time a form is submitted
+  document.addEventListener('submit', () => {
+    lastSubmitTime = Date.now();
+    dynamicIssues = [];
+  }, true);
 
   mutationObserver.observe(document.body, { childList: true, subtree: true });
 }

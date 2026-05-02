@@ -645,6 +645,764 @@ const id = useId();
     ]
   },
 
+  // ── ARIA role hierarchy ───────────────────────────────────────────────────
+
+  "aria-required-parent": {
+    label: "ARIA role missing required parent",
+    why: "Some ARIA roles only make sense inside a specific parent role — for example, an option must be inside a listbox, and a menuitem must be inside a menu. Without the right parent, screen readers can't tell users what kind of widget they're in, breaking keyboard navigation patterns.",
+    fix: `<!-- Before: option with no listbox parent -->
+<ul>
+  <li role="option">First choice</li>
+  <li role="option">Second choice</li>
+</ul>
+
+<!-- After: option correctly nested inside listbox -->
+<ul role="listbox" aria-label="Choose a country">
+  <li role="option">United Kingdom</li>
+  <li role="option">United States</li>
+</ul>
+
+<!-- Before: menuitem outside a menu -->
+<div role="menuitem">Edit</div>
+
+<!-- After: menuitem inside a menu -->
+<ul role="menu">
+  <li role="menuitem">Edit</li>
+  <li role="menuitem">Delete</li>
+</ul>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WAI-ARIA required context roles", url: "https://www.w3.org/TR/wai-aria-1.2/#scope" },
+    ]
+  },
+
+  "aria-required-children": {
+    label: "ARIA role missing required children",
+    why: "Some ARIA roles must contain specific child roles to work correctly. A listbox with no option children, or a menu with no menuitem children, is an empty widget that screen readers can't navigate. Users hear the role announced but find nothing inside.",
+    fix: `<!-- Before: listbox with no option children -->
+<ul role="listbox">
+  <li>First choice</li>   <!-- no role="option" -->
+</ul>
+
+<!-- After: each child has the required role -->
+<ul role="listbox" aria-label="Sort by">
+  <li role="option" aria-selected="true">Relevance</li>
+  <li role="option" aria-selected="false">Price: low to high</li>
+  <li role="option" aria-selected="false">Newest first</li>
+</ul>
+
+<!-- Before: menu with no menuitem children -->
+<div role="menu">
+  <div>Edit</div>
+</div>
+
+<!-- After -->
+<div role="menu">
+  <div role="menuitem">Edit</div>
+  <div role="menuitem">Delete</div>
+</div>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WAI-ARIA required owned elements", url: "https://www.w3.org/TR/wai-aria-1.2/#mustContain" },
+    ]
+  },
+
+  // ── Frames & embedded content ─────────────────────────────────────────────
+
+  "frame-title": {
+    label: "Iframes missing a title",
+    why: "When a screen reader encounters an iframe, the first thing it announces is the frame's title. Without one, users have no idea what the embedded content is — they either hear the filename or nothing. Common offenders are chat widgets, video embeds, and ad iframes.",
+    fix: `<!-- Before: no title -->
+<iframe src="https://www.youtube.com/embed/abc123"></iframe>
+
+<!-- After: descriptive title -->
+<iframe
+  src="https://www.youtube.com/embed/abc123"
+  title="Introduction to web accessibility — YouTube video"
+></iframe>
+
+<!-- For decorative / tracking iframes that users should skip -->
+<iframe src="tracking.html" title="none" aria-hidden="true" tabindex="-1"></iframe>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "frame-focusable-content": {
+    label: "Iframe with focusable content hidden from screen readers",
+    why: "An iframe with aria-hidden='true' still allows keyboard focus to enter it. Users who Tab into a hidden frame receive no screen reader announcement — they're in a void. Either the frame should be fully hidden (inert), or it should be visible to assistive technology.",
+    fix: `<!-- Before: hidden but keyboard can enter -->
+<iframe src="widget.html" aria-hidden="true"></iframe>
+
+<!-- After option 1: fully block keyboard access too -->
+<iframe src="widget.html" aria-hidden="true" tabindex="-1" inert></iframe>
+
+<!-- After option 2: remove aria-hidden if content should be accessible -->
+<iframe src="widget.html" title="Live chat widget"></iframe>`,
+    links: [
+      { label: "WCAG 2.1.1 — Keyboard", url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard" },
+    ]
+  },
+
+  "object-alt": {
+    label: "Embedded objects missing text alternative",
+    why: "The <object> element (used for Flash, PDFs, SVGs, and other embeds) needs a text alternative inside it that screen readers can read if the object can't be rendered. Without one, users with visual disabilities get nothing.",
+    fix: `<!-- Before: no text fallback -->
+<object data="chart.svg" type="image/svg+xml"></object>
+
+<!-- After: descriptive text inside the object element -->
+<object data="chart.svg" type="image/svg+xml">
+  Bar chart showing sales growth from 2022 to 2024.
+  <a href="sales-data.csv">Download the underlying data as CSV</a>
+</object>`,
+    links: [
+      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
+    ]
+  },
+
+  // ── Images with roles ─────────────────────────────────────────────────────
+
+  "role-img-alt": {
+    label: "Elements with role='img' missing a label",
+    why: "Any element with role='img' is treated as an image by screen readers. Without an accessible name (via aria-label or aria-labelledby), the screen reader announces 'image' with no description — conveying nothing to the user.",
+    fix: `<!-- Before: no accessible name -->
+<div role="img">
+  <!-- SVG or background image here -->
+</div>
+
+<!-- After: aria-label describes the image -->
+<div role="img" aria-label="Company logo — Acme Corp">
+  <!-- SVG or background image here -->
+</div>
+
+<!-- For SVG directly -->
+<svg role="img" aria-label="Pie chart: 60% returning users, 40% new users">
+  <!-- paths here -->
+</svg>
+
+<!-- Decorative: hide from screen readers entirely -->
+<div role="img" aria-hidden="true"></div>`,
+    links: [
+      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
+    ]
+  },
+
+  "svg-img-alt": {
+    label: "SVG images missing accessible names",
+    why: "SVGs used as images need a text alternative just like <img> tags. Without one, screen readers either skip them or read out raw SVG markup — neither is useful. The most reliable method is adding role='img' and aria-label to the SVG element.",
+    fix: `<!-- Before: SVG with no accessible name -->
+<svg viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="50" fill="green"/>
+</svg>
+
+<!-- After: role + aria-label (works in all browsers) -->
+<svg role="img" aria-label="Green circle icon indicating success" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="50" fill="green"/>
+</svg>
+
+<!-- Alt: use a <title> as the first child (less reliable) -->
+<svg viewBox="0 0 100 100" aria-labelledby="svg-title">
+  <title id="svg-title">Success icon</title>
+  <circle cx="50" cy="50" r="50" fill="green"/>
+</svg>
+
+<!-- Decorative SVG: hide from screen readers -->
+<svg aria-hidden="true" focusable="false" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="50" fill="green"/>
+</svg>`,
+    links: [
+      { label: "WCAG 1.1.1 — Non-text content", url: "https://www.w3.org/WAI/WCAG21/Understanding/non-text-content" },
+      { label: "SVG accessibility guide — CSS-Tricks", url: "https://css-tricks.com/accessible-svgs/" },
+    ]
+  },
+
+  // ── Lists ────────────────────────────────────────────────────────────────
+
+  "listitem": {
+    label: "List items outside a list element",
+    why: "A <li> element must be a direct child of <ul> or <ol>. When it isn't, screen readers can't tell users they're in a list. The item count, list context, and navigation commands all break.",
+    fix: `<!-- Before: li not inside a list -->
+<div>
+  <li>First item</li>
+  <li>Second item</li>
+</div>
+
+<!-- After: li correctly inside ul or ol -->
+<ul>
+  <li>First item</li>
+  <li>Second item</li>
+</ul>
+
+<!-- For ordered steps, use ol -->
+<ol>
+  <li>Download the file</li>
+  <li>Open the installer</li>
+  <li>Follow the prompts</li>
+</ol>`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+    ]
+  },
+
+  "definition-list": {
+    label: "Definition list with invalid children",
+    why: "A <dl> (definition list) must only contain <dt> (term) and <dd> (definition) elements as direct children. Wrapping them in <div> or <p> breaks the semantic relationship that screen readers use to pair terms with their definitions.",
+    fix: `<!-- Before: invalid children in dl -->
+<dl>
+  <p>Term: Definition</p>
+</dl>
+
+<!-- After: correct dt/dd structure -->
+<dl>
+  <dt>Accessibility</dt>
+  <dd>The practice of making products usable by people with disabilities.</dd>
+
+  <dt>WCAG</dt>
+  <dd>Web Content Accessibility Guidelines — the international standard for web accessibility.</dd>
+</dl>
+
+<!-- Grouping dt/dd in a div is valid in HTML5 -->
+<dl>
+  <div>
+    <dt>Accessibility</dt>
+    <dd>The practice of making products usable by people with disabilities.</dd>
+  </div>
+</dl>`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+    ]
+  },
+
+  "dlitem": {
+    label: "Definition list terms/descriptions outside a dl",
+    why: "<dt> and <dd> elements must be inside a <dl>. Outside one, screen readers can't announce the definition list context, so users lose the structured relationship between terms and their descriptions.",
+    fix: `<!-- Before: dt/dd outside dl -->
+<div>
+  <dt>Screen reader</dt>
+  <dd>Software that reads screen content aloud for blind users.</dd>
+</div>
+
+<!-- After: wrapped in dl -->
+<dl>
+  <dt>Screen reader</dt>
+  <dd>Software that reads screen content aloud for blind users.</dd>
+</dl>`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+    ]
+  },
+
+  // ── Headings ─────────────────────────────────────────────────────────────
+
+  "empty-heading": {
+    label: "Empty heading element",
+    why: "Screen reader users navigate pages by jumping between headings. An empty heading creates a phantom navigation stop — the screen reader announces 'heading level 2' and then reads nothing. This is disorienting and wastes the user's time.",
+    fix: `<!-- Before: heading with no content -->
+<h2></h2>
+<h3>  </h3>
+
+<!-- After: heading has meaningful text content -->
+<h2>Product features</h2>
+
+<!-- If the heading content is injected by JavaScript, ensure
+     it's loaded before the heading is rendered -->
+<h2>{pageTitle || 'Loading...'}</h2>
+
+<!-- If used purely for visual decoration, use a div + CSS instead -->
+<div class="section-divider" aria-hidden="true"></div>`,
+    links: [
+      { label: "WCAG 2.4.6 — Headings and Labels", url: "https://www.w3.org/WAI/WCAG21/Understanding/headings-and-labels" },
+    ]
+  },
+
+  // ── Landmark duplicates ───────────────────────────────────────────────────
+
+  "landmark-no-duplicate-banner": {
+    label: "Multiple banner landmarks",
+    why: "A page should have only one banner landmark (<header> at the top level, or role='banner'). Screen readers provide a landmark navigation shortcut to jump to the banner. Multiple banners create ambiguity — users don't know which one to go to.",
+    fix: `<!-- Before: multiple banners -->
+<header>Site header</header>        <!-- banner 1 -->
+<section>
+  <header>Section header</header>   <!-- banner 2 — problem -->
+</section>
+
+<!-- After: only the top-level header is a banner landmark -->
+<header>Site header</header>        <!-- banner: top-level = landmark -->
+<section>
+  <!-- nested header is NOT a landmark — this is correct HTML -->
+  <header>Section header</header>
+</section>
+
+<!-- Or: use role="banner" only once -->
+<div role="banner">Site header</div>`,
+    links: [
+      { label: "ARIA banner role", url: "https://www.w3.org/TR/wai-aria-1.2/#banner" },
+    ]
+  },
+
+  "landmark-no-duplicate-contentinfo": {
+    label: "Multiple contentinfo landmarks",
+    why: "A page should have only one contentinfo landmark (<footer> at the top level, or role='contentinfo'). It identifies the page-level footer containing copyright, links, and contact info. Multiple contentinfo landmarks confuse screen reader landmark navigation.",
+    fix: `<!-- Before: multiple footers as landmarks -->
+<footer>Site footer</footer>        <!-- contentinfo 1 -->
+<section>
+  <footer>Section footer</footer>   <!-- contentinfo 2 — problem -->
+</section>
+
+<!-- After: only the top-level footer is a landmark -->
+<footer>Site footer</footer>        <!-- top-level = landmark -->
+<section>
+  <footer>Section footer</footer>   <!-- nested = not a landmark -->
+</section>`,
+    links: [
+      { label: "ARIA contentinfo role", url: "https://www.w3.org/TR/wai-aria-1.2/#contentinfo" },
+    ]
+  },
+
+  "landmark-no-duplicate-main": {
+    label: "Multiple main landmarks",
+    why: "There must be exactly one <main> landmark per page. It marks the primary content that keyboard users jump to when skipping navigation. Multiple <main> elements break this pattern — users jump to the first one and miss the others, or can't tell which is the 'real' main content.",
+    fix: `<!-- Before: two main elements -->
+<main>Primary content</main>
+<main>Secondary content</main>  <!-- invalid -->
+
+<!-- After: one main, use other landmarks for secondary content -->
+<main>Primary content</main>
+<aside>Secondary content</aside>
+
+<!-- In SPAs, update content inside main rather than adding a second main -->
+<main id="app-root">
+  {/* React/Vue content renders here */}
+</main>`,
+    links: [
+      { label: "WCAG 2.4.1 — Bypass Blocks", url: "https://www.w3.org/WAI/WCAG21/Understanding/bypass-blocks" },
+    ]
+  },
+
+  "landmark-banner-is-top-level": {
+    label: "Banner landmark nested inside another landmark",
+    why: "The banner landmark must be at the top level of the page — not nested inside another landmark like <main> or <section>. Screen readers look for it at the top level. A nested banner breaks landmark navigation and confuses users about the page structure.",
+    fix: `<!-- Before: header (banner) nested inside main -->
+<main>
+  <header>This becomes a nested banner — wrong</header>
+  Page content...
+</main>
+
+<!-- After: header at the top level, outside other landmarks -->
+<header>Site-wide header</header>
+<main>Page content...</main>
+<footer>Site footer</footer>`,
+    links: [
+      { label: "ARIA banner role", url: "https://www.w3.org/TR/wai-aria-1.2/#banner" },
+    ]
+  },
+
+  "landmark-contentinfo-is-top-level": {
+    label: "Contentinfo landmark nested inside another landmark",
+    why: "The contentinfo landmark (page-level footer) must be at the top level of the page, not inside <main> or another landmark. A nested footer is still valid HTML but doesn't become a page-level landmark — it won't be found by screen reader landmark navigation.",
+    fix: `<!-- Before: footer nested inside main -->
+<main>
+  Page content...
+  <footer>This is a nested footer — not a page landmark</footer>
+</main>
+
+<!-- After: footer at the top level -->
+<main>Page content...</main>
+<footer>Site-wide footer — copyright, links, contact</footer>`,
+    links: [
+      { label: "ARIA contentinfo role", url: "https://www.w3.org/TR/wai-aria-1.2/#contentinfo" },
+    ]
+  },
+
+  "landmark-complementary-is-top-level": {
+    label: "Aside landmark nested inside a landmark incorrectly",
+    why: "An <aside> element (complementary landmark) should relate to the page as a whole, not to a specific section. When nested inside <main> or other landmarks without proper labelling, screen readers can't tell users whether the aside is page-level or section-specific supplementary content.",
+    fix: `<!-- Before: unlabelled aside inside main -->
+<main>
+  <p>Article text...</p>
+  <aside>Related links</aside>  <!-- ambiguous scope -->
+</main>
+
+<!-- After option 1: move to top level for page-wide sidebars -->
+<main>Article text...</main>
+<aside aria-label="Related links">...</aside>
+
+<!-- After option 2: keep nested but add aria-label to clarify scope -->
+<main>
+  <p>Article text...</p>
+  <aside aria-label="Further reading for this article">
+    Related links...
+  </aside>
+</main>`,
+    links: [
+      { label: "ARIA complementary role", url: "https://www.w3.org/TR/wai-aria-1.2/#complementary" },
+    ]
+  },
+
+  // ── Tables ───────────────────────────────────────────────────────────────
+
+  "scope-attr-valid": {
+    label: "Invalid scope attribute on table header",
+    why: "The scope attribute on <th> tells screen readers whether the header applies to a column, row, or group of columns/rows. An invalid value (like scope='yes') is ignored — users hear column data without any header context.",
+    fix: `<!-- Before: invalid scope value -->
+<th scope="yes">Name</th>
+
+<!-- After: valid scope values -->
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Name</th>      <!-- applies to the column -->
+      <th scope="col">Score</th>
+      <th scope="col">Grade</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">Alice</th>     <!-- applies to the row -->
+      <td>92</td>
+      <td>A</td>
+    </tr>
+  </tbody>
+</table>`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+    ]
+  },
+
+  "th-has-data-cells": {
+    label: "Table header has no associated data cells",
+    why: "A <th> header that has no data cells associated with it is either misplaced or unnecessary. Screen readers announce it as a header, but users never encounter the data it's meant to label — creating confusion about the table structure.",
+    fix: `<!-- Before: header without corresponding data cells -->
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Score</th>
+    <th>Extra header</th>  <!-- no data cells in this column -->
+  </tr>
+  <tr>
+    <td>Alice</td>
+    <td>92</td>
+    <!-- missing third cell -->
+  </tr>
+</table>
+
+<!-- After: every header has matching data cells -->
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Name</th>
+      <th scope="col">Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Alice</td>
+      <td>92</td>
+    </tr>
+  </tbody>
+</table>`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+    ]
+  },
+
+  // ── ARIA widget names ─────────────────────────────────────────────────────
+
+  "aria-command-name": {
+    label: "ARIA command (button/link/menuitem) missing accessible name",
+    why: "Buttons, links, and menuitems with role='button', role='link', or role='menuitem' must have an accessible name. Without one, screen readers announce only the role ('button') with no indication of what it does.",
+    fix: `<!-- Before: custom button with no label -->
+<div role="button" tabindex="0">
+  <svg><!-- icon --></svg>
+</div>
+
+<!-- After option 1: aria-label -->
+<div role="button" tabindex="0" aria-label="Close dialog">
+  <svg aria-hidden="true"><!-- icon --></svg>
+</div>
+
+<!-- After option 2: visible text content -->
+<div role="button" tabindex="0">
+  <svg aria-hidden="true"><!-- icon --></svg>
+  Close dialog
+</div>
+
+<!-- Better: use native <button> which handles keyboard events natively -->
+<button aria-label="Close dialog">
+  <svg aria-hidden="true"><!-- icon --></svg>
+</button>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "aria-input-field-name": {
+    label: "ARIA input field missing accessible name",
+    why: "Custom input widgets (role='textbox', role='spinbutton', role='combobox', etc.) must have an accessible name so screen reader users know what to type into them. Without a name, users hear only 'edit text' with no context.",
+    fix: `<!-- Before: custom textbox with no label -->
+<div role="textbox" contenteditable="true"></div>
+
+<!-- After option 1: aria-label -->
+<div role="textbox" contenteditable="true" aria-label="Search products"></div>
+
+<!-- After option 2: aria-labelledby pointing to visible text -->
+<div id="search-lbl">Search products</div>
+<div role="textbox" contenteditable="true" aria-labelledby="search-lbl"></div>
+
+<!-- Best practice: use native <input> or <textarea> with a <label> -->
+<label for="search">Search products</label>
+<input type="search" id="search">`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "aria-meter-name": {
+    label: "ARIA meter missing accessible name",
+    why: "An element with role='meter' represents a scalar value within a range (like disk usage or battery level). Without an accessible name, screen reader users hear only 'meter' and the numeric value — they have no idea what the meter is measuring.",
+    fix: `<!-- Before: meter with no label -->
+<div role="meter" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+
+<!-- After: aria-label describes what's being measured -->
+<div
+  role="meter"
+  aria-label="Disk usage"
+  aria-valuenow="75"
+  aria-valuemin="0"
+  aria-valuemax="100"
+>
+  75% used
+</div>
+
+<!-- Or use the native <meter> element with a visible label -->
+<label>
+  Disk usage
+  <meter value="75" min="0" max="100">75%</meter>
+</label>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "aria-progressbar-name": {
+    label: "ARIA progress bar missing accessible name",
+    why: "A progress bar without a label leaves screen reader users guessing what is loading or being completed. They hear 'progress bar, 40%' — but 40% of what? A name like 'Uploading file' or 'Page loading' gives essential context.",
+    fix: `<!-- Before: progress bar with no label -->
+<div role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
+
+<!-- After: aria-label explains what's progressing -->
+<div
+  role="progressbar"
+  aria-label="File upload progress"
+  aria-valuenow="40"
+  aria-valuemin="0"
+  aria-valuemax="100"
+>
+  40%
+</div>
+
+<!-- Or use native <progress> with a visible label -->
+<label>
+  Uploading file
+  <progress value="40" max="100">40%</progress>
+</label>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "aria-toggle-field-name": {
+    label: "ARIA toggle field missing accessible name",
+    why: "Toggle controls like checkboxes, radio buttons, and switches (role='checkbox', role='radio', role='switch') must have an accessible name. Without one, screen reader users hear 'checkbox, unchecked' — but not what the checkbox is for.",
+    fix: `<!-- Before: custom checkbox with no label -->
+<div role="checkbox" aria-checked="false" tabindex="0"></div>
+
+<!-- After option 1: aria-label -->
+<div role="checkbox" aria-checked="false" tabindex="0" aria-label="Subscribe to newsletter"></div>
+
+<!-- After option 2: aria-labelledby -->
+<span id="subscribe-lbl">Subscribe to newsletter</span>
+<div role="checkbox" aria-checked="false" tabindex="0" aria-labelledby="subscribe-lbl"></div>
+
+<!-- Best practice: use native input — browser handles all ARIA automatically -->
+<label>
+  <input type="checkbox"> Subscribe to newsletter
+</label>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "aria-tooltip-name": {
+    label: "ARIA tooltip missing accessible name",
+    why: "A tooltip (role='tooltip') must have text content or an accessible name so screen readers can announce it. An empty tooltip is confusing — the screen reader announces 'tooltip' but reads nothing.",
+    fix: `<!-- Before: empty tooltip -->
+<div role="tooltip" id="tip-1"></div>
+<button aria-describedby="tip-1">Save</button>
+
+<!-- After: tooltip has text content -->
+<div role="tooltip" id="tip-1">Save changes to your account</div>
+<button aria-describedby="tip-1">Save</button>
+
+<!-- Tooltip shows on hover/focus, hidden otherwise -->
+<style>
+  [role="tooltip"] { display: none; }
+  button:hover [role="tooltip"],
+  button:focus [role="tooltip"] { display: block; }
+</style>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+      { label: "WAI-ARIA tooltip pattern", url: "https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/" },
+    ]
+  },
+
+  // ── Language ──────────────────────────────────────────────────────────────
+
+  "html-xml-lang-mismatch": {
+    label: "HTML lang and xml:lang attributes don't match",
+    why: "When the lang and xml:lang attributes on the <html> element have different values, screen readers get conflicting language signals. One attribute may be ignored — causing mispronunciation in one mode (HTML) or the other (XHTML served as XML).",
+    fix: `<!-- Before: mismatched language attributes -->
+<html lang="en" xml:lang="fr">
+
+<!-- After: both attributes agree -->
+<html lang="en" xml:lang="en">
+
+<!-- Most modern sites don't need xml:lang unless serving XHTML as XML.
+     If you don't need it, just use lang alone. -->
+<html lang="en">`,
+    links: [
+      { label: "WCAG 3.1.1 — Language of Page", url: "https://www.w3.org/WAI/WCAG21/Understanding/language-of-page" },
+    ]
+  },
+
+  // ── Miscellaneous ─────────────────────────────────────────────────────────
+
+  "blink": {
+    label: "Blinking content on the page",
+    why: "The <blink> element (and CSS text-decoration: blink) causes text to flash on and off. Blinking content can trigger seizures in users with photosensitive epilepsy, and is impossible to read for users with cognitive or attention disabilities. The element is deprecated and should never be used.",
+    fix: `<!-- Before: blinking element -->
+<blink>SALE — 50% off!</blink>
+
+<!-- After: use a visible, static highlight instead -->
+<strong class="sale-badge">SALE — 50% off!</strong>
+
+<style>
+  .sale-badge {
+    background: #dc2626;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+</style>
+
+/* Also remove any CSS blink */
+/* Before */
+text-decoration: blink;
+
+/* After: remove the property entirely */`,
+    links: [
+      { label: "WCAG 2.2.2 — Pause, Stop, Hide", url: "https://www.w3.org/WAI/WCAG21/Understanding/pause-stop-hide" },
+    ]
+  },
+
+  "marquee": {
+    label: "Scrolling marquee content",
+    why: "The <marquee> element creates automatically-scrolling text that users can't pause or stop. This violates WCAG — moving content that lasts more than 5 seconds must have a way to pause or stop it. It's also nearly impossible to read for users with cognitive disabilities or vestibular disorders.",
+    fix: `<!-- Before: marquee -->
+<marquee>Breaking news: important announcement scrolling here</marquee>
+
+<!-- After: static text, or a proper ticker with pause controls -->
+<div class="news-ticker" aria-live="polite">
+  <p>Breaking news: important announcement</p>
+  <button aria-label="Pause news ticker">Pause</button>
+</div>`,
+    links: [
+      { label: "WCAG 2.2.2 — Pause, Stop, Hide", url: "https://www.w3.org/WAI/WCAG21/Understanding/pause-stop-hide" },
+    ]
+  },
+
+  "p-as-heading": {
+    label: "Paragraph styled as a heading instead of using heading elements",
+    why: "When sighted designers use bold or large <p> tags to visually mimic headings, screen reader users miss out. They navigate by jumping between real heading elements — a <p style='font-weight: bold'> is invisible to heading navigation. It looks like a heading but doesn't function as one.",
+    fix: `<!-- Before: paragraph styled to look like a heading -->
+<p style="font-size: 24px; font-weight: bold; margin-top: 2rem;">
+  Section Title
+</p>
+
+<!-- After: use a real heading element and style it -->
+<h2 class="section-title">Section Title</h2>
+
+<style>
+  .section-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 2rem;
+  }
+</style>
+
+<!-- Choose the correct heading level based on document hierarchy,
+     not based on visual size. Use CSS for the visual style. -->`,
+    links: [
+      { label: "WCAG 1.3.1 — Info and Relationships", url: "https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships" },
+      { label: "WCAG 2.4.6 — Headings and Labels", url: "https://www.w3.org/WAI/WCAG21/Understanding/headings-and-labels" },
+    ]
+  },
+
+  "presentation-role-conflict": {
+    label: "Native semantics conflict with presentation role",
+    why: "Adding role='presentation' or role='none' to a native HTML element removes its semantic meaning from screen readers. But if the element is focusable or has global ARIA attributes, browsers ignore the presentation role — the conflict causes inconsistent screen reader behavior across browsers.",
+    fix: `<!-- Before: button with presentation role (conflict — button is focusable) -->
+<button role="presentation">Click me</button>
+
+<!-- After option 1: remove the role conflict — let button be a button -->
+<button>Click me</button>
+
+<!-- After option 2: use a div if you truly want a non-semantic element -->
+<div tabindex="0" role="button" aria-label="Click me">Click me</div>
+
+<!-- role="presentation" is valid for layout tables or decorative elements -->
+<table role="presentation">  <!-- removes table semantics from a layout table -->
+  <tr><td>...</td></tr>
+</table>`,
+    links: [
+      { label: "WCAG 4.1.2 — Name, Role, Value", url: "https://www.w3.org/WAI/WCAG21/Understanding/name-role-value" },
+    ]
+  },
+
+  "keyboard": {
+    label: "Interactive element not reachable by keyboard",
+    why: "Any element a mouse user can click must also be reachable and operable by keyboard. Users who can't use a mouse — due to motor disabilities, preference, or broken hardware — are completely locked out of functionality that requires a mouse click.",
+    fix: `<!-- Before: click handler on a non-interactive div -->
+<div onclick="doSomething()">Click me</div>
+<!-- This is invisible to keyboard users — Tab won't reach it -->
+
+<!-- After option 1: use a native button (handles Tab + Enter/Space automatically) -->
+<button onclick="doSomething()">Click me</button>
+
+<!-- After option 2: if you must use a div, add tabindex and keyboard handler -->
+<div
+  tabindex="0"
+  role="button"
+  onclick="doSomething()"
+  onkeydown="if(event.key==='Enter'||event.key===' ') doSomething()"
+>
+  Click me
+</div>
+
+// In React
+<div
+  tabIndex={0}
+  role="button"
+  onClick={doSomething}
+  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && doSomething()}
+>
+  Click me
+</div>`,
+    links: [
+      { label: "WCAG 2.1.1 — Keyboard", url: "https://www.w3.org/WAI/WCAG21/Understanding/keyboard" },
+    ]
+  },
+
 };
 
 // Fallback for rules without custom context

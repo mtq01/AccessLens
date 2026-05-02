@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Icon } from "../Icon";
 
 const CHECKLIST_STORAGE_KEY = "accesslens_checklist_v1";
+const FOCUS_LOG_KEY = "accesslens_focus_log_v1";
 
 function loadChecklist() {
   try {
@@ -10,14 +11,23 @@ function loadChecklist() {
   } catch { return {}; }
 }
 
+function loadFocusLog() {
+  try {
+    const raw = localStorage.getItem(FOCUS_LOG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export default function ExportModal({ scanData, tabOrderStops, onClose }) {
   const { violations = [], passes = [], dynamicIssues = [], url } = scanData;
+  const focusLog = loadFocusLog();
 
   // Default sensible: include things that have data
   const [sections, setSections] = useState({
     violations: violations.length > 0,
     tabOrder: tabOrderStops !== null && tabOrderStops?.length > 0,
     dynamicErrors: dynamicIssues.length > 0,
+    focusLog: focusLog !== null && focusLog.length > 0,
     checklist: true,
     passed: false,
   });
@@ -37,6 +47,7 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
       tabOrderStops: tabOrderStops || [],
       dynamicIssues,
       checklist,
+      focusLog: focusLog || [],
     };
 
     const reportUrl = chrome.runtime.getURL("report.html");
@@ -80,6 +91,15 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
         : "No dynamic issues detected",
       disabled: dynamicIssues.length === 0,
       icon: "bolt",
+    },
+    {
+      key: "focusLog",
+      label: "Focus ring test log",
+      detail: focusLog && focusLog.length > 0
+        ? `${focusLog.length} keyboard stop${focusLog.length === 1 ? "" : "s"} recorded`
+        : "Run a keyboard focus test first to include this",
+      disabled: !focusLog || focusLog.length === 0,
+      icon: "keyboard",
     },
     {
       key: "checklist",
