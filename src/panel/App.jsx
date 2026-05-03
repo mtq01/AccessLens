@@ -100,10 +100,6 @@ export default function App() {
     });
   }
 
-  function openFeedback() {
-    chrome.tabs.create({ url: "https://forms.gle/placeholder-feedback-form" });
-  }
-
   if (poppedOut && !isPopout) {
     return (
       <div className="popout-placeholder">
@@ -122,7 +118,7 @@ export default function App() {
     <div className="app">
       {showOnboarding && <OnboardingPanel onDone={completeOnboarding} />}
 
-      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} onFeedback={openFeedback} isPopout={isPopout} sidePanelWindowId={sidePanelWindowId} />
+      <Header tab={tab} setTab={setTab} scanBadge={scanBadge} isPopout={isPopout} sidePanelWindowId={sidePanelWindowId} />
 
       <MainContent
         ready={ready}
