@@ -99,6 +99,8 @@ function forwardToPanel(message) {
 
 // ── Message router ────────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  // Reject any message that didn't originate from this extension's own pages or content scripts
+  if (sender.id !== chrome.runtime.id) return;
 
   if (message.type === "GET_TAB_ID") {
     if (trackedTabId !== null) {

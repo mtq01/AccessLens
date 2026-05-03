@@ -824,6 +824,9 @@ startMutationObserver();
 // ── Message listener ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Reject any message that didn't come from this extension's background script
+  if (sender.id !== chrome.runtime.id) return;
+
   if (message.type === "RUN_SCAN") {
     runScan().then(sendResponse);
     return true;
