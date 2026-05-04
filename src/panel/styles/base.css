@@ -1,0 +1,108 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   base.css — reset, design tokens, typography defaults
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Brand ─────────────────────────────────────────────────────────────── */
+  --green:              #166534;
+  --green-hover:        #14532d;
+  --green-bg:           #f0fdf4;
+  --green-bg-hover:     #dcfce7;
+  --green-600:          #16a34a;  /* reading: very easy */
+  --shadow-btn-green:   0 4px 14px rgba(22, 101, 52, 0.35);
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --text:               #111;
+  --text-muted:         #3c3a54;
+
+  /* ── Surface ────────────────────────────────────────────────────────────── */
+  --surface:            #fff;
+
+  /* ── Borders ────────────────────────────────────────────────────────────── */
+  --border:             #e5e7eb;
+  --border-strong:      #d1d5db;
+  --border-tinted:      #e4e2ef;
+
+  /* ── Severity: Critical ─────────────────────────────────────────────────── */
+  --critical:           #dc2626;
+  --critical-bg:        #fef2f2;
+  --critical-bg-strong: #fee2e2;
+
+  /* ── Severity: Serious ──────────────────────────────────────────────────── */
+  --serious:            #d97706;
+  --serious-bg:         #fffbeb;
+  --serious-border:     #fcd34d;
+  --serious-text:       #92400e;
+
+  /* ── Severity: Moderate ─────────────────────────────────────────────────── */
+  --moderate:           #2563eb;
+  --moderate-bg:        #eff6ff;
+
+  /* ── Reading level extras ───────────────────────────────────────────────── */
+  --orange-600:         #ea580c;  /* reading: difficult */
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 18.75rem; /* 300px */
+  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+ 
+  cursor: pointer;
+  text-align: inherit;
+  line-height: inherit;
+}

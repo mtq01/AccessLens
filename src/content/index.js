@@ -8,6 +8,7 @@ let focusKeyHandler = null;
 let highContrastStyleEl = null;
 let mutationObserver = null;
 let dynamicIssues = [];
+let lastSubmitTime = 0;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ async function runScan() {
       success: true,
       violations: results.violations,
       passes: results.passes,
-      dynamicIssues: dynamicIssues,
+      dynamicIssues: deduplicateDynamicIssues(dynamicIssues),
     };
   } catch (err) {
     return { success: false, error: err.message };
@@ -90,7 +91,7 @@ function highlightElement(selector, showDimensions = false) {
     if (showDimensions) {
       const w = Math.round(rect.width), h = Math.round(rect.height);
       const ok = w >= 24 && h >= 24;
-      const text = ok ? `${w}×${h}px ✓` : `${w}×${h}px — needs 24×24px min`;
+      const text = ok ? `${w}×${h}px ✓` : `${w}×${h}px. Needs 24×24px minimum`;
       overlay.appendChild(makeBadge(text, ok ? "#1D9E75" : "#C2410C", { bottom: "-24px", right: "0" }));
     }
 
@@ -107,7 +108,121 @@ const FOCUSABLE = [
   '[tabindex]', '[contenteditable="true"]', 'details > summary',
 ].join(', ');
 
-function getTabOrder() {
+// ── Focus ring detection via CSS rule inspection ─────────────────────────────
+// We read the page's stylesheet rules directly rather than trying to
+// trigger :focus and read computed styles (which doesn't work in content scripts).
+
+let _focusRuleCache = null;
+
+function buildFocusRuleCache() {
+  if (_focusRuleCache) return _focusRuleCache;
+
+  const positiveRules = []; // rules that ADD a visible focus indicator
+  const removalRules  = []; // rules that REMOVE the focus indicator with no replacement
+
+  try {
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try { cssRules = sheet.cssRules; } catch { continue; }
+      if (!cssRules) continue;
+
+      for (const rule of cssRules) {
+        if (!(rule instanceof CSSStyleRule)) continue;
+        const sel = rule.selectorText || '';
+
+        // Only care about rules that include a focus pseudo-class
+        const hasFocusPseudo = sel.includes(':focus-visible') ||
+                               sel.includes(':focus-within') ||
+                               sel.includes(':focus');
+        if (!hasFocusPseudo) continue;
+
+        const s = rule.style;
+        const outlineNone = s.outline === 'none' ||
+                            s.outlineWidth === '0' ||
+                            s.outlineWidth === '0px';
+        const hasVisibleOutline  = s.outlineWidth && parseFloat(s.outlineWidth) > 0 && !outlineNone;
+        const hasOutlineShorthand= s.outline && s.outline !== 'none' && !outlineNone;
+        const hasBoxShadow       = s.boxShadow && s.boxShadow !== 'none';
+        const hasBorderChange    = s.border && s.border !== 'none';
+        const hasBackground      = s.backgroundColor && s.backgroundColor !== 'transparent' && s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+
+        const addsVisual = hasVisibleOutline || hasOutlineShorthand || hasBoxShadow || hasBorderChange || hasBackground;
+        const removesVisual = outlineNone && !hasBoxShadow && !hasBorderChange && !hasBackground;
+
+        // Keep the full selector but strip the focus pseudo-class part only
+        // e.g. "button:focus-visible" → "button"
+        // e.g. ".nav a:focus" → ".nav a"
+        // We must preserve the rest of the selector for accurate matching
+        const baseSelector = sel
+          .split(',')
+          .map(part => part
+            .replace(/:focus-visible/g, '')
+            .replace(/:focus-within/g, '')
+            .replace(/:focus/g, '')
+            .trim()
+          )
+          .filter(Boolean)
+          .join(', ');
+
+        if (!baseSelector) continue;
+
+        if (addsVisual) {
+          positiveRules.push({ baseSelector });
+        } else if (removesVisual) {
+          removalRules.push({ baseSelector });
+        }
+      }
+    }
+  } catch(e) {}
+
+  _focusRuleCache = { positiveRules, removalRules };
+  return _focusRuleCache;
+}
+
+function elementHasFocusRingViaCSS(el) {
+  const { positiveRules, removalRules } = buildFocusRuleCache();
+
+  // Check if any positive rule targets this element
+  const hasPositive = positiveRules.some(entry => {
+    try { return el.matches(entry.baseSelector); } catch { return false; }
+  });
+
+  // Check if any removal rule targets this element
+  const hasRemoval = removalRules.some(entry => {
+    try { return el.matches(entry.baseSelector); } catch { return false; }
+  });
+
+  // Positive rule wins if present
+  if (hasPositive) return true;
+
+  // Explicit removal with no replacement = no focus ring
+  if (hasRemoval) return false;
+
+  // No CSS rules found — fall back to browser defaults
+  // Native interactive elements get browser default focus rings unless
+  // a global reset (like * { outline: none }) removed them
+  const tag = el.tagName.toLowerCase();
+  const nativeInteractive = ['button', 'input', 'select', 'textarea', 'a', 'details', 'summary'];
+  if (nativeInteractive.includes(tag)) {
+    // Check for a global outline reset via computed style at rest
+    // If outline-width is already > 0 at rest, the browser is applying a default
+    const style = window.getComputedStyle(el);
+    const outlineWidth = parseFloat(style.outlineWidth) || 0;
+    // Non-zero outline at rest means there's definitely an outline
+    if (outlineWidth > 0) return true;
+    // Zero at rest on a native element — browser will apply focus ring on focus
+    // UNLESS a global reset has been applied. Check for * { outline: none } pattern.
+    const globalReset = removalRules.some(entry => {
+      try { return entry.baseSelector === '*' || entry.baseSelector === ':root'; } catch { return false; }
+    });
+    return !globalReset;
+  }
+
+  // Non-native element with no CSS rules = no focus ring
+  return false;
+}
+
+async function getTabOrder() {
   const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
     .filter(el => {
       const ti = parseInt(el.getAttribute('tabindex') ?? '0', 10);
@@ -125,50 +240,14 @@ function getTabOrder() {
   const natural = allFocusable.filter(el => !(parseInt(el.getAttribute('tabindex') || '0', 10) > 0));
   const ordered = [...withPos, ...natural];
 
-  // Save current focus so we can restore it
-  const previouslyFocused = document.activeElement;
-
   const results = ordered.map((el, i) => {
     const rect = el.getBoundingClientRect();
     const tabindex = el.getAttribute('tabindex');
     const hasPositiveTabindex = tabindex !== null && parseInt(tabindex, 10) > 0;
     const isAriaHiddenFocusable = el.closest('[aria-hidden="true"]') !== null;
 
-    // Actually focus the element to check focus ring styles
-    let hasFocusRing = false;
-    try {
-      el.focus({ preventScroll: true });
-      const focused = window.getComputedStyle(el);
-      const outlineWidth = parseFloat(focused.outlineWidth) || 0;
-      const outlineStyle = focused.outlineStyle;
-      const boxShadow = focused.boxShadow;
-
-      const hasOutline = outlineWidth > 0 && outlineStyle !== 'none';
-      const hasBoxShadow = boxShadow && boxShadow !== 'none';
-
-      // Also check :focus-visible via a secondary approach —
-      // look for any style change compared to default state
-      el.blur();
-      const blurred = window.getComputedStyle(el);
-      const blurredOutline = parseFloat(blurred.outlineWidth) || 0;
-      const blurredShadow = blurred.boxShadow;
-
-      const outlineChanges = outlineWidth !== blurredOutline;
-      const shadowChanges = boxShadow !== blurredShadow;
-
-      hasFocusRing = hasOutline || hasBoxShadow || outlineChanges || shadowChanges;
-
-      // Re-focus to leave in focused state for style reading
-      el.focus({ preventScroll: true });
-    } catch(e) {
-      hasFocusRing = false;
-    } finally {
-      el.blur();
-    }
-
-    // Build label
     const tag = el.tagName.toLowerCase();
-    const id = el.id ? `#${el.id}` : '';
+    const id  = el.id ? `#${el.id}` : '';
     const cls = el.className && typeof el.className === 'string'
       ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.')
       : '';
@@ -179,7 +258,7 @@ function getTabOrder() {
       el.getAttribute('title') ||
       el.textContent || ''
     ).trim().slice(0, 30);
-    const label = `${tag}${id || cls}${text ? ` — "${text}"` : ''}`;
+    const label = `${tag}${id || cls}${text ? `: "${text}"` : ''}`;
 
     return {
       index: i + 1,
@@ -188,24 +267,16 @@ function getTabOrder() {
       tabindex: tabindex || '0',
       hasPositiveTabindex,
       isAriaHiddenFocusable,
-      hasFocusRing,
       rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
     };
   });
 
-  // Restore original focus
-  try {
-    if (previouslyFocused && previouslyFocused !== document.body) {
-      previouslyFocused.focus({ preventScroll: true });
-    }
-  } catch(e) {}
-
   return results;
 }
 
-function showAllTabOrder() {
+async function showAllTabOrder() {
   clearHighlights();
-  const stops = getTabOrder();
+  const stops = await getTabOrder();
 
   // Re-query ordered elements for positioning (getTabOrder already blurred them)
   const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
@@ -237,11 +308,10 @@ function showAllTabOrder() {
     // Skip elements with zero size (hidden)
     if (rect.width === 0 && rect.height === 0) return;
 
-    // Colour by issue type
-    let color = '#4f8ef7'; // blue — normal
-    if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red — bug
-    else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber — anti-pattern
-    else if (!stop.hasFocusRing)       color = '#C2410C'; // dark red — no focus ring
+    // Color by issue type — only two reliable states
+    let color = '#4f8ef7'; // blue — normal stop
+    if (stop.isAriaHiddenFocusable) color = '#E24B4A'; // red — definite bug
+    else if (stop.hasPositiveTabindex) color = '#EF9F27'; // amber — breaks tab order
 
     // Element outline — absolute so it stays anchored on scroll
     const outline = document.createElement('div');
@@ -292,6 +362,86 @@ function showAllTabOrder() {
   return stops;
 }
 
+// ── Focus ring tester ─────────────────────────────────────────────────────────
+// Instead of trying to detect focus rings programmatically (unreliable),
+// we overlay a bright visual ring that follows real keyboard focus.
+// This lets the developer see exactly what a keyboard user experiences.
+
+let focusRingTesterActive = false;
+let focusRingOverlay = null;
+let focusRingListener = null;
+let focusRingScrollListener = null;
+
+function updateFocusRingOverlay(el) {
+  if (!el || el === document.body || el === document.documentElement) {
+    if (focusRingOverlay) focusRingOverlay.style.display = 'none';
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return;
+
+  const top  = rect.top  + window.scrollY;
+  const left = rect.left + window.scrollX;
+
+  if (!focusRingOverlay) {
+    focusRingOverlay = document.createElement('div');
+    focusRingOverlay.id = '__al_focus_ring__';
+    Object.assign(focusRingOverlay.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: '2147483647',
+      borderRadius: '4px',
+      transition: 'top 0.1s, left 0.1s, width 0.1s, height 0.1s',
+      outline: '3px solid #4f8ef7',
+      outlineOffset: '3px',
+      boxShadow: '0 0 0 6px rgba(79,142,247,0.2)',
+    });
+    document.documentElement.appendChild(focusRingOverlay);
+  }
+
+  Object.assign(focusRingOverlay.style, {
+    display: 'block',
+    top:    (top  - 3) + 'px',
+    left:   (left - 3) + 'px',
+    width:  (rect.width  + 6) + 'px',
+    height: (rect.height + 6) + 'px',
+  });
+}
+
+function startFocusRingTester() {
+  if (focusRingTesterActive) return;
+  focusRingTesterActive = true;
+
+  focusRingListener = (e) => updateFocusRingOverlay(e.target);
+  focusRingScrollListener = () => {
+    const el = document.activeElement;
+    if (el) updateFocusRingOverlay(el);
+  };
+
+  document.addEventListener('focusin',  focusRingListener, true);
+  document.addEventListener('focusout', () => {
+    if (focusRingOverlay) focusRingOverlay.style.display = 'none';
+  }, true);
+  window.addEventListener('scroll', focusRingScrollListener, true);
+
+  // Show on whatever is currently focused
+  if (document.activeElement) updateFocusRingOverlay(document.activeElement);
+}
+
+function stopFocusRingTester() {
+  focusRingTesterActive = false;
+  if (focusRingListener) {
+    document.removeEventListener('focusin', focusRingListener, true);
+  }
+  if (focusRingScrollListener) {
+    window.removeEventListener('scroll', focusRingScrollListener, true);
+  }
+  if (focusRingOverlay) {
+    focusRingOverlay.remove();
+    focusRingOverlay = null;
+  }
+}
+
 function scrollToStop(stopIndex) {
   const allFocusable = Array.from(document.querySelectorAll(FOCUSABLE))
     .filter(el => {
@@ -312,6 +462,13 @@ function scrollToStop(stopIndex) {
 
 function startFocusMode() {
   if (focusModeActive) return;
+  // DOM-based cross-instance lock: if background retries inject a second copy of content.js,
+  // this prevents it from starting a duplicate focus session and sending duplicate FOCUS_UPDATE messages.
+  if (document.getElementById('__al_focus_lock__')) return;
+  const lock = document.createElement('div');
+  lock.id = '__al_focus_lock__';
+  lock.style.cssText = 'display:none!important';
+  document.documentElement.appendChild(lock);
   focusModeActive = true;
   focusStopCount = 0;
 
@@ -339,32 +496,34 @@ function startFocusMode() {
     const rect = el.getBoundingClientRect();
     const style = window.getComputedStyle(el);
 
-    // Check if focus ring is visible
-    const outline = style.outline;
+    // Real Tab presses give us a brief moment where focus styles ARE applied.
+    // Check for outline or box-shadow that indicates a visible focus ring.
     const outlineWidth = parseFloat(style.outlineWidth) || 0;
-    const boxShadow = style.boxShadow;
-    const hasFocusRing = outlineWidth > 0 || (boxShadow && boxShadow !== "none");
+    const outlineStyle = style.outlineStyle;
+    const boxShadow    = style.boxShadow;
 
-    const color = hasFocusRing ? "#1D9E75" : "#E24B4A";
-    const overlay = createOverlay(rect, color, 0.1);
+    const hasOutline   = outlineWidth > 0 && outlineStyle !== 'none';
+    const hasBoxShadow = boxShadow && boxShadow !== 'none';
+    const hasFocusRing = hasOutline || hasBoxShadow;
 
-    // Stop number badge
-    overlay.appendChild(makeBadge(`#${focusStopCount}`, color, { top: "-22px", left: "0" }));
+    // Color overlay reflects detection result for the panel feedback,
+    // but we always draw the OUR overlay so the user can see their position.
+    const overlayColor = hasFocusRing ? '#16a34a' : '#d97706';
 
-    // Focus ring status badge
-    const status = hasFocusRing ? "Focus ring ✓" : "No focus ring ✗";
-    overlay.appendChild(makeBadge(status, color, { bottom: "-22px", left: "0" }));
+    const overlay = createOverlay(rect, overlayColor, 0.10);
+    overlay.style.outline = `2px dashed ${overlayColor}`;
+    overlay.style.outlineOffset = '4px';
+    overlay.appendChild(makeBadge(`#${focusStopCount}`, overlayColor, { top: '-22px', left: '0' }));
 
     document.documentElement.appendChild(overlay);
-    const counter = document.getElementById("__al_focus_counter__");
-    if (counter) counter.textContent = `Focus stop ${focusStopCount} — ${el.tagName.toLowerCase()}${el.id ? "#"+el.id : ""}`;
+    const counter = document.getElementById('__al_focus_counter__');
+    if (counter) counter.textContent = `Stop ${focusStopCount}: ${el.tagName.toLowerCase()}${el.id ? '#'+el.id : ''}`;
 
-    // Report back to panel
     chrome.runtime.sendMessage({
-      type: "FOCUS_UPDATE",
+      type: 'FOCUS_UPDATE',
       stopCount: focusStopCount,
       tagName: el.tagName,
-      id: el.id || "",
+      id: el.id || '',
       hasFocusRing,
       selector: el.id ? `#${el.id}` : el.tagName.toLowerCase(),
     });
@@ -381,6 +540,7 @@ function startFocusMode() {
 function stopFocusMode() {
   if (!focusModeActive) return;
   focusModeActive = false;
+  document.getElementById('__al_focus_lock__')?.remove();
   document.removeEventListener("focusin", focusHandler, true);
   document.removeEventListener("keydown", focusKeyHandler, true);
   document.getElementById("__al_focus_hint__")?.remove();
@@ -470,66 +630,140 @@ function disableHighContrast() {
 // ── Dynamic error detection ───────────────────────────────────────────────────
 
 const ERROR_PATTERNS = [
-  /error/i, /invalid/i, /required/i, /fail/i, /warning/i, /alert/i,
+  /error/i, /invalid/i, /needd/i, /fail/i, /warning/i, /alert/i,
+  /notice/i, /message/i, /notification/i, /toast/i, /banner/i,
 ];
 
-function looksLikeError(el) {
-  const text = el.textContent?.trim() || "";
-  const cls = el.className || "";
-  const role = el.getAttribute("role") || "";
-  if (text.length < 3 || text.length > 200) return false;
-  return ERROR_PATTERNS.some(p => p.test(cls) || p.test(text) || p.test(role));
+// Patterns that suggest content was deliberately injected for the user to see
+const DYNAMIC_CONTENT_PATTERNS = [
+  /deal/i, /offer/i, /discount/i, /promo/i, /credit/i, /save/i,
+  /new/i, /update/i, /available/i, /expires/i,
+];
+
+function looksLikeDynamicUserContent(el) {
+  const text = (el.textContent?.trim() || "");
+  const cls  = (el.className && typeof el.className === 'string' ? el.className : "");
+  const role = (el.getAttribute("role") || "");
+
+  if (text.length < 5) return false;
+
+  // Strong signal: class or role explicitly suggests this is a message/error/alert
+  if (ERROR_PATTERNS.some(p => p.test(cls) || p.test(role))) return true;
+
+  // Strong signal: element has role that implies it's a user-facing message
+  if (['alert','status','log','marquee','timer'].includes(role)) return true;
+
+  // Strong signal: aria attributes suggest it's meant to be announced
+  if (el.getAttribute('aria-atomic') || el.getAttribute('aria-relevant')) return true;
+
+  // For everything else, don't flag it — static content doesn't need aria-live
+  return false;
 }
 
 function checkDynamicError(el) {
-  if (!looksLikeError(el)) return null;
+  if (!looksLikeDynamicUserContent(el)) return null;
 
   const hasAriaLive = el.getAttribute("aria-live");
-  const hasRole = el.getAttribute("role");
-  const hasAriaDescribedBy = !!document.querySelector(`[aria-describedby="${el.id}"]`);
-  const hasId = !!el.id;
+  const hasRole     = el.getAttribute("role");
+  const hasId       = !!el.id;
+  const hasAriaDescribedBy = hasId && !!document.querySelector(`[aria-describedby="${el.id}"]`);
+
+  // Already properly marked up — not an issue
+  if (hasAriaLive || hasRole === "alert" || hasRole === "status") return null;
 
   const issues = [];
-  if (!hasAriaLive && hasRole !== "alert" && hasRole !== "status") {
-    issues.push("Missing aria-live or role=alert — screen readers won't announce this error");
-  }
+  issues.push("Missing aria-live or role=alert. Screen readers won't know this appeared");
+
   if (hasId && !hasAriaDescribedBy) {
-    issues.push("Error message has an ID but no input references it via aria-describedby");
-  }
-  if (!hasId) {
-    issues.push("Error message has no ID — cannot be associated to its input via aria-describedby");
+    issues.push("Has an ID but no input references it via aria-describedby");
+  } else if (!hasId) {
+    issues.push("No ID. Cannot be linked to a form input via aria-describedby");
   }
 
-  if (issues.length === 0) return null;
+  const elCls = (el.className && typeof el.className === 'string') ? el.className : '';
+  const elTag = el.tagName?.toLowerCase() || '';
+  const elText = (el.textContent || '').trim();
+  const elTextShort = elText.slice(0, 60);
+
+  // Categorize meaningfully
+  let category = 'General content';
+  if (ERROR_PATTERNS.some(p => p.test(elCls))) category = 'Error message';
+  else if (/toast|snack|notif/i.test(elCls)) category = 'Notification';
+  else if (/banner|promo|deal|offer|credit/i.test(elCls)) category = 'Marketing content';
+  else if (/modal|dialog|popup/i.test(elCls)) category = 'Modal content';
+  else if (elTag === 'strong' || elTag === 'b') category = 'Highlighted text';
+  else if (elTag === 'p') category = 'Paragraph text';
+  else if (elTag === 'li') category = 'List item';
+  else if (elTag === 'span') category = 'Inline text';
+  else if (elTag === 'div') category = 'Content block';
+
+  const description = category + ' missing ARIA live region';
+
+  // Dedup key = category + first 40 chars of text
+  // This groups truly identical content while keeping different text as separate entries
+  const textKey = elText.slice(0, 40).replace(/\s+/g, ' ').trim();
+  const dedupKey = category + '|' + textKey;
 
   return {
-    id: "dynamic-error-" + Date.now(),
+    id: "dynamic-" + Date.now(),
     type: "dynamic",
     impact: "serious",
-    description: "Dynamically injected error message missing ARIA association",
+    description,
+    category,
     issues,
+    dedupKey,
+    sampleText: elTextShort,
+    tag: elTag,
     html: el.outerHTML.slice(0, 200),
   };
+}
+
+function deduplicateDynamicIssues(issues) {
+  // Group by dedupKey — same pattern of issues = one entry with a count
+  const groups = {};
+  issues.forEach(issue => {
+    const key = issue.dedupKey || issue.issues.join("|");
+    if (!groups[key]) {
+      groups[key] = { ...issue, count: 1, examples: [issue.html] };
+    } else {
+      groups[key].count++;
+      if (groups[key].examples.length < 3) groups[key].examples.push(issue.html);
+    }
+  });
+  return Object.values(groups);
 }
 
 function startMutationObserver() {
   if (mutationObserver) mutationObserver.disconnect();
   dynamicIssues = [];
 
+  // Only watch for elements ADDED after page load via JavaScript.
+  // Static content doesn't need aria-live — only content that changes does.
   mutationObserver = new MutationObserver((mutations) => {
+    // Only collect dynamic issues within 3 seconds of a form submit — ignore all other DOM mutations
+    if (Date.now() - lastSubmitTime > 3000) return;
     mutations.forEach(m => {
       m.addedNodes.forEach(node => {
         if (node.nodeType !== 1) return;
+        // Only check elements that look like user-facing messages
         const issue = checkDynamicError(node);
         if (issue) dynamicIssues.push(issue);
-        // Also check children
-        node.querySelectorAll && node.querySelectorAll("*").forEach(child => {
-          const childIssue = checkDynamicError(child);
-          if (childIssue) dynamicIssues.push(childIssue);
-        });
+        // Also check children of the added node
+        if (node.querySelectorAll) {
+          node.querySelectorAll('*').forEach(child => {
+            const childIssue = checkDynamicError(child);
+            if (childIssue) dynamicIssues.push(childIssue);
+          });
+        }
       });
     });
   });
+
+  // Reset the issue list and start the 3-second window every time a form is submitted
+  document.addEventListener('submit', () => {
+    lastSubmitTime = Date.now();
+    dynamicIssues = [];
+  }, true);
 
   mutationObserver.observe(document.body, { childList: true, subtree: true });
 }
@@ -590,6 +824,9 @@ startMutationObserver();
 // ── Message listener ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Reject any message that didn't come from this extension's background script
+  if (sender.id !== chrome.runtime.id) return;
+
   if (message.type === "RUN_SCAN") {
     runScan().then(sendResponse);
     return true;
@@ -608,8 +845,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === "SHOW_TAB_ORDER") {
-    const stops = showAllTabOrder();
-    sendResponse({ success: true, stops });
+    showAllTabOrder().then(stops => {
+      sendResponse({ success: true, stops });
+    }).catch(() => {
+      sendResponse({ success: false });
+    });
     return true;
   }
   if (message.type === "SCROLL_TO_STOP") {
@@ -637,6 +877,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "DISABLE_HIGH_CONTRAST") {
     disableHighContrast();
     sendResponse({ disabled: true });
+    return true;
+  }
+  if (message.type === "START_FOCUS_RING_TESTER") {
+    startFocusRingTester();
+    sendResponse({ success: true });
+    return true;
+  }
+  if (message.type === "STOP_FOCUS_RING_TESTER") {
+    stopFocusRingTester();
+    sendResponse({ success: true });
+    return true;
+  }
+  if (message.type === 'RUN_CONTENT_ANALYSIS') {
+    try {
+      const linkResults  = analyseLinkText();
+      const readingLevel = getReadingLevel();
+      const motionIssues = detectMotion();
+      sendResponse({ success: true, linkResults, readingLevel, motionIssues });
+    } catch(e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
+  if (message.type === 'SCAN_CONTRAST') {
+    try {
+      sendResponse({ success: true, results: scanContrast() });
+    } catch(e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
+  if (message.type === "SCROLL_TO_ELEMENT") {
+    try {
+      let el = null;
+      if (message.selector) el = document.querySelector(message.selector);
+      if (!el && message.text) {
+        const all = document.querySelectorAll('a,button,p,h1,h2,h3,h4,h5,h6,span,li,td');
+        for (const node of all) {
+          if (node.textContent?.trim().startsWith(message.text.trim())) { el = node; break; }
+        }
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        clearHighlights();
+        const rect = el.getBoundingClientRect();
+        const overlay = createOverlay(rect, "#4f8ef7", 0.10);
+        overlay.style.outlineOffset = "0";
+        document.documentElement.appendChild(overlay);
+        sendResponse({ success: true });
+      } else {
+        sendResponse({ success: false });
+      }
+    } catch(e) {
+      sendResponse({ success: false });
+    }
     return true;
   }
 });
@@ -673,7 +968,7 @@ function analyseLinkText() {
         html: link.outerHTML.slice(0, 150),
         href: link.href,
         selector,
-        message: 'Link has no accessible text — screen readers will announce the URL instead',
+        message: 'Link has no accessible text — screen readers will read the URL out loud instead',
       });
       return;
     }
@@ -731,17 +1026,17 @@ function getReadingLevel() {
   const fkgl = 0.39 * (wordCount / sentences) + 11.8 * (syllables / wordCount) - 15.59;
   const grade = Math.max(1, Math.round(fkgl));
 
-  let label, color, explanation;
-  if (grade <= 6)  { label = 'Very easy';  color = '#16a34a'; explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
-  else if (grade <= 8)  { label = 'Easy';  color = '#65a30d'; explanation = 'Middle school level. Good readability — most adult users will understand this content without difficulty.'; }
-  else if (grade <= 10) { label = 'Moderate'; color = '#d97706'; explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
-  else if (grade <= 12) { label = 'Difficult'; color = '#ea580c'; explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
-  else                  { label = 'Very difficult'; color = '#dc2626'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
+  let label, tier, explanation;
+  if (grade <= 6)       { label = 'Very easy';      tier = 'very-easy';      explanation = 'Elementary school level. Suitable for all audiences, including users with cognitive disabilities. Great work.'; }
+  else if (grade <= 8)  { label = 'Easy';           tier = 'easy';           explanation = 'Middle school level. Good readability. Most adults will understand this easily.'; }
+  else if (grade <= 10) { label = 'Moderate';       tier = 'moderate';       explanation = 'High school level. Readable by most adults, but consider simplifying to reach users with lower literacy or cognitive disabilities.'; }
+  else if (grade <= 12) { label = 'Difficult';      tier = 'difficult';      explanation = 'Upper high school level. WCAG 3.1.5 recommends Grade 8 or below. Simplify your sentences and word choices, or provide a plain-language summary.'; }
+  else                  { label = 'Very difficult'; tier = 'very-difficult'; explanation = 'University / post-secondary level. This content is likely inaccessible to many users. Write at a lower grade level or add a plain-language summary at the top of the page.'; }
 
   return {
     grade,
     label,
-    color,
+    tier,
     explanation,
     wordCount,
     sentenceCount: sentences,
@@ -788,8 +1083,8 @@ function detectMotion() {
           hasPauseControl: !!hasPauseControl,
           html: el.outerHTML.slice(0, 120),
           message: isInfinite
-            ? `Infinite animation "${animName}" — WCAG 2.2.2 requires a mechanism to pause, stop, or hide this.`
-            : `Long animation "${animName}" (${animDuration}s) — verify users can pause or stop it.`,
+            ? `Infinite animation "${animName}" — WCAG 2.2.2 says users need a way to pause, stop, or hide this.`
+            : `Long animation "${animName}" (${animDuration}s) — Make sure users can pause or stop it.`,
         });
       }
     }
@@ -807,27 +1102,12 @@ function detectMotion() {
 
 // ── Message handlers ──────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'RUN_CONTENT_ANALYSIS') {
-    try {
-      const linkResults    = analyseLinkText();
-      const readingLevel   = getReadingLevel();
-      const motionIssues   = detectMotion();
-      sendResponse({ success: true, linkResults, readingLevel, motionIssues });
-    } catch(e) {
-      sendResponse({ success: false, error: e.message });
-    }
-    return true;
-  }
-});
-
 // ── Contrast scan ─────────────────────────────────────────────────────────────
 
 function parseRgbStr(str) {
-  if (!str) return null;
-  const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return null;
-  return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
+  const rgba = parseRgba(str);
+  if (!rgba) return null;
+  return [rgba.r, rgba.g, rgba.b];
 }
 
 function luminance([r, g, b]) {
@@ -848,14 +1128,69 @@ function rgbToHex([r, g, b]) {
   return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
+function parseRgba(str) {
+  if (!str) return null;
+  const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!m) return null;
+  return {
+    r: parseInt(m[1]),
+    g: parseInt(m[2]),
+    b: parseInt(m[3]),
+    a: m[4] !== undefined ? parseFloat(m[4]) : 1,
+  };
+}
+
+function isTransparent(colorStr) {
+  if (!colorStr) return true;
+  if (colorStr === 'transparent') return true;
+  const rgba = parseRgba(colorStr);
+  if (!rgba) return true;
+  return rgba.a === 0;
+}
+
+// Blend a foreground color with alpha over a background
+function blendWithBg(fg, bg) {
+  if (fg.a === 1) return fg;
+  const a = fg.a;
+  return {
+    r: Math.round(fg.r * a + bg.r * (1 - a)),
+    g: Math.round(fg.g * a + bg.g * (1 - a)),
+    b: Math.round(fg.b * a + bg.b * (1 - a)),
+    a: 1,
+  };
+}
+
 function getEffectiveBg(el) {
-  let node = el;
+  // Collect all background colors up the tree, then blend them
+  const layers = [];
+  let node = el.parentElement;
+
   while (node && node !== document.documentElement) {
     const bg = window.getComputedStyle(node).backgroundColor;
-    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+    if (!isTransparent(bg)) {
+      const rgba = parseRgba(bg);
+      if (rgba) layers.push(rgba);
+      if (rgba && rgba.a === 1) break; // fully opaque — stop here
+    }
     node = node.parentElement;
   }
-  return 'rgb(255,255,255)';
+
+  // Default white if nothing found
+  if (layers.length === 0) return 'rgb(255,255,255)';
+
+  // Blend layers bottom to top
+  let result = layers[layers.length - 1];
+  for (let i = layers.length - 2; i >= 0; i--) {
+    result = blendWithBg(layers[i], result);
+  }
+  return `rgb(${result.r},${result.g},${result.b})`;
+}
+
+function getEffectiveFg(el) {
+  const style = window.getComputedStyle(el);
+  const color = style.color;
+  if (isTransparent(color)) return null; // invisible text — skip
+  return color;
 }
 
 function getElementType(el) {
@@ -869,7 +1204,19 @@ function getElementType(el) {
 
 function scanContrast() {
   const results = { summary: { total: 0, failures: 0, warnings: 0 }, groups: {} };
-  const SELECTORS = 'p, span, a, button, h1, h2, h3, h4, h5, h6, label, li, td, th, input, select, div[role="button"]';
+  // Cast a wide net — better to catch more and filter than miss things
+  const SELECTORS = [
+    'p', 'span', 'a', 'button',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'label', 'li', 'td', 'th',
+    'input', 'select', 'textarea',
+    'div[role="button"]', 'div[role="link"]',
+    'nav', 'header', 'footer', 'main', 'section', 'article', 'aside',
+    'figcaption', 'caption', 'legend', 'dt', 'dd',
+    'strong', 'em', 'small', 'code', 'blockquote',
+    '[role="menuitem"]', '[role="option"]', '[role="tab"]',
+    '[role="heading"]', '[role="listitem"]',
+  ].join(', ');
   const els = Array.from(document.querySelectorAll(SELECTORS));
   const seen = new Set();
 
@@ -879,13 +1226,22 @@ function scanContrast() {
     const style = window.getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden') return;
 
-    const fgStr = style.color;
+    // Use getEffectiveFg — skips invisible/transparent text
+    const fgStr = getEffectiveFg(el);
+    if (!fgStr) return;
+
     const bgStr = getEffectiveBg(el);
     const fgRgb = parseRgbStr(fgStr);
     const bgRgb = parseRgbStr(bgStr);
     if (!fgRgb || !bgRgb) return;
 
-    const key = fgStr + '|' + bgStr;
+    // Skip if fg === bg (invisible text rendered on matching bg)
+    if (fgRgb[0]===bgRgb[0] && fgRgb[1]===bgRgb[1] && fgRgb[2]===bgRgb[2]) return;
+
+    // Dedup by hex colors — same color pair only reported once
+    const fgHex = rgbToHex(fgRgb);
+    const bgHex = rgbToHex(bgRgb);
+    const key = fgHex + '|' + bgHex;
     if (seen.has(key)) return;
     seen.add(key);
 
@@ -893,10 +1249,10 @@ function scanContrast() {
     const fontSize = parseFloat(style.fontSize) || 16;
     const fontWeight = parseInt(style.fontWeight) || 400;
     const isLargeText = fontSize >= 24 || (fontSize >= 18.67 && fontWeight >= 700);
-    const aaRequired = isLargeText ? 3.0 : 4.5;
-    const aaaRequired = isLargeText ? 4.5 : 7.0;
-    const passesAA  = ratio >= aaRequired;
-    const passesAAA = ratio >= aaaRequired;
+    const aaNeedd = isLargeText ? 3.0 : 4.5;
+    const aaaNeedd = isLargeText ? 4.5 : 7.0;
+    const passesAA  = ratio >= aaNeedd;
+    const passesAAA = ratio >= aaaNeedd;
 
     results.summary.total++;
     if (!passesAA) results.summary.failures++;
@@ -905,21 +1261,21 @@ function scanContrast() {
     const type = getElementType(el);
     if (!results.groups[type]) results.groups[type] = [];
 
-    // Build a usable selector
-    let selector = '';
-    if (el.id) selector = '#' + el.id;
-    else if (el.getAttribute('data-testid')) selector = '[' + 'data-testid="' + el.getAttribute('data-testid') + '"]';
+    // Tag element for reliable jump-to
+    const cscanIdx = results.summary.total;
+    el.setAttribute('data-al-cscan', String(cscanIdx));
+    const selector = '[data-al-cscan="' + cscanIdx + '"]';
 
     const textSnippet = (el.textContent || '').trim().slice(0, 40);
 
     results.groups[type].push({
       ratio: Math.round(ratio * 100) / 100,
-      fg: rgbToHex(fgRgb),
-      bg: rgbToHex(bgRgb),
+      fg: fgHex,
+      bg: bgHex,
       passesAA,
       passesAAA,
       isLargeText,
-      aaRequired,
+      aaRequired: aaNeedd,
       text: textSnippet,
       tag: el.tagName.toLowerCase(),
       selector,
@@ -940,52 +1296,4 @@ function scanContrast() {
   return results;
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'SCAN_CONTRAST') {
-    try {
-      sendResponse({ success: true, results: scanContrast() });
-    } catch(e) {
-      sendResponse({ success: false, error: e.message });
-    }
-    return true;
-  }
-});
 
-// ── Scroll to element by selector or text ────────────────────────────────────
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "SCROLL_TO_ELEMENT") {
-    try {
-      let el = null;
-      if (message.selector) {
-        el = document.querySelector(message.selector);
-      }
-      if (!el && message.text) {
-        // Find by text content match
-        const all = document.querySelectorAll('a, button, p, h1, h2, h3, h4, h5, h6, span, li, td');
-        for (const node of all) {
-          if (node.textContent?.trim().startsWith(message.text.trim())) {
-            el = node;
-            break;
-          }
-        }
-      }
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Flash highlight
-        const orig = el.style.outline;
-        el.style.outline = "3px solid #4f8ef7";
-        el.style.outlineOffset = "3px";
-        setTimeout(() => {
-          el.style.outline = orig;
-          el.style.outlineOffset = "";
-        }, 2000);
-        sendResponse({ success: true });
-      } else {
-        sendResponse({ success: false });
-      }
-    } catch(e) {
-      sendResponse({ success: false });
-    }
-    return true;
-  }
-});

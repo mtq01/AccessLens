@@ -3,8 +3,13 @@
   "name": "AccessLens",
   "version": "0.1.0",
   "description": "Developer-first accessibility inspector. Scan any page for WCAG violations and check colour contrast.",
-  "permissions": ["activeTab","scripting","storage","windows","tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["activeTab","scripting","storage","windows","tabs","sidePanel"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'self';"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -23,12 +28,6 @@
     },
     "default_title": "Open AccessLens"
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["panel.html","report.html","report.js"],
-      "matches": ["<all_urls>"]
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
