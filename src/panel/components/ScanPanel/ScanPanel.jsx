@@ -112,8 +112,8 @@ export default function ScanPanel({ scanData, runScan, pageUrl, onViolationCount
           </p>
           <p className="empty-hint">
             {errorMsg === "chrome_restricted"
-              ? "AccessLens can't run on Chrome's own pages. Go to any website and try again."
-              : "Close this panel, navigate to the page, then click the AccessLens icon again."}
+              ? "Orbit can't run on Chrome's own pages. Go to any website and try again."
+              : "Close this panel, navigate to the page, then click the Orbit icon again."}
           </p>
           {errorMsg !== "chrome_restricted" && (
             <button className="btn-scan" onClick={runScan}>Try again</button>
@@ -133,7 +133,7 @@ export default function ScanPanel({ scanData, runScan, pageUrl, onViolationCount
 
       {/* ── Idle state ──────────────────────────────────────────────────
           Shown before the first scan. Displays the Run Scan button and
-          a card listing what AccessLens checks for.                      */}
+          a card listing what Orbit checks for.                      */}
       {status === "idle" && (
         <div className="scan-idle">
           <div className="idle-explainer">

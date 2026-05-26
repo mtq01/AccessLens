@@ -1,4 +1,4 @@
-# AccessLens — Chrome Extension
+# Orbit — Chrome Extension
 
 A developer-first accessibility inspector for Chrome. Scans any page for WCAG 2.2 violations, checks colour contrast, tests keyboard focus, simulates 400% zoom and high contrast mode, and provides a human testing checklist — all in a clean pop-out panel.
 
@@ -25,7 +25,7 @@ A developer-first accessibility inspector for Chrome. Scans any page for WCAG 2.
 ## Project structure
 
 ```
-accesslens-extension/
+Orbit-extension/
 ├── src/
 │   ├── background/
 │   │   └── index.js          # Service worker — message hub between panel and page

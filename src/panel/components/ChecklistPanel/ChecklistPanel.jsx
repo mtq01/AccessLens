@@ -3,7 +3,7 @@ import { Icon } from "../Icon";
 import { CHECKLIST } from "../../data/checklistData";
 
 // a nickname for where we save the checklist progress in the browser's memory.
-const STORAGE_KEY = "accesslens_checklist_v1";
+const STORAGE_KEY = "orbit_checklist_v1";
 
 // opens a "shoebox" and reads which checkboxes the user already ticked.
 function loadChecked() {

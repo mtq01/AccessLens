@@ -4,7 +4,7 @@ import { TAB_ISSUE_GUIDANCE, getIssueType } from "../../data/tabIssueGuidance";
 
 // ── Focus log storage ────────────────────────────────────────────────────────
 
-const FOCUS_LOG_KEY = "accesslens_focus_log_v1";
+const FOCUS_LOG_KEY = "orbit_focus_log_v1";
 
 function loadFocusLog() {
   try {

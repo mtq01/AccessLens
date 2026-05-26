@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Icon } from "../Icon";
 
-const CHECKLIST_STORAGE_KEY = "accesslens_checklist_v1";
-const FOCUS_LOG_KEY = "accesslens_focus_log_v1";
+const CHECKLIST_STORAGE_KEY = "orbit_checklist_v1";
+const FOCUS_LOG_KEY = "orbit_focus_log_v1";
 
 function loadChecklist() {
   try {
@@ -51,7 +51,7 @@ export default function ExportModal({ scanData, tabOrderStops, onClose }) {
     };
 
     const reportUrl = chrome.runtime.getURL("report.html");
-    chrome.storage.local.set({ accesslens_report: JSON.stringify(reportData) }, () => {
+    chrome.storage.local.set({ orbit_report: JSON.stringify(reportData) }, () => {
       if (chrome.runtime.lastError) {
         console.error("Report save failed:", chrome.runtime.lastError.message);
         return;

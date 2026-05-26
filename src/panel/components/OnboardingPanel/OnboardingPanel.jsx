@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "../Icon";
 
 const ONBOARDING_STEPS = [
-  { icon: "search",        title: "Scan any page instantly",    body: "Open AccessLens on any website and click Run scan. It checks for problems affecting people who use screen readers or keyboard navigation." },
+  { icon: "search",        title: "Scan any page instantly",    body: "Open Orbit on any website and click Run scan. It checks for problems affecting people who use screen readers or keyboard navigation." },
   { icon: "warning_amber", title: "See what's broken and why",  body: "Issues are sorted by importance. The worst problems come first. Each one has a plain-language explanation and a code fix you can copy." },
   { icon: "contrast",      title: "Check color contrast",      body: "The Colors tab checks every text and background combination on the page. Bad contrast is one of the most common and easiest problems to fix." },
   { icon: "account_tree",  title: "Test keyboard navigation",   body: "Use the Tools tab to test without a mouse. The tab order map shows every keyboard stop and flags anything confusing." },
@@ -22,7 +22,7 @@ export default function OnboardingPanel({ onDone }) {
             <rect width="26" height="26" rx="6" fill="#2563eb"/>
             <path d="M7 13l4 4 8-8" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="onboarding-brand">AccessLens</span>
+          <span className="onboarding-brand">Orbit</span>
         </div>
         <div className="onboarding-icon"><Icon name={cur.icon} size={32} /></div>
         <div className="onboarding-title">{cur.title}</div>

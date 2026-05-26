@@ -6,7 +6,7 @@ export function getDomain(url) {
 
 // ── Scan history (per-domain, persisted in chrome.storage.local) ─────────────
 
-const HISTORY_KEY = "accesslens_history";
+const HISTORY_KEY = "orbit_history";
 const MAX_HISTORY = 5;
 
 export function loadHistory(domain) {
