@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "AccessLens",
-  "version": "0.1.0",
+  "name": "Orbit",
+  "version": "0.1.2",
   "description": "Developer-first accessibility inspector. Scan any page for WCAG violations and check colour contrast.",
   "permissions": ["activeTab","scripting","storage","windows","tabs","sidePanel"],
   "content_security_policy": {
